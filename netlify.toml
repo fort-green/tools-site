@@ -1,3 +1,7 @@
+# Only the public/ folder is published. Everything else in this repo (README, notes) stays private.
+[build]
+  publish = "public"
+
 [[headers]]
   for = "/*"
   [headers.values]
