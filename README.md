@@ -11,9 +11,11 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/index.html` | Hub: email sign-in (Supabase one-time code) and the list of tools. Staff-only cards show for @fortgreen.co.uk accounts. |
 | `public/config.js` | Supabase project URL, public anon key and staff email domain, shared by every page. |
 | `public/auth-guard.js` | Include on any tool page to send signed-out visitors to the hub sign-in and back again. |
+| `public/staff-guard.js` | Use instead of `auth-guard.js` on staff-only pages: also sends signed-in non-staff back to the hub. |
 | `netlify.toml` | Publishes `public/` and sets security headers for the whole site. |
 | `public/martyns-law/` | Martyn's Law readiness checker |
-| `public/risk-assessment/` | Risk assessment generator |
+| `public/risk-assessment/` | Risk assessment generator (free, client version). Its `HAZARDS` and `GAP` lists are the hazard library for both versions. |
+| `public/risk-assessment-full/` | Risk assessment generator, full staff version: editable hazards and actions, revisions, branded Word and PDF export (staff) |
 | `public/licensing/` | Licensing and TEN guidance |
 | `public/power-planner/` | Event power planner |
 | `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in (staff) |
@@ -41,3 +43,9 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Book a readiness review** posts to the n8n workflow "Martyn's Law: readiness review request alert" (webhook `martyns-law-review`), which emails niall@fortgreen.co.uk.
 - **Save as PDF**: anyone who unlocks the report with an @fortgreen.co.uk email gets the Fort Green-branded version; everyone else gets a neutral version with Fort Green named only in the disclaimer.
 - Both webhooks are public; a bot check (e.g. Cloudflare Turnstile) is still to be added.
+
+## Risk assessment generator (full): what lives outside this repo
+
+- **Database:** Supabase project FORT GREEN PROJECT1, table `ra_assessments` (one row per assessment, full job in `data`). Row-level security allows only signed-in @fortgreen.co.uk accounts, via `ra_is_staff()`. A trigger stamps `created_by`, `updated_by` and `updated_at`.
+- **Hazard library:** read at page load from `public/risk-assessment/index.html` (the `HAZARDS` and `GAP` constants). Keep those two lines in the same format, or the full version can't load them.
+- **Word export:** uses the `docx` library (8.5.0) from jsDelivr.

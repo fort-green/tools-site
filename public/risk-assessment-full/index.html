@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RA Generator Full | Fort Green</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/staff-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<style>
+/* Layout: Fort Green tool shell. Sticky brand bar, tab nav at the bottom on phones, wide working column for the hazard editor. */
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --zone:#cecece;
+  --red:#b42318; --red-soft:#fbe4e1; --ok:#1d6b3a; --ok-soft:#e1f1e6;
+  --display:"Antonio","Arial Narrow",sans-serif; --body:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --zone:#4a494a;
+  --red:#ff7b6e; --red-soft:#2d1513; --ok:#7fd49b; --ok-soft:#14261a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --zone:#4a494a;
+  --red:#ff7b6e; --red-soft:#2d1513; --ok:#7fd49b; --ok-soft:#14261a; color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:980px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px}
+.brand{font-family:var(--display);font-weight:700;font-size:26px;line-height:1;text-transform:uppercase;letter-spacing:.01em}
+.tool{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);font-weight:500;min-width:0}
+.tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--ink);color:var(--ink);padding:2px 7px}
+.saved{font-size:13px;color:var(--muted)}
+
+main{max-width:980px;margin:0 auto;padding-block:20px 120px}
+.screen{display:none}.screen.on{display:block}
+h1{font-family:var(--display);font-weight:700;text-transform:uppercase;font-size:clamp(40px,9vw,64px);line-height:.92;margin:6px 0 10px;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;text-transform:uppercase;font-size:26px;line-height:1.1;margin:0 0 6px;letter-spacing:.01em}
+h3{font-family:var(--display);font-weight:600;font-size:20px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}.muted{color:var(--muted)}.small{font-size:14px}
+.lede{color:var(--muted);max-width:60ch}
+.panel{background:var(--surface);border:1px solid var(--line);padding:18px;margin:16px 0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 18px}
+.grid2 > *{min-width:0}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border:0;border-radius:0;cursor:pointer;font-weight:600;font-size:15px;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line)}
+.btn-danger{background:transparent;border:1.5px solid var(--red);color:var(--red)}
+.btn-sm{min-height:36px;padding:0 12px;font-size:14px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.link{background:none;border:0;padding:0;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+.field label,.field .label{display:block;font-weight:600;font-size:14px;margin-bottom:5px}
+.field{margin:0}
+input[type=text],input[type=date],input[type=number],select,textarea{width:100%;min-height:44px;padding:9px 12px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:16px}
+textarea{min-height:96px;resize:vertical;line-height:1.45}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none}
+
+.qs{display:grid;gap:22px}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px}
+.opts button{position:relative;min-height:48px;text-align:left;padding:9px 12px;border:1.5px solid var(--line);background:var(--surface);border-radius:0;font-weight:600;font-size:15px;line-height:1.25;cursor:pointer}
+.opts button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.opts.multi button{padding-left:36px}
+.opts.multi button::before{content:"";position:absolute;left:12px;top:50%;width:15px;height:15px;margin-top:-8px;border:1.5px solid currentColor}
+.opts.multi button[aria-pressed="true"]::after{content:"";position:absolute;left:17px;top:50%;width:5px;height:9px;margin-top:-6px;border:solid var(--accent-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.seg{display:inline-grid;grid-auto-flow:column;gap:4px;background:var(--surface-2);padding:4px}
+.seg button{min-height:38px;min-width:76px;border:0;background:transparent;cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink)}
+.seg button[data-v="no"][aria-pressed="true"],.seg button[data-v="unsure"][aria-pressed="true"]{background:var(--red-soft);color:var(--red)}
+.seg button[data-v="yes"][aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.prov{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.sec-label{font-family:var(--display);font-weight:600;text-transform:uppercase;font-size:22px;margin:8px 0 0;padding-top:14px;border-top:1px solid var(--line)}
+
+/* Summary strip */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:14px 0}
+.stat{background:var(--surface);padding:12px 14px}
+.stat b{display:block;font-family:var(--display);font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+.stat.vh b{color:var(--red)}
+@media (max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.p-vh{background:var(--red);color:#fff}.p-h{background:var(--accent);color:var(--accent-ink)}
+.p-m{background:var(--zone);color:var(--ink)}.p-l{box-shadow:inset 0 0 0 1px var(--line)}
+
+/* Hazard editor */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:10px 0}
+.hz{border:1px solid var(--line);background:var(--surface);margin:0 0 8px}
+.hz.out{opacity:.55}
+.hz summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:start;padding:12px 14px}
+.hz summary::-webkit-details-marker{display:none}
+.hz .ref{font-size:12px;font-weight:700;color:var(--muted);padding-top:3px;font-variant-numeric:tabular-nums;min-width:52px}
+.hz .t{min-width:0}
+.hz .t strong{display:block;line-height:1.3}
+.hz .t span{font-size:13px;color:var(--muted)}
+.hz .sc{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.hz .arrow{font-size:12px;color:var(--muted)}
+.hz-body{padding:4px 14px 16px;border-top:1px solid var(--line);display:grid;gap:14px}
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.scores .out{display:flex;align-items:flex-end;gap:8px;font-size:14px}
+.refline{font-size:13px;color:var(--muted)}
+.flag{font-size:12px;font-weight:700;color:var(--red)}
+.custom-tag{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.empty{padding:30px 0}
+
+/* Actions */
+.phase{font-family:var(--display);font-weight:600;text-transform:uppercase;font-size:22px;margin:22px 0 8px}
+.act{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.act input[type=checkbox]{width:22px;height:22px;margin-top:2px;accent-color:var(--accent)}
+.act .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px}
+.act .meta input{min-height:38px;font-size:15px;padding:6px 10px}
+.act.done .txt{text-decoration:line-through;color:var(--muted)}
+.act .src{font-size:12px;font-weight:700;color:var(--muted)}
+
+/* Jobs list */
+.job{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.job:last-child{border-bottom:0}
+.job .who{min-width:0}
+.job .who strong{display:block}
+.confirm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px}
+
+.note{border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);margin:14px 0;font-size:14px}
+.note.warn{border-left-color:var(--red)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--accent);color:var(--accent-ink);padding:10px 16px;font-weight:600;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav-in{max-width:980px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--ink)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent)}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;line-height:18px;text-align:center}
+
+#print-doc{display:none}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
+  body::before,.topbar,.nav,main,.toast{display:none!important}
+  #print-doc{display:block!important;font-size:9pt;line-height:1.35}
+  #print-doc .pbrand{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2pt solid #000;padding-bottom:4pt;margin-bottom:8pt}
+  #print-doc .pbrand b{font-family:"Antonio","Arial Narrow",Arial,sans-serif;font-size:22pt;text-transform:uppercase;letter-spacing:.02em}
+  #print-doc h1{font-family:Arial,sans-serif;text-transform:none;font-size:17pt;line-height:1.2;margin:0 0 4pt}
+  #print-doc h2{font-family:Arial,sans-serif;text-transform:none;font-size:12pt;margin:14pt 0 6pt;break-after:avoid}
+  #print-doc table{width:100%;border-collapse:collapse;margin:0 0 8pt}
+  #print-doc th,#print-doc td{border:.75pt solid #777;padding:3pt 4pt;vertical-align:top;text-align:left}
+  #print-doc th{background:#e6e6e6}
+  #print-doc thead{display:table-header-group}
+  #print-doc tr{break-inside:avoid}
+  #print-doc .num{text-align:center;white-space:nowrap}
+  #print-doc .nw{white-space:nowrap}
+  #print-doc .kv th{width:20%}
+  #print-doc .sign td{height:22pt}
+  #print-doc .foot{margin-top:10pt;font-size:8pt;color:#333}
+}
+</style>
+
+</head>
+<body>
+<header class="topbar gut">
+  <div class="topbar-in">
+    <span class="brand">Fort Green</span>
+    <div class="tool"><span class="tag">Staff</span><span id="sync">RA generator</span></div>
+  </div>
+</header>
+
+<main class="gut">
+  <section class="screen" id="screen-job"></section>
+  <section class="screen" id="screen-questions"></section>
+  <section class="screen" id="screen-hazards"></section>
+  <section class="screen" id="screen-actions"></section>
+  <section class="screen" id="screen-export"></section>
+</main>
+
+<nav class="nav gut" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="job"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Job</button>
+    <button data-tab="questions"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Questions<span class="badge" id="badge-q" hidden></span></button>
+    <button data-tab="hazards"><svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>Hazards<span class="badge" id="badge-h" hidden></span></button>
+    <button data-tab="actions"><svg viewBox="0 0 24 24"><path d="M4 7l2 2 4-4M4 16l2 2 4-4M13 7h7M13 16h7"/></svg>Actions</button>
+    <button data-tab="export"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg>Export</button>
+  </div>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="print-doc" aria-hidden="true"></div>
+
+<script>
+/* Hazard library: FGL-RA-Generator-Hazard-Library-v0.2.xlsx */
+/* Library: loaded from the public generator page so both versions share one source. EMBED is filled only for previews. */
+const EMBED = null;
+let HAZARDS = EMBED ? EMBED.h : [], GAP = EMBED ? EMBED.g : {};
+async function loadLibrary(){
+  if(EMBED) return;
+  const t = await (await fetch("/risk-assessment/",{cache:"no-store"})).text();
+  HAZARDS = JSON.parse(t.match(/const HAZARDS = (\[[\s\S]*?\]);\n/)[1]);
+  GAP = JSON.parse(t.match(/const GAP = (\{[\s\S]*?\});\n/)[1]);
+}
+const STORE = "fg-ra-full-v1";
+const PHASES = [["before","Before"],["day","On the day"],["after","After"]];
+const COMPANY = {name:"Fort Green Limited", email:"info@fortgreen.co.uk", web:"fortgreen.co.uk"};
+
+const SINGLE = {
+  type:{label:"Event type", opts:[["concert","Concert or gig",["event:concert"]],["club","Club night",["event:club"]],["festival","Festival",["event:festival"]],["conference","Conference",["event:conference"]],["private","Private party",["event:private"]],["sport","Sporting event",["event:sport"]],["community","Community event or fete",["event:community"]],["exhibition","Exhibition",["event:exhibition"]]]},
+  venue:{label:"Venue", opts:[["indoor","Indoors",["indoor"]],["greenfield","Outdoor greenfield",["outdoor"]],["urban","Outdoor urban or street",["outdoor","venue:urban"]],["marquee","Marquee",["outdoor","struct:marquee","struct:any"]],["mixed","Mixed indoor and outdoor",["indoor","outdoor"]]]},
+  cap:{label:"Maximum on site at once", opts:[["0","Under 200",[]],["200","200 to 499",[]],["500","500 to 799",[]],["800","800 to 1,999",[]],["2000","2,000 to 4,999",[]],["5000","5,000 or more",[]]]},
+  timing:{label:"Timing", opts:[["day","Daytime only",["time:day"]],["evening","Evening",["time:evening"]],["night","Late night or overnight",["time:evening","time:night"]],["multi","Several days, no camping",["time:multi"]],["camping","Several days with camping",["time:multi","time:night","time:evening","time:camping"]]]},
+  alcohol:{label:"Alcohol", opts:[["none","No alcohol",[]],["bar","Bar selling drinks",["alcohol:any","alcohol:bar"]],["byo","Bring your own",["alcohol:any"]],["inclusive","Free or all-inclusive bar",["alcohol:any","alcohol:bar"]]]},
+  audience:{label:"Audience", opts:[["family","Families",["aud:family","aud:u18"]],["adults","Adults only",["aud:adult"]],["u18","Under-18s event",["aud:u18"]],["mixed","Mixed ages",["aud:u18"]],["vip","VIP or hospitality",["aud:adult"]]]}
+};
+const MULTI = {
+  struct:{label:"Temporary structures", opts:[["stage","Stage"],["marquee","Marquee"],["barriers","Barriers"],["scaffold","Scaffolding or towers"],["seating","Seating stands"],["rigging","Flown rigging"]], tags:k=>["struct:"+k,"struct:any"]},
+  act:{label:"Activities and effects", opts:[["pyro","Pyrotechnics or stage effects"],["lasers","Lasers"],["rides","Rides or inflatables"],["fireworks","Fireworks display"],["water","Water features"],["animals","Animals"]], tags:k=>["act:"+k]},
+  site:{label:"Site factors", opts:[["vehicles","Vehicles on site"],["generators","Generators"],["cooking","Cooking or LPG"],["catering","Food and drink traders"],["waterside","Near open water"],["road_closures","Road closures"]], tags:k=>k==="cooking"?["site:cooking","site:catering"]:["site:"+k]}
+};
+const PROVISION = [
+  ["security","SIA-licensed security","Security",h=>h.id==="CRW-04"||h.id.startsWith("SEC-")],
+  ["medical","Medical or first aid cover","Medical cover",h=>h.id==="MED-01"],
+  ["stewards","Stewards","Stewards",h=>h.id.startsWith("CRW-")],
+  ["fire","Fire marshals","Fire marshals",h=>h.id.startsWith("FIR-")]
+];
+
+/* ---------- Store ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "x"+Math.random().toString(36).slice(2,12));
+const today = () => new Date().toISOString().slice(0,10);
+function nextRef(jobs){
+  const y = new Date().getFullYear();
+  const n = jobs.filter(j => (j.ref||"").startsWith("FGL-RA-"+y)).map(j => parseInt(j.ref.split("-").pop(),10)||0);
+  return `FGL-RA-${y}-${String((n.length?Math.max(...n):0)+1).padStart(3,"0")}`;
+}
+function blankJob(jobs){
+  return {id:uid(), ref:nextRef(jobs), rev:0, created:today(), updated:new Date().toISOString(),
+    client:"", event:"", venue:"", address:"", postcode:"", date:"", endDate:"", contact:"", contactPhone:"",
+    assessor:"", approver:"", reviewDate:"", scope:"",
+    a:{type:"",venue:"",cap:"",timing:"",alcohol:"",audience:"",struct:[],act:[],site:[],provision:{}},
+    ov:{}, added:[], custom:[], acts:{}, extra:[], history:[]};
+}
+let db = {jobs:[], current:null};
+const J = () => db.jobs.find(j => j.id === db.current);
+const CFG = window.FG_CONFIG || {};
+const sb = (CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase) ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
+let me = "", saveT = null, saving = false, dirty = new Set();
+function setSync(t){ const el=$("#sync"); if(el) el.textContent=t; }
+const ROW = j => ({id:j.id, ref:j.ref, event:j.event||null, client:j.client||null, event_date:j.date||null, rev:j.rev, data:j});
+function fromRow(r){ const j = Object.assign({}, r.data, {id:r.id, ref:r.ref, rev:r.rev}); j._by=r.updated_by; j._at=r.updated_at; return j; }
+async function loadJobs(){
+  if(!sb){ try{ const s=JSON.parse(localStorage.getItem(STORE)||"null"); if(s&&Array.isArray(s.jobs)) db=s; }catch(e){} }
+  else {
+    const u = await sb.auth.getUser(); me = (u.data && u.data.user && u.data.user.email) || "";
+    const r = await sb.from("ra_assessments").select("id,ref,rev,data,updated_at,updated_by").order("updated_at",{ascending:false});
+    if(r.error) throw r.error;
+    db.jobs = r.data.map(fromRow);
+    try{ db.current = localStorage.getItem(STORE+":open"); }catch(e){}
+  }
+  if(!db.jobs.length){ const n=blankJob([]); db.jobs.push(n); dirty.add(n.id); }
+  if(!db.jobs.find(j=>j.id===db.current)) db.current = db.jobs[0].id;
+}
+function save(){
+  const j = J(); j.updated = new Date().toISOString(); dirty.add(j.id);
+  if(!sb){ try{ localStorage.setItem(STORE, JSON.stringify(db)); }catch(e){} return; }
+  setSync("Saving…"); clearTimeout(saveT); saveT = setTimeout(flush, 800);
+}
+async function flush(){
+  if(!sb || saving) return; saving = true;
+  try{
+    for(const id of [...dirty]){
+      const j = db.jobs.find(x=>x.id===id); dirty.delete(id); if(!j) continue;
+      const data = Object.assign({}, j); delete data._by; delete data._at;
+      let r = await sb.from("ra_assessments").upsert(ROW(Object.assign(data,{id:j.id}))).select("updated_at,updated_by").single();
+      if(r.error && r.error.code==="23505"){ j.ref = nextRef(db.jobs.filter(x=>x.id!==j.id).concat([{ref:j.ref}])); data.ref=j.ref; r = await sb.from("ra_assessments").upsert(ROW(data)).select("updated_at,updated_by").single(); toast("Reference taken, now "+j.ref); }
+      if(r.error){ dirty.add(id); throw r.error; }
+      j._by = r.data.updated_by; j._at = r.data.updated_at;
+    }
+    setSync("Saved");
+  }catch(e){ console.error(e); setSync("Not saved"); toast("Couldn’t save. Check your connection; changes stay on this screen."); }
+  saving = false; if(dirty.size){ clearTimeout(saveT); saveT=setTimeout(flush,2000); }
+}
+async function removeJob(id){
+  if(sb){ const r = await sb.from("ra_assessments").delete().eq("id",id); if(r.error){ toast("Couldn’t delete: "+r.error.message); return false; } }
+  db.jobs = db.jobs.filter(x=>x.id!==id); dirty.delete(id);
+  if(!db.jobs.length){ const n=blankJob([]); db.jobs.push(n); dirty.add(n.id); }
+  if(!db.jobs.find(x=>x.id===db.current)) db.current=db.jobs[0].id;
+  if(!sb){ try{ localStorage.setItem(STORE, JSON.stringify(db)); }catch(e){} } else flush();
+  return true;
+}
+async function openJob(id){
+  db.current = id; try{ localStorage.setItem(STORE+":open", id); }catch(e){}
+  if(sb){ const r = await sb.from("ra_assessments").select("id,ref,rev,data,updated_at,updated_by").eq("id",id).maybeSingle();
+    if(r.data){ const k=db.jobs.findIndex(x=>x.id===id); db.jobs[k]=fromRow(r.data); } }
+}
+window.addEventListener("beforeunload", e=>{ if(dirty.size){ flush(); e.preventDefault(); e.returnValue=""; } });
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("on"); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("on"),1800); }
+
+/* ---------- Engine ---------- */
+function tags(a){
+  const t = new Set();
+  Object.keys(SINGLE).forEach(k=>{ const o=SINGLE[k].opts.find(o=>o[0]===a[k]); if(o) o[2].forEach(x=>t.add(x)); });
+  Object.keys(MULTI).forEach(k=>a[k].filter(v=>v!=="none").forEach(v=>MULTI[k].tags(v).forEach(x=>t.add(x))));
+  return t;
+}
+function matches(expr,t,cap){
+  const js = expr.replace(/cap>=(\d+)|ALWAYS|[a-z_]+(?::[a-z0-9_]+)?/g,(m,n)=> n!==undefined?String(cap>=+n):m==="ALWAYS"?"true":String(t.has(m))).replace(/&/g,"&&").replace(/\|/g,"||");
+  try{ return Function('"use strict";return ('+js+')')(); }catch(e){ return false; }
+}
+const rating = s => s>=16?["Very high","vh"]:s>=10?["High","h"]:s>=5?["Medium","m"]:["Low","l"];
+const answeredLeft = a => ["type","venue","cap","timing","alcohol","audience"].filter(k=>!a[k]).length + ["struct","act","site"].filter(k=>!a[k].length).length + PROVISION.filter(p=>!a.provision[p[0]]).length;
+function gapsOf(a){ return PROVISION.filter(p=>["no","unsure"].includes(a.provision[p[0]])); }
+
+/* Builds the working hazard list: triggered + manually added library hazards + custom, with staff overrides applied. */
+function compute(job){
+  const a = job.a, t = tags(a), cap = parseInt(a.cap||"0",10), g = gapsOf(a);
+  const list = [];
+  HAZARDS.forEach(h=>{
+    const trig = matches(h.trig,t,cap), added = job.added.includes(h.id);
+    if(!trig && !added) return;
+    const bumped = g.some(p=>p[3](h));
+    const o = job.ov[h.id] || {};
+    const L = o.L ?? Math.min(5,h.L+(bumped?1:0)), S = o.S ?? h.S, rL = o.rL ?? h.rL, rS = o.rS ?? h.rS;
+    list.push({id:h.id, cat:h.cat, haz:h.haz, con:o.con ?? h.con, who:o.who ?? h.who, ctrl:o.ctrl ?? h.ctrl,
+      law:h.law, gd:h.gd, notes:o.notes||"", L,S,rL,rS, score:L*S, rscore:rL*rS, gap:bumped && o.L==null,
+      inc:o.inc!==false, manual:added && !trig, custom:false, edited:Object.keys(o).some(k=>!["inc"].includes(k)),
+      acts:h.acts.filter(x=>!x.c||matches(x.c,t,cap)).map((x,i)=>({key:h.id+":"+i, ph:x.ph, t:x.t}))});
+  });
+  job.custom.forEach(c=>list.push(Object.assign({cat:"Site-specific", law:c.law||"", gd:"", notes:c.notes||"", gap:false, manual:false, custom:true, edited:false, acts:[]}, c,
+    {score:c.L*c.S, rscore:c.rL*c.rS, inc:c.inc!==false})));
+  list.sort((x,y)=> y.score-x.score || x.id.localeCompare(y.id));
+  const gapActs = g.map(p=>({key:"gap:"+p[0], ph:"before", t:GAP[p[0]][0], ref:"Gap", label:p[2]}));
+  return {list, inc:list.filter(h=>h.inc), cap, gaps:g, gapActs};
+}
+function actionRows(job, r){
+  r = r || compute(job);
+  const rows = r.gapActs.map(a=>Object.assign({},a));
+  r.inc.forEach(h=>h.acts.forEach(a=>rows.push(Object.assign({ref:h.id},a))));
+  job.extra.forEach(e=>rows.push({key:"x:"+e.id, ph:e.ph, t:e.t, ref:e.ref||"Job", extra:true, xid:e.id}));
+  const ev = job.date ? new Date(job.date+"T12:00") : null;
+  const fmt = d => d.toISOString().slice(0,10);
+  const defDue = {before: ev?fmt(new Date(ev-14*864e5)):"", day: ev?job.date:"", after: ev?fmt(new Date(+ev+14*864e5)):""};
+  rows.forEach(a=>{ const s = job.acts[a.key]||{}; a.owner=s.owner||""; a.due=s.due||defDue[a.ph]; a.done=!!s.done; });
+  rows.sort((x,y)=>PHASES.findIndex(p=>p[0]===x.ph)-PHASES.findIndex(p=>p[0]===y.ph));
+  return rows;
+}
+function martyns(cap){
+  if(cap>=800) return "Public events of 800 or more with controlled entry are likely to be enhanced tier under the Terrorism (Protection of Premises) Act 2025.";
+  if(cap>=200) return "One-off events under 800 are not qualifying events, but a venue holding 200 or more may be standard tier in its own right under the Terrorism (Protection of Premises) Act 2025.";
+  return "";
+}
+const fmtDate = d => d ? new Date(d+"T12:00").toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "";
+const optLabel = (k,v) => (SINGLE[k].opts.find(o=>o[0]===v)||[])[1]||"";
+const multiLabel = (a,k) => a[k].includes("none")?"None":a[k].map(x=>MULTI[k].opts.find(o=>o[0]===x)[1]).join(", ");
+const revLabel = j => j.rev ? "Rev "+j.rev : "Draft";
+
+/* ---------- Screens ---------- */
+function renderJob(){
+  const j = J();
+  const f = (k,label,type="text",ph="") => `<div class="field"><label for="j-${k}">${label}</label><input type="${type}" id="j-${k}" data-job="${k}" value="${esc(j[k])}" ${ph?`placeholder="${ph}"`:""}></div>`;
+  const others = db.jobs.slice().sort((a,b)=>b.updated.localeCompare(a.updated));
+  $("#screen-job").innerHTML = `
+    <p class="small muted" style="margin:0">${esc(j.ref)} · ${revLabel(j)}</p>
+    <h1>${esc(j.event||"New risk assessment")}</h1>
+    <p class="lede">Set up the job, answer the questions, then edit the hazards and actions for this site before exporting a branded Word or PDF document.</p>
+    <div class="panel">
+      <h2>Job details</h2>
+      <div class="grid2">
+        ${f("client","Client")}${f("event","Event name")}
+        ${f("venue","Venue")}${f("address","Venue address")}
+        ${f("postcode","Postcode")}${f("contact","Client contact")}
+        ${f("contactPhone","Contact phone")}
+        ${f("date","Event start","date")}${f("endDate","Event end","date")}
+      </div>
+      <div class="field" style="margin-top:14px"><label for="j-scope">Scope of this assessment</label><textarea id="j-scope" data-job="scope" placeholder="e.g. Security, stewarding and crowd management for a two-day festival, including build and break.">${esc(j.scope)}</textarea></div>
+    </div>
+    <div class="panel">
+      <h2>Sign-off</h2>
+      <div class="grid2">${f("assessor","Assessor (competent person)")}${f("approver","Approved by")}${f("reviewDate","Next review date","date")}
+        <div class="field"><label for="j-ref">Document reference</label><input type="text" id="j-ref" data-job="ref" value="${esc(j.ref)}"></div>
+      </div>
+    </div>
+    <div class="row"><button class="btn btn-primary" data-go="questions">Next: questions</button></div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Saved assessments</h2><button class="btn btn-ghost btn-sm" id="new-job">New assessment</button></div>
+      <p class="small muted">${sb?"Shared with the Fort Green team. Changes save automatically.":"Saved in this browser only."}</p>
+      ${others.map(o=>`<div class="job" data-jid="${o.id}">
+        <div class="who"><strong>${esc(o.event||"Untitled")}${o.id===j.id?" (open)":""}</strong><span class="small muted">${esc(o.ref)} · ${revLabel(o)} · ${esc(o.client||"No client")}${o.date?" · "+fmtDate(o.date):""}${o._by?" · last edited by "+esc(o._by.split("@")[0]):""}</span></div>
+        <div class="row" id="ctl-${o.id}">
+          ${o.id!==j.id?`<button class="btn btn-ghost btn-sm" data-open="${o.id}">Open</button>`:""}
+          <button class="btn btn-ghost btn-sm" data-dup="${o.id}">Duplicate</button>
+          <button class="btn btn-ghost btn-sm" data-del="${o.id}">Delete</button>
+        </div></div>`).join("")}
+    </div>`;
+  const el = $("#screen-job");
+  el.querySelectorAll("[data-job]").forEach(i=>i.oninput=()=>{ j[i.dataset.job]=i.value; save(); });
+  $("#new-job").onclick=()=>{ const n=blankJob(db.jobs); if(me) n.assessor=""; db.jobs.push(n); db.current=n.id; save(); renderJob(); toast("New assessment "+n.ref); };
+  el.querySelectorAll("[data-open]").forEach(b=>b.onclick=async()=>{ await openJob(b.dataset.open); renderJob(); updateBadges(); window.scrollTo(0,0); });
+  el.querySelectorAll("[data-dup]").forEach(b=>b.onclick=()=>{ const src=db.jobs.find(x=>x.id===b.dataset.dup); const c=JSON.parse(JSON.stringify(src));
+    delete c._by; delete c._at; Object.assign(c,{id:uid(),ref:nextRef(db.jobs),rev:0,history:[],created:today(),event:(src.event||"Untitled")+" (copy)",acts:{}}); db.jobs.push(c); db.current=c.id; save(); renderJob(); toast("Duplicated as "+c.ref); });
+  el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ const id=b.dataset.del;
+    $("#ctl-"+id).innerHTML=`<span class="confirm">Delete for good?<button class="btn btn-danger btn-sm" data-yes="${id}">Delete</button><button class="btn btn-ghost btn-sm" data-no>Keep</button></span>`;
+    $(`[data-yes="${id}"]`).onclick=async()=>{ if(await removeJob(id)){ renderJob(); updateBadges(); toast("Deleted"); } };
+    $("[data-no]").onclick=renderJob; });
+  bindGo(el);
+}
+
+function renderQuestions(){
+  const a = J().a, left = answeredLeft(a);
+  const single = k => `<div><div class="label" style="font-weight:600;margin-bottom:6px" id="l-${k}">${SINGLE[k].label}</div><div class="opts" role="group" aria-labelledby="l-${k}">
+      ${SINGLE[k].opts.map(o=>`<button type="button" data-single="${k}" data-v="${o[0]}" aria-pressed="${a[k]===o[0]}">${o[1]}</button>`).join("")}</div></div>`;
+  const multi = k => `<div><div class="label" style="font-weight:600;margin-bottom:6px" id="l-${k}">${MULTI[k].label}</div><div class="opts multi" role="group" aria-labelledby="l-${k}">
+      ${MULTI[k].opts.map(o=>`<button type="button" data-multi="${k}" data-v="${o[0]}" aria-pressed="${a[k].includes(o[0])}">${o[1]}</button>`).join("")}
+      <button type="button" data-multi="${k}" data-v="none" aria-pressed="${a[k].includes("none")}">None of these</button></div></div>`;
+  $("#screen-questions").innerHTML = `
+    <h1>Questions</h1>
+    <p class="lede">Each answer switches on hazards from the library. You can add or remove hazards by hand on the next screen.</p>
+    ${left?`<p class="small"><b>${left}</b> still to answer</p>`:`<p class="small">All answered. ${compute(J()).list.length} hazards identified.</p>`}
+    <div class="qs">
+      ${Object.keys(SINGLE).map(single).join("")}
+      ${Object.keys(MULTI).map(multi).join("")}
+      <div><div class="sec-label">Provision confirmed</div>
+      ${PROVISION.map(([k,label])=>{const v=a.provision[k];return `<div class="prov"><strong id="pv-${k}">${label}</strong><div class="seg" role="group" aria-labelledby="pv-${k}">
+        ${[["yes","Yes"],["no","No"],["unsure","Not sure"]].map(([x,l])=>`<button type="button" data-prov="${k}" data-v="${x}" aria-pressed="${v===x}">${l}</button>`).join("")}</div></div>`}).join("")}</div>
+    </div>
+    <div class="row" style="margin-top:20px"><button class="btn btn-primary" data-go="hazards">Next: hazards</button></div>`;
+  const el = $("#screen-questions"), keep = fn => { const y=scrollY; fn(); save(); renderQuestions(); scrollTo(0,y); updateBadges(); };
+  el.querySelectorAll("[data-single]").forEach(b=>b.onclick=()=>keep(()=>a[b.dataset.single]=b.dataset.v));
+  el.querySelectorAll("[data-multi]").forEach(b=>b.onclick=()=>keep(()=>{ const k=b.dataset.multi,v=b.dataset.v;
+    if(v==="none") a[k]=a[k].includes("none")?[]:["none"]; else { a[k]=a[k].filter(x=>x!=="none"); a[k]=a[k].includes(v)?a[k].filter(x=>x!==v):a[k].concat(v); }}));
+  el.querySelectorAll("[data-prov]").forEach(b=>b.onclick=()=>keep(()=>a.provision[b.dataset.prov]=b.dataset.v));
+  bindGo(el);
+}
+
+let hzFilter = "inc", openHz = new Set();
+function renderHazards(){
+  const j = J(), r = compute(j);
+  const counts = {vh:0,h:0,m:0,l:0}; r.inc.forEach(h=>counts[rating(h.score)[1]]++);
+  const shown = r.list.filter(h=> hzFilter==="all" || (hzFilter==="inc"?h.inc:!h.inc));
+  const pool = HAZARDS.filter(h=>!r.list.find(x=>x.id===h.id));
+  const sel = (id,k,v) => `<select data-ov="${id}" data-k="${k}" aria-label="${k}">${[1,2,3,4,5].map(n=>`<option ${n===v?"selected":""}>${n}</option>`).join("")}</select>`;
+  $("#screen-hazards").innerHTML = `
+    <h1>Hazards</h1>
+    <p class="lede">Review every hazard for this site. Change scores and controls, exclude what doesn’t apply, and add anything the library missed.</p>
+    <div class="stats">
+      <div class="stat"><b>${r.inc.length}</b><span>included</span></div>
+      <div class="stat vh"><b>${counts.vh}</b><span>very high</span></div>
+      <div class="stat"><b>${counts.h}</b><span>high</span></div>
+      <div class="stat"><b>${r.inc.filter(h=>h.rscore>=10).length}</b><span>still high after controls</span></div>
+    </div>
+    ${r.gaps.length?`<div class="note warn"><b>Provision not confirmed:</b> ${r.gaps.map(p=>p[2]).join(", ")}. Likelihood is raised by one on the hazards these control, unless you’ve set the score yourself.</div>`:""}
+    ${r.inc.filter(h=>h.rscore>=10).length?`<div class="note warn">${r.inc.filter(h=>h.rscore>=10).length} hazard${r.inc.filter(h=>h.rscore>=10).length>1?"s are":" is"} still high or very high after controls. Add controls or record why the risk is accepted before sign-off.</div>`:""}
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Show">
+        ${[["inc","Included"],["out","Excluded"],["all","All"]].map(([v,l])=>`<button type="button" data-filter="${v}" aria-pressed="${hzFilter===v}">${l}</button>`).join("")}
+      </div>
+      <div class="row"><button class="btn btn-ghost btn-sm" id="expand">${openHz.size?"Collapse all":"Expand all"}</button></div>
+    </div>
+    ${!r.list.length?`<div class="empty"><p class="muted">No hazards yet. Answer the questions to build the list.</p><button class="btn btn-primary" data-go="questions">Go to questions</button></div>`:""}
+    ${shown.map(h=>{ const [lab,b]=rating(h.score), [rl,rb]=rating(h.rscore); return `
+    <details class="hz ${h.inc?"":"out"}" data-hz="${h.id}" ${openHz.has(h.id)?"open":""}>
+      <summary><span class="ref">${esc(h.id)}</span>
+        <span class="t"><strong>${esc(h.haz)}</strong><span>${esc(h.cat)}${h.custom?" · site-specific":""}${h.manual?" · added by hand":""}${h.edited?" · edited":""}${!h.inc?" · excluded":""}</span>${h.gap?`<span class="flag"> · likelihood raised for provision gap</span>`:""}</span>
+        <span class="sc"><span class="pill p-${b}">${h.score} ${lab}</span><span class="arrow">after: ${h.rscore} ${rl}</span></span>
+      </summary>
+      <div class="hz-body">
+        ${h.custom?`<div class="field"><label for="hn-${h.id}">Hazard</label><input type="text" id="hn-${h.id}" data-ov="${h.id}" data-k="haz" value="${esc(h.haz)}"></div>`:""}
+        <div class="grid2">
+          <div class="field"><label for="c-${h.id}">Potential consequence</label><input type="text" id="c-${h.id}" data-ov="${h.id}" data-k="con" value="${esc(h.con)}"></div>
+          <div class="field"><label for="w-${h.id}">Who might be harmed</label><input type="text" id="w-${h.id}" data-ov="${h.id}" data-k="who" value="${esc(h.who)}"></div>
+        </div>
+        <div class="scores">
+          <div class="field"><span class="label">Likelihood</span>${sel(h.id,"L",h.L)}</div>
+          <div class="field"><span class="label">Severity</span>${sel(h.id,"S",h.S)}</div>
+          <div class="field"><span class="label">Residual likelihood</span>${sel(h.id,"rL",h.rL)}</div>
+          <div class="field"><span class="label">Residual severity</span>${sel(h.id,"rS",h.rS)}</div>
+        </div>
+        <div class="field"><label for="ct-${h.id}">Control measures</label><textarea id="ct-${h.id}" data-ov="${h.id}" data-k="ctrl">${esc(h.ctrl)}</textarea></div>
+        <div class="field"><label for="n-${h.id}">Site notes</label><input type="text" id="n-${h.id}" data-ov="${h.id}" data-k="notes" value="${esc(h.notes)}" placeholder="Anything specific to this site"></div>
+        ${h.custom?`<div class="field"><label for="lw-${h.id}">Legislation and guidance</label><input type="text" id="lw-${h.id}" data-ov="${h.id}" data-k="law" value="${esc(h.law)}"></div>`:`<p class="refline"><b>Law:</b> ${esc(h.law)}<br><b>Guidance:</b> ${esc(h.gd)}</p>`}
+        <div class="row">
+          <button class="btn btn-ghost btn-sm" data-inc="${h.id}">${h.inc?"Exclude from this assessment":"Include in this assessment"}</button>
+          ${h.edited||h.custom||h.manual?`<button class="btn btn-ghost btn-sm" data-reset="${h.id}">${h.custom||h.manual?"Remove":"Reset to library defaults"}</button>`:""}
+        </div>
+      </div>
+    </details>`;}).join("")}
+    <div class="panel">
+      <h2>Add a hazard</h2>
+      <div class="grid2">
+        <div class="field"><label for="add-lib">From the library</label><select id="add-lib"><option value="">Choose a hazard</option>${pool.map(h=>`<option value="${h.id}">${esc(h.cat)}: ${esc(h.haz)}</option>`).join("")}</select></div>
+        <div class="field"><label for="add-custom">Site-specific hazard</label><input type="text" id="add-custom" placeholder="e.g. Canal towpath runs alongside the exit route"></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn btn-primary btn-sm" id="add-go">Add hazard</button></div>
+    </div>
+    <div class="row"><button class="btn btn-primary" data-go="actions">Next: actions</button></div>`;
+  const el = $("#screen-hazards");
+  el.querySelectorAll("details.hz").forEach(d=>d.ontoggle=()=>{ d.open?openHz.add(d.dataset.hz):openHz.delete(d.dataset.hz); });
+  el.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{ hzFilter=b.dataset.filter; renderHazards(); });
+  $("#expand").onclick=()=>{ if(openHz.size) openHz.clear(); else shown.forEach(h=>openHz.add(h.id)); renderHazards(); };
+  el.querySelectorAll("[data-ov]").forEach(i=>{
+    const ev = i.tagName==="SELECT" ? "change" : "change";
+    i.addEventListener(ev,()=>{ setOv(i.dataset.ov, i.dataset.k, i.tagName==="SELECT"?+i.value:i.value); const y=scrollY; renderHazards(); scrollTo(0,y); });
+  });
+  el.querySelectorAll("[data-inc]").forEach(b=>b.onclick=()=>{ const h=r.list.find(x=>x.id===b.dataset.inc); setOv(h.id,"inc",!h.inc); const y=scrollY; renderHazards(); scrollTo(0,y); updateBadges(); });
+  el.querySelectorAll("[data-reset]").forEach(b=>b.onclick=()=>{ const id=b.dataset.reset;
+    j.custom=j.custom.filter(c=>c.id!==id); j.added=j.added.filter(x=>x!==id); delete j.ov[id]; save(); const y=scrollY; renderHazards(); scrollTo(0,y); updateBadges(); toast("Done"); });
+  $("#add-go").onclick=()=>{
+    const lib=$("#add-lib").value, txt=$("#add-custom").value.trim();
+    if(lib){ j.added.push(lib); delete (j.ov[lib]||{}).inc; openHz.add(lib); toast("Added "+lib); }
+    if(txt){ const n=j.custom.length+1, id="SITE-"+String(n).padStart(2,"0");
+      j.custom.push({id, haz:txt, con:"", who:"", ctrl:"", L:3, S:3, rL:2, rS:3, law:"", notes:"", inc:true}); openHz.add(id); toast("Added "+id); }
+    if(!lib && !txt){ toast("Choose a library hazard or type a site-specific one"); return; }
+    hzFilter="inc"; save(); renderHazards(); updateBadges();
+  };
+  bindGo(el);
+}
+function setOv(id,k,v){
+  const j=J(), c=j.custom.find(x=>x.id===id);
+  if(c){ c[k]=v; } else { j.ov[id]=j.ov[id]||{}; j.ov[id][k]=v; }
+  save();
+}
+
+function renderActions(){
+  const j = J(), rows = actionRows(j);
+  const done = rows.filter(a=>a.done).length;
+  $("#screen-actions").innerHTML = `
+    <h1>Actions</h1>
+    <p class="lede">Every improvement action for the included hazards, with gaps in provision first. Assign owners and dates, and tick off what’s done.</p>
+    <p class="small"><b>${done} of ${rows.length}</b> done${j.date?"":". Set the event date on the Job screen to fill in due dates."}</p>
+    ${PHASES.map(([ph,label])=>{ const set=rows.filter(a=>a.ph===ph); if(!set.length) return ""; return `
+      <div class="phase">${label}</div>
+      ${set.map(a=>`<div class="act ${a.done?"done":""}">
+        <input type="checkbox" data-done="${esc(a.key)}" ${a.done?"checked":""} aria-label="Done">
+        <div><span class="src">${esc(a.ref)}</span><div class="txt">${esc(a.t)}</div>
+          <div class="meta">
+            <input type="text" data-owner="${esc(a.key)}" value="${esc(a.owner)}" placeholder="Owner" aria-label="Owner">
+            <input type="date" data-due="${esc(a.key)}" value="${esc(a.due)}" aria-label="Due date">
+            ${a.extra?`<button class="btn btn-ghost btn-sm" data-rmx="${a.xid}">Remove</button>`:""}
+          </div></div></div>`).join("")}`; }).join("")}
+    <div class="panel">
+      <h2>Add an action</h2>
+      <div class="grid2">
+        <div class="field"><label for="x-t">Action</label><input type="text" id="x-t" placeholder="e.g. Walk the egress route with the venue manager"></div>
+        <div class="field"><label for="x-ph">When</label><select id="x-ph">${PHASES.map(p=>`<option value="${p[0]}">${p[1]}</option>`).join("")}</select></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn btn-primary btn-sm" id="x-add">Add action</button></div>
+    </div>
+    <div class="row"><button class="btn btn-primary" data-go="export">Next: export</button></div>`;
+  const el=$("#screen-actions"), st=k=>(j.acts[k]=j.acts[k]||{});
+  el.querySelectorAll("[data-done]").forEach(i=>i.onchange=()=>{ st(i.dataset.done).done=i.checked; save(); const y=scrollY; renderActions(); scrollTo(0,y); });
+  el.querySelectorAll("[data-owner]").forEach(i=>i.oninput=()=>{ st(i.dataset.owner).owner=i.value; save(); });
+  el.querySelectorAll("[data-due]").forEach(i=>i.onchange=()=>{ st(i.dataset.due).due=i.value; save(); });
+  el.querySelectorAll("[data-rmx]").forEach(b=>b.onclick=()=>{ j.extra=j.extra.filter(e=>e.id!==b.dataset.rmx); save(); renderActions(); });
+  $("#x-add").onclick=()=>{ const t=$("#x-t").value.trim(); if(!t){ toast("Type the action first"); return; } j.extra.push({id:uid(),t,ph:$("#x-ph").value}); save(); renderActions(); toast("Action added"); };
+  bindGo(el);
+}
+
+function renderExport(){
+  const j=J(), r=compute(j), missing=[];
+  if(answeredLeft(j.a)) missing.push("answer every question");
+  ["client","event","venue","date","assessor"].forEach(k=>{ if(!j[k]) missing.push({client:"client",event:"event name",venue:"venue",date:"event date",assessor:"assessor"}[k]); });
+  const stillHigh = r.inc.filter(h=>h.rscore>=10).length;
+  $("#screen-export").innerHTML = `
+    <h1>Export</h1>
+    <p class="lede">Branded Fort Green documents for the client. Word is editable; PDF is for sending as final.</p>
+    ${missing.length?`<div class="note warn"><b>Before you export:</b> ${missing.join(", ")}.</div>`:""}
+    ${stillHigh?`<div class="note warn">${stillHigh} hazard${stillHigh>1?"s remain":" remains"} high or very high after controls.</div>`:""}
+    <div class="panel">
+      <h2>${esc(j.ref)} · ${revLabel(j)}</h2>
+      <p class="small muted">${r.inc.length} hazards, ${actionRows(j,r).length} actions. ${j.history.length?`Last issued ${fmtDate(j.history[j.history.length-1].date)}.`:"Not issued yet."}</p>
+      <div class="row">
+        <button class="btn btn-primary" id="dl-word">Download Word</button>
+        <button class="btn btn-ghost" id="dl-pdf">Download PDF</button>
+      </div>
+      <p class="small muted" style="margin:10px 0 0">PDF opens your browser’s print window. Choose “Save as PDF”.</p>
+    </div>
+    <div class="panel">
+      <h2>Issue a revision</h2>
+      <p class="small muted">Records the revision in the document history and moves this assessment from ${revLabel(j)} to Rev ${j.rev+1}.</p>
+      <div class="grid2">
+        <div class="field"><label for="rv-by">Issued by</label><input type="text" id="rv-by" value="${esc(j.assessor)}"></div>
+        <div class="field"><label for="rv-n">What changed</label><input type="text" id="rv-n" placeholder="${j.rev?"e.g. Updated after site visit":"First issue"}"></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn btn-primary btn-sm" id="rv-go">Issue Rev ${j.rev+1}</button></div>
+      ${j.history.length?`<table style="width:100%;margin-top:14px;border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:left;padding:6px 0">Rev</th><th style="text-align:left">Date</th><th style="text-align:left">By</th><th style="text-align:left">Changes</th></tr></thead><tbody>
+        ${j.history.map(h=>`<tr style="border-top:1px solid var(--line)"><td style="padding:6px 0">${h.rev}</td><td>${fmtDate(h.date)}</td><td>${esc(h.by)}</td><td>${esc(h.notes)}</td></tr>`).join("")}</tbody></table>`:""}
+    </div>`;
+  $("#dl-word").onclick=()=>exportWord().catch(e=>{ console.error(e); toast("Word export failed. Reload and try again."); });
+  $("#dl-pdf").onclick=()=>{ buildPrint(); window.print(); };
+  $("#rv-go").onclick=()=>{ j.rev+=1; j.history.push({rev:j.rev,date:today(),by:$("#rv-by").value.trim(),notes:$("#rv-n").value.trim()||(j.rev===1?"First issue":"")}); save(); renderExport(); toast("Issued Rev "+j.rev); };
+}
+
+/* ---------- Shared document content ---------- */
+function docModel(){
+  const j=J(), r=compute(j), a=j.a;
+  const dates = j.date ? fmtDate(j.date)+(j.endDate&&j.endDate!==j.date?" to "+fmtDate(j.endDate):"") : "Not stated";
+  const prov = PROVISION.map(p=>p[2]+": "+({yes:"Yes",no:"No",unsure:"Not sure"}[a.provision[p[0]]]||"Not answered")).join("; ");
+  const details = [["Client",j.client],["Event",j.event],["Venue",j.venue],["Address",[j.address,j.postcode].filter(Boolean).join(", ")],["Event dates",dates],
+    ["Client contact",[j.contact,j.contactPhone].filter(Boolean).join(", ")],["Event type",optLabel("type",a.type)],["Venue type",optLabel("venue",a.venue)],
+    ["Maximum on site",optLabel("cap",a.cap)],["Timing",optLabel("timing",a.timing)],["Alcohol",optLabel("alcohol",a.alcohol)],["Audience",optLabel("audience",a.audience)],
+    ["Temporary structures",multiLabel(a,"struct")],["Activities and effects",multiLabel(a,"act")],["Site factors",multiLabel(a,"site")],["Provision confirmed",prov]]
+    .map(([k,v])=>[k,v||"Not stated"]);
+  const laws = [...new Set(r.inc.flatMap(h=>(h.law||"").split(/;\s*/)).filter(Boolean))].sort();
+  return {j, r, details, rows:actionRows(j,r), laws, ml:martyns(r.cap)};
+}
+const SCORING = "Risk = likelihood (1 rare to 5 almost certain) × severity (1 negligible to 5 catastrophic). 1–4 Low: acceptable, monitor. 5–9 Medium: reduce where reasonably practicable. 10–15 High: further controls required before the event goes ahead. 16–25 Very high: do not proceed until the risk is reduced.";
+
+/* ---------- Branded PDF (print) ---------- */
+function buildPrint(){
+  const {j,r,details,rows,laws,ml} = docModel();
+  const row=(k,v)=>`<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`;
+  $("#print-doc").innerHTML = `
+    <div class="pbrand"><b>Fort Green</b><span>${esc(j.ref)} · ${revLabel(j)} · ${COMPANY.web}</span></div>
+    <h1>Risk assessment: ${esc(j.event||"Event")}</h1>
+    <div>${esc(j.client)}${j.venue?" · "+esc(j.venue):""}</div>
+    ${j.scope?`<h2>Scope</h2><p>${esc(j.scope)}</p>`:""}
+    <h2>Event details</h2><table class="kv"><tbody>${details.map(d=>row(d[0],d[1])).join("")}</tbody></table>
+    ${r.gaps.length?`<p><b>Provision gaps:</b> ${r.gaps.map(p=>esc(p[2])).join(", ")} not confirmed. Likelihood raised by one on the hazards these control (marked *).</p>`:""}
+    <h2>Risk scoring</h2><p>${SCORING}</p>
+    <h2>Hazards and controls</h2>
+    <table><thead><tr><th>Ref</th><th>Hazard and consequence</th><th>Who might be harmed</th><th class="num">L</th><th class="num">S</th><th class="num">Risk</th><th>Control measures</th><th class="num">Residual</th><th>Legislation and guidance</th></tr></thead><tbody>
+    ${r.inc.map(h=>`<tr><td class="nw">${esc(h.id)}</td><td><b>${esc(h.haz)}</b><br>${esc(h.con)}${h.notes?`<br><i>Site note: ${esc(h.notes)}</i>`:""}</td><td>${esc(h.who)}</td>
+      <td class="num">${h.L}${h.gap?"*":""}</td><td class="num">${h.S}</td><td class="num">${h.score}<br>${rating(h.score)[0]}</td><td>${esc(h.ctrl)}</td>
+      <td class="num">${h.rscore}<br>${rating(h.rscore)[0]}</td><td>${esc(h.law)}${h.gd?`<br><i>${esc(h.gd)}</i>`:""}</td></tr>`).join("")}
+    </tbody></table>
+    <h2>Action plan</h2>
+    <table><thead><tr><th>When</th><th>Ref</th><th>Action</th><th>Owner</th><th>Due</th><th>Done</th></tr></thead><tbody>
+    ${rows.map(a=>`<tr><td class="nw">${PHASES.find(p=>p[0]===a.ph)[1]}</td><td class="nw">${esc(a.ref)}</td><td>${esc(a.t)}</td><td>${esc(a.owner)}</td><td class="nw">${a.due?fmtDate(a.due):""}</td><td>${a.done?"Yes":""}</td></tr>`).join("")}
+    </tbody></table>
+    ${ml?`<p><b>Terrorism (Protection of Premises) Act 2025:</b> ${esc(ml)}</p>`:""}
+    <h2>Legislation referenced</h2><p>${laws.map(esc).join("; ")}. Purple Guide references are to topic areas of the Purple Guide to Health, Safety and Welfare at Music and Other Events (Events Industry Forum).</p>
+    <h2>Sign-off</h2>
+    <table class="sign"><tbody>
+      <tr><th>Assessor</th><td>${esc(j.assessor)}</td><th>Signature</th><td></td></tr>
+      <tr><th>Approved by</th><td>${esc(j.approver)}</td><th>Signature</th><td></td></tr>
+      <tr><th>Date</th><td>${fmtDate(today())}</td><th>Next review</th><td>${fmtDate(j.reviewDate)}</td></tr>
+    </tbody></table>
+    ${j.history.length?`<h2>Revision history</h2><table><thead><tr><th>Rev</th><th>Date</th><th>By</th><th>Changes</th></tr></thead><tbody>${j.history.map(h=>`<tr><td>${h.rev}</td><td class="nw">${fmtDate(h.date)}</td><td>${esc(h.by)}</td><td>${esc(h.notes)}</td></tr>`).join("")}</tbody></table>`:""}
+    <p class="foot">Prepared by ${COMPANY.name} · ${COMPANY.email} · ${COMPANY.web}. Residual risk assumes every listed control is in place and working. This assessment must be reviewed if the event, site or arrangements change.</p>`;
+}
+
+/* ---------- Branded Word (.docx) ---------- */
+async function exportWord(){
+  if(!window.docx){ toast("Word export library didn’t load. Check your connection and reload."); return; }
+  const D = window.docx, {j,r,details,rows,laws,ml} = docModel();
+  const F="Arial", W=15398; // A4 landscape text width in DXA with 12.7mm margins
+  const B={style:D.BorderStyle.SINGLE,size:4,color:"8C8C8C"}, borders={top:B,bottom:B,left:B,right:B};
+  const P=(text,o={})=>new D.Paragraph({spacing:{after:o.after??80},alignment:o.align,children:[].concat(text).map(t=>typeof t==="string"?new D.TextRun({text:t,font:F,size:o.size??18,bold:o.bold,italics:o.italics,color:o.color}):t)});
+  const H=(t)=>new D.Paragraph({spacing:{before:280,after:120},keepNext:true,children:[new D.TextRun({text:t,font:F,size:24,bold:true})]});
+  const cell=(content,w,o={})=>new D.TableCell({width:{size:w,type:D.WidthType.DXA},borders,margins:{top:50,bottom:50,left:80,right:80},
+    shading:o.head?{fill:"E6E6E6",type:D.ShadingType.CLEAR,color:"auto"}:o.fill?{fill:o.fill,type:D.ShadingType.CLEAR,color:"auto"}:undefined,
+    children:[].concat(content).map(c=>c instanceof D.Paragraph?c:P(String(c??""),{bold:o.head||o.bold,size:o.size??16,after:0,align:o.center?D.AlignmentType.CENTER:undefined,color:o.color}))});
+  const table=(widths,head,body)=>new D.Table({width:{size:W,type:D.WidthType.DXA},columnWidths:widths,rows:[
+    new D.TableRow({tableHeader:true,children:head.map((h,i)=>cell(h,widths[i],{head:true}))}),
+    ...body.map(rw=>new D.TableRow({cantSplit:true,children:rw.map((c,i)=>cell(c.v??c,widths[i],c.o||{}))}))]});
+  const fill = s => ({vh:"C00000",h:"F4B183",m:"FFE699",l:"C6EFCE"})[rating(s)[1]];
+  const sc = s => ({v:`${s} ${rating(s)[0]}`,o:{center:true,bold:true,fill:fill(s),color:s>=16?"FFFFFF":"000000"}});
+
+  const kv = new D.Table({width:{size:W,type:D.WidthType.DXA},columnWidths:[3600,W-3600],rows:details.map(([k,v])=>new D.TableRow({children:[cell(k,3600,{head:true}),cell(v,W-3600)]}))});
+  const hz = table([900,2900,1500,450,450,1100,4300,1100,2698],["Ref","Hazard and consequence","Who might be harmed","L","S","Risk","Control measures","Residual","Legislation and guidance"],
+    r.inc.map(h=>[h.id,[P(h.haz,{bold:true,size:16,after:20}),P(h.con,{size:16,after:h.notes?20:0}),...(h.notes?[P("Site note: "+h.notes,{italics:true,size:16,after:0})]:[])],h.who,
+      {v:h.L+(h.gap?"*":""),o:{center:true}},{v:h.S,o:{center:true}},sc(h.score),h.ctrl,sc(h.rscore),[P(h.law,{size:16,after:20}),...(h.gd?[P(h.gd,{italics:true,size:16,after:0})]:[])]]));
+  const ap = table([1500,900,7898,2300,1800,1000],["When","Ref","Action","Owner","Due","Done"],
+    rows.map(a=>[PHASES.find(p=>p[0]===a.ph)[1],a.ref,a.t,a.owner,a.due?fmtDate(a.due):"",{v:a.done?"Yes":"",o:{center:true}}]));
+  const half=W/4;
+  const sign = new D.Table({width:{size:W,type:D.WidthType.DXA},columnWidths:[half,half,half,half],rows:[
+    ["Assessor",j.assessor,"Signature",""],["Approved by",j.approver,"Signature",""],["Date",fmtDate(today()),"Next review",fmtDate(j.reviewDate)]]
+    .map(rw=>new D.TableRow({height:{value:560,rule:D.HeightRule.ATLEAST},children:rw.map((v,i)=>cell(v,half,{head:i%2===0}))}))});
+
+  const children = [
+    new D.Paragraph({spacing:{after:60},children:[new D.TextRun({text:"Risk assessment",font:F,size:36,bold:true})]}),
+    P(`${j.event||"Event"}${j.client?" for "+j.client:""}`,{size:24,after:60}),
+    P(`${j.ref} · ${revLabel(j)} · ${fmtDate(today())}`,{size:18,color:"555555",after:200}),
+    ...(j.scope?[H("Scope"),P(j.scope)]:[]),
+    H("Event details"), kv,
+    ...(r.gaps.length?[P(" ",{after:0}),P([new D.TextRun({text:"Provision gaps: ",font:F,size:18,bold:true}),new D.TextRun({text:r.gaps.map(p=>p[2]).join(", ")+" not confirmed. Likelihood raised by one on the hazards these control (marked *).",font:F,size:18})])]:[]),
+    H("Risk scoring"), P(SCORING),
+    H("Hazards and controls"), hz,
+    H("Action plan"), ap,
+    ...(ml?[H("Terrorism (Protection of Premises) Act 2025"),P(ml)]:[]),
+    H("Legislation referenced"), P(laws.join("; ")+"."), P("Purple Guide references are to topic areas of the Purple Guide to Health, Safety and Welfare at Music and Other Events (Events Industry Forum).",{italics:true}),
+    H("Sign-off"), sign,
+    ...(j.history.length?[H("Revision history"),table([1200,2600,3600,W-7400],["Rev","Date","By","Changes"],j.history.map(h=>[String(h.rev),fmtDate(h.date),h.by,h.notes]))]:[]),
+    P(" "), P(`Prepared by ${COMPANY.name}. Residual risk assumes every listed control is in place and working. This assessment must be reviewed if the event, site or arrangements change.`,{size:16,color:"555555"})
+  ];
+  const doc = new D.Document({creator:COMPANY.name,title:`${j.ref} Risk assessment`,styles:{default:{document:{run:{font:F,size:18}}}},
+    sections:[{properties:{page:{size:{width:11906,height:16838,orientation:D.PageOrientation.LANDSCAPE},margin:{top:720,bottom:720,left:720,right:720}}},
+      headers:{default:new D.Header({children:[new D.Paragraph({tabStops:[{type:D.TabStopType.RIGHT,position:W}],border:{bottom:{style:D.BorderStyle.SINGLE,size:12,color:"000000",space:4}},
+        children:[new D.TextRun({text:"FORT GREEN",font:"Arial Narrow",size:32,bold:true}),new D.TextRun({text:`\t${j.ref} · ${revLabel(j)}`,font:F,size:16,color:"555555"})]})]})},
+      footers:{default:new D.Footer({children:[new D.Paragraph({tabStops:[{type:D.TabStopType.RIGHT,position:W}],
+        children:[new D.TextRun({text:`${COMPANY.name} · ${COMPANY.email} · ${COMPANY.web}`,font:F,size:14,color:"555555"}),
+          new D.TextRun({children:["\tPage ",D.PageNumber.CURRENT," of ",D.PageNumber.TOTAL_PAGES],font:F,size:14,color:"555555"})]})]})},
+      children}]});
+  const blob = await D.Packer.toBlob(doc);
+  const name = `${j.ref}${j.rev?"-Rev"+j.rev:"-Draft"} ${(j.event||"Risk assessment").replace(/[^\w\- ]+/g,"").trim()}.docx`;
+  const url = URL.createObjectURL(blob), a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  toast("Word file ready");
+  return blob;
+}
+
+/* ---------- Navigation ---------- */
+const TABS=["job","questions","hazards","actions","export"];
+function updateBadges(){
+  const j=J(), q=answeredLeft(j.a), b1=$("#badge-q"), b2=$("#badge-h"), vh=compute(j).inc.filter(h=>h.rscore>=10).length;
+  b1.hidden=!q; b1.textContent=q; b2.hidden=!vh; b2.textContent=vh;
+}
+function go(tab){
+  TABS.forEach(t=>$("#screen-"+t).classList.toggle("on",t===tab));
+  document.querySelectorAll(".nav button").forEach(b=>b.dataset.tab===tab?b.setAttribute("aria-current","page"):b.removeAttribute("aria-current"));
+  ({job:renderJob,questions:renderQuestions,hazards:renderHazards,actions:renderActions,export:renderExport})[tab]();
+  if(location.hash.slice(1)!==tab) history.replaceState(null,"","#"+tab);
+  updateBadges(); window.scrollTo(0,0);
+}
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go)); }
+document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>go(b.dataset.tab));
+window.addEventListener("hashchange",()=>{ const h=location.hash.slice(1); if(TABS.includes(h)) go(h); });
+(async()=>{
+  setSync("Loading…");
+  try{ await loadLibrary(); }catch(e){ $("#screen-job").classList.add("on"); $("#screen-job").innerHTML=`<h1>Couldn’t load the hazard library</h1><p class="lede">Reload the page. If it keeps happening, check that the public risk assessment tool is online.</p>`; setSync("Offline"); return; }
+  try{ await loadJobs(); }catch(e){ console.error(e); $("#screen-job").classList.add("on"); $("#screen-job").innerHTML=`<h1>Couldn’t load assessments</h1><p class="lede">${esc(e.message||"Check your connection")}. Sign in again from the tools hub with your @fortgreen.co.uk email, then reload.</p><p><a class="btn btn-primary" href="/">Go to the tools hub</a></p>`; setSync("Not connected"); return; }
+  setSync(sb ? "Saved" : "This browser only");
+  if(dirty.size) flush();
+  go(TABS.includes(location.hash.slice(1))?location.hash.slice(1):"job");
+})();
+</script>
+
+</body>
+</html>
