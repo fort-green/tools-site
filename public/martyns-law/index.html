@@ -15,7 +15,7 @@
 :root{
   --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
   --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
-  --yellow:#e0a800; --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-out:#ffffff; --zone-std:#cecece;
+  --yellow:#e0a800; --yellow-ink:#000000; --green:#1f9d55; --green-ink:#ffffff; --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-out:#ffffff; --zone-std:#cecece;
   color-scheme: light;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
@@ -23,14 +23,14 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --yellow:#f5c518; --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --yellow:#f5c518; --yellow-ink:#000000; --green:#22c55e; --green-ink:#000000; --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
     --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
     --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"]{
-  --yellow:#f5c518; --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --yellow:#f5c518; --yellow-ink:#000000; --green:#22c55e; --green-ink:#000000; --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
     --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
     --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
   color-scheme: dark;
@@ -116,8 +116,8 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
 .q:last-of-type{border-bottom:0}
 .q-group{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:22px 0 2px;padding-top:6px}
 .q p{margin:2px 0 10px;font-size:14px;color:var(--muted)}
-.q .seg button[data-v="done"][aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
-.q .seg button[data-v="progress"][aria-pressed="true"]{background:var(--amber-soft);color:var(--amber)}
+.q .seg button[data-v="done"][aria-pressed="true"]{background:var(--green);color:var(--green-ink)}
+.q .seg button[data-v="progress"][aria-pressed="true"]{background:var(--yellow);color:var(--yellow-ink)}
 .q .seg button[data-v="none"][aria-pressed="true"]{background:var(--red-soft);color:var(--red)}
 
 /* Report */
@@ -135,7 +135,7 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
 .gap:last-child{border-bottom:0}
 .gap .pill{grid-row:span 2;align-self:start;font-size:12px;font-weight:600;padding:3px 8px;border-radius:0;white-space:nowrap;margin-top:2px}
 .pill-none{background:var(--red-soft);color:var(--red)}
-.pill-progress{background:var(--amber-soft);color:var(--amber)}
+.pill-progress{background:var(--yellow);color:var(--yellow-ink)}
 .gap strong{display:block;line-height:1.3}
 .gap .help{font-size:14px;color:var(--muted)}
 .gap .help b{color:var(--accent);font-weight:600}
@@ -164,15 +164,57 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
 
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 
+/* Printable report (A4) */
+#print-doc{display:none}
+@page{size:A4;margin:14mm}
 @media print{
-  .topbar,.nav,.no-print,.overlay,.sheet{display:none!important}
-  :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc}
-  body{background:#fff}
-  main{padding:0;max-width:none}
-  .screen{display:none!important}
-  #screen-report{display:block!important}
-  .panel,.gap,.verdict{break-inside:avoid}
+  html,body{background:#fff!important;color:#000}
+  body::before{display:none}
+  body > *:not(#print-doc){display:none!important}
+  #print-doc{display:block;font-family:"Manrope",Arial,sans-serif;font-size:10.5pt;line-height:1.45;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+.pd-head{display:flex;justify-content:space-between;align-items:center;background:#000;color:#fff;padding:12px 16px}
+.pd-brand{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:22pt;letter-spacing:.02em;line-height:1}
+.pd-doc{font-family:"Antonio","Arial Narrow",sans-serif;font-size:11pt;text-transform:uppercase;letter-spacing:.06em;text-align:right;line-height:1.3}
+.pd-title{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:30pt;line-height:1;margin:18px 0 6px}
+.pd-meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:9.5pt;color:#444;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #cecece}
+.pd-meta b{color:#000;font-weight:600}
+.pd-cards{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin-bottom:12px}
+.pd-card{border:1.5px solid #000;padding:12px 14px}
+.pd-card.dark{background:#000;color:#fff}
+.pd-label{font-size:8pt;text-transform:uppercase;letter-spacing:.08em;color:inherit;opacity:.7;margin-bottom:4px}
+.pd-tier{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:18pt;line-height:1.05;margin-bottom:6px}
+.pd-score{display:flex;align-items:baseline;gap:4px;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;line-height:1}
+.pd-score span{font-size:36pt}
+.pd-score small{font-size:13pt;opacity:.7}
+.pd-tally{list-style:none;padding:0;margin:8px 0 0;font-size:9.5pt}
+.pd-tally li{display:flex;align-items:center;gap:6px;margin:2px 0}
+.pd-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.pd-bar{display:grid;grid-template-columns:20fr 60fr 20fr;height:18px;position:relative;margin:4px 0 2px;font-size:7.5pt;font-family:"Antonio","Arial Narrow",sans-serif;text-transform:uppercase;letter-spacing:.04em}
+.pd-bar div{display:flex;align-items:center;padding:0 6px}
+.pd-bar .o{border:1px solid #cecece;color:#5f5f5f}.pd-bar .s{background:#cecece}.pd-bar .e{background:#000;color:#fff}
+.pd-bar i{position:absolute;top:-4px;bottom:-4px;width:2.5px;background:#e0a800;margin-left:-1px}
+.pd-ticks{position:relative;height:14px;font-size:7.5pt;color:#5f5f5f}
+.pd-ticks span{position:absolute;transform:translateX(-50%)}
+.pd-h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:14pt;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #000;break-after:avoid}
+.pd-table{width:100%;border-collapse:collapse;font-size:9.5pt}
+.pd-table th{text-align:left;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#5f5f5f;font-weight:600;padding:0 8px 6px 0;border-bottom:1px solid #cecece}
+.pd-table td{vertical-align:top;padding:8px 8px 8px 0;border-bottom:1px solid #e3e3e3}
+.pd-table tr{break-inside:avoid}
+.pd-num{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:12pt;width:22px}
+.pd-pill{display:inline-block;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;white-space:nowrap}
+.pd-pill.none{background:#fbe4e1;color:#b42318}.pd-pill.progress{background:#e0a800;color:#000}.pd-pill.done{background:#1f9d55;color:#fff}
+.pd-why{color:#5f5f5f;font-size:9pt}
+.pd-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;break-inside:avoid}
+.pd-duty{margin:0 0 8px;break-inside:avoid}.pd-duty b{display:block}
+.pd-dates{list-style:none;padding:0;margin:0}
+.pd-dates li{display:grid;grid-template-columns:78px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid #e3e3e3;font-size:9.5pt}
+.pd-dates b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:10.5pt}
+.pd-cta{background:#000;color:#fff;padding:14px 16px;margin-top:18px;display:grid;grid-template-columns:1.3fr 1fr;gap:16px;break-inside:avoid}
+.pd-cta h3{font-family:"Antonio","Arial Narrow",sans-serif;text-transform:uppercase;font-size:15pt;margin:0 0 4px}
+.pd-cta p{margin:0;font-size:9.5pt;opacity:.85}
+.pd-contact{font-size:10pt;line-height:1.7}.pd-contact b{display:inline-block;width:72px;font-weight:600;opacity:.7}
+.pd-foot{margin-top:14px;font-size:7.5pt;color:#5f5f5f;border-top:1px solid #cecece;padding-top:6px;display:flex;justify-content:space-between;gap:16px;break-inside:avoid}
 </style>
 </head>
 <body>
@@ -200,6 +242,8 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
   </div>
 </nav>
 
+<div id="print-doc" aria-hidden="true"></div>
+
 <div class="overlay" id="overlay"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="h-sheet">
   <div class="grabber"></div>
@@ -209,6 +253,7 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
     <div class="field"><label for="f-name">Your name</label><input type="text" id="f-name" autocomplete="name"></div>
     <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" autocomplete="email" inputmode="email"><div class="error" id="f-email-err" hidden></div></div>
     <div class="field"><label for="f-org">Organisation</label><input type="text" id="f-org" autocomplete="organization"></div>
+    <div class="field"><label for="f-phone">Phone (optional)</label><input type="tel" id="f-phone" autocomplete="tel" inputmode="tel"></div>
     <label class="check"><input type="checkbox" id="f-mkt"><span>Send me Martyn’s Law updates and occasional news from Fort Green. You can unsubscribe at any time.</span></label>
     <p class="small muted">We use your details to send this report and follow up about it. See our privacy notice on fortgreen.co.uk.</p>
     <div class="btn-row">
@@ -221,8 +266,10 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
 <script>
 /* ---------- Config ----------
    LEAD_ENDPOINT: set to the n8n webhook URL when this runs on fortgreen.co.uk.
-   Left empty here: the report unlocks on the device without sending anything. */
-const LEAD_ENDPOINT = "";
+   The report unlocks on the device either way; n8n logs the lead and emails the report. */
+const LEAD_ENDPOINT = "https://sierra-six.app.n8n.cloud/webhook/martyns-law-lead";
+/* REVIEW_ENDPOINT: n8n webhook that emails the team when someone books a readiness review. */
+const REVIEW_ENDPOINT = "https://sierra-six.app.n8n.cloud/webhook/martyns-law-review";
 const CONTACT_EMAIL = "info@fortgreen.co.uk";
 const STORE_KEY = "fg-martyns-law-v1";
 
@@ -290,6 +337,20 @@ const QUESTIONS = [
    help:"We support your senior individual with planning, records and readiness reviews."}
 ];
 
+const NEXT_STEPS = {
+  notify:"Confirm who the responsible person is and be ready to notify the SIA once its notification service opens.",
+  evac:"Write an evacuation procedure for this site and test it with a walk-through.",
+  invac:"Identify safe areas inside and write down how people will be moved to them.",
+  lockdown:"Write down how doors and entrances will be secured quickly, and who does it.",
+  comms:"Decide how staff and the public will be alerted, for example radios, PA or staff codes.",
+  training:"Brief all staff on the procedures and their role, and add this to inductions.",
+  plan:"Record your procedures and measures in a security plan ready to share with the SIA.",
+  monitor:"Put monitoring in place, such as CCTV, patrols and staff trained to spot suspicious activity.",
+  movement:"Review entry checks, queues and vehicle access, and decide what is reasonably practicable.",
+  physical:"Assess barriers, protective features and safe areas that would reduce harm.",
+  info:"Limit access to plans, codes and rotas to the people who need them.",
+  senior:"Name a senior individual to oversee your Martyn’s Law arrangements."
+};
 const DUTIES = {
   standard:[
     ["Notify the SIA","Tell the regulator who is responsible for the premises or event."],
@@ -305,7 +366,7 @@ const DUTIES = {
 };
 
 /* ---------- State ---------- */
-let state = {mode:"premises", name:"", capacity:"", use:"", controlled:null, answers:{}, unlocked:false};
+let state = {mode:"premises", name:"", capacity:"", use:"", controlled:null, answers:{}, unlocked:false, lead:null, reviewRequested:false};
 try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 
@@ -395,7 +456,7 @@ function renderStart(){
     </div>`;
   bindGo($("#screen-start"));
   const r = $("#reset");
-  if(r) r.onclick = () => { state = {mode:"premises", name:"", capacity:"", use:"", controlled:null, answers:{}, unlocked:false}; save(); renderAll(); go("scope"); };
+  if(r) r.onclick = () => { state = {mode:"premises", name:"", capacity:"", use:"", controlled:null, answers:{}, unlocked:false, lead:state.lead, reviewRequested:false}; save(); renderAll(); go("scope"); };
 }
 
 function renderScope(){
@@ -550,7 +611,7 @@ function renderReport(){
       <div>
         <h3>Readiness score</h3>
         <ul class="tally">
-          <li><span class="dot" style="background:var(--accent)"></span>${r.done} done</li>
+          <li><span class="dot" style="background:var(--green)"></span>${r.done} done</li>
           <li><span class="dot" style="background:var(--yellow)"></span>${r.prog} in progress</li>
           <li><span class="dot" style="background:var(--red)"></span>${r.none} not started</li>
         </ul>
@@ -570,6 +631,7 @@ function renderReport(){
     body = `
       <div class="panel">
         <h2>${gaps.length ? "Gaps to close" : "No gaps found"}</h2>
+        ${state.reportEmailed && state.lead ? `<p class="small muted">We’ve also emailed a copy to ${esc(state.lead.email)}.</p>` : ""}
         ${gaps.length ? gaps.map(q => {
           const a = state.answers[q.id];
           return `<div class="gap">
@@ -587,7 +649,9 @@ function renderReport(){
         <h2>Next steps</h2>
         <p class="muted">Start with anything marked not started. Most venues can close standard tier gaps in a few weeks with written procedures and a staff briefing.</p>
         <div class="btn-row no-print">
-          <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Martyn’s Law review: " + (state.name || "my venue"))}&body=${encodeURIComponent("Readiness score: " + r.score + "/100\nTier: " + r.t.title + "\nGaps: " + gaps.length)}">Book a readiness review</a>
+          ${state.reviewRequested
+            ? `<div class="status" role="status" style="margin:0"><div><strong>Review requested</strong><span class="small muted">Thanks. Someone from Fort Green will be in touch shortly${state.lead && state.lead.email ? " at " + esc(state.lead.email) : ""}.</span></div></div>`
+            : `<button class="btn btn-primary btn-block" id="book-review">Book a readiness review</button><div class="error" id="book-err" hidden></div>`}
           <a class="btn btn-ghost btn-block" href="https://wa.me/447399232855" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
           <button class="btn btn-ghost btn-block" id="print">Save as PDF</button>
         </div>
@@ -596,8 +660,118 @@ function renderReport(){
 
   el.innerHTML = head + scoreBlock + body + `<div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="ready">Change my answers</button></div>` + disclaimer;
   const u = $("#unlock"); if(u) u.onclick = openSheet;
-  const p = $("#print"); if(p) p.onclick = () => window.print();
+  const p = $("#print"); if(p) p.onclick = () => { renderPrintDoc(); window.print(); };
+  const bk = $("#book-review"); if(bk) bk.onclick = () => bookReview(r, gaps, bk);
   bindGo(el);
+}
+
+
+
+/* ---------- Printable report ---------- */
+function renderPrintDoc(){
+  const r = results(), el = $("#print-doc");
+  if(r.t.key === "incomplete"){ el.innerHTML = ""; return; }
+  const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+  const title = state.name ? esc(state.name) : (state.mode === "event" ? "Your event" : "Your venue");
+  const cap = parseInt(state.capacity,10) || 0;
+  const useLabel = state.mode === "event" ? "One-off event" : ((USES.find(u => u[0] === state.use) || [,""])[1]);
+  const lead = state.lead || {};
+  const branded = /@fortgreen\.co\.uk$/i.test((lead.email || "").trim());
+  const prepared = branded ? (lead.name ? esc(lead.name) + ", Fort Green" : "Fort Green")
+                           : [lead.name, lead.organisation].filter(Boolean).map(esc).join(", ");
+  const order = {none:0, progress:1, done:2};
+  const rows = r.qs.slice().sort((a,b) => order[state.answers[a.id]||"none"] - order[state.answers[b.id]||"none"]);
+  const label = {none:"Not started", progress:"In progress", done:"Done"};
+  const duties = r.t.key === "enhanced" ? DUTIES.enhanced : DUTIES.standard;
+  const pos = Math.min(cap, 1000) / 10;
+
+  el.innerHTML = `
+    ${branded
+      ? `<div class="pd-head"><div class="pd-brand">FORT GREEN</div><div class="pd-doc">Martyn’s Law<br>readiness report</div></div>`
+      : `<div class="pd-head"><div class="pd-brand">MARTYN’S LAW</div><div class="pd-doc">Readiness<br>report</div></div>`}
+    <div class="pd-title">${title}</div>
+    <div class="pd-meta">
+      <span><b>Date</b> ${today}</span>
+      ${prepared ? `<span><b>${branded ? "Prepared by" : "Prepared for"}</b> ${prepared}</span>` : ""}
+      ${useLabel ? `<span><b>Type</b> ${esc(useLabel)}</span>` : ""}
+      ${cap ? `<span><b>Capacity</b> ${cap.toLocaleString("en-GB")}</span>` : ""}
+    </div>
+
+    <div class="pd-cards">
+      <div class="pd-card">
+        <div class="pd-label">Your tier</div>
+        <div class="pd-tier">${r.t.title}</div>
+        <div style="font-size:9.5pt;color:#444;margin-bottom:10px">${r.t.body}</div>
+        <div class="pd-bar"><div class="o">Out</div><div class="${state.mode==="event"?"o":"s"}">${state.mode==="event"?"Out of scope for events":"Standard"}</div><div class="e">Enhanced</div>${cap ? `<i style="left:${pos}%"></i>` : ""}</div>
+        <div class="pd-ticks"><span style="left:20%">200</span><span style="left:80%">800</span></div>
+      </div>
+      ${r.score !== null ? `
+      <div class="pd-card dark">
+        <div class="pd-label">Readiness score</div>
+        <div class="pd-score"><span>${r.score}</span><small>/100</small></div>
+        <ul class="pd-tally">
+          <li><span class="pd-dot" style="background:#22c55e"></span>${r.done} done</li>
+          <li><span class="pd-dot" style="background:#f5c518"></span>${r.prog} in progress</li>
+          <li><span class="pd-dot" style="background:#ff7b6e"></span>${r.none} not started</li>
+        </ul>
+      </div>` : `<div class="pd-card"><div class="pd-label">Readiness</div><p style="margin:0;font-size:9.5pt">Based on your answers, the Act likely doesn’t apply, so there are no duties to score.</p></div>`}
+    </div>
+
+    ${rows.length ? `
+    <div class="pd-h2">Your action plan</div>
+    <table class="pd-table">
+      <thead><tr><th>#</th><th>Duty</th><th>Status</th><th>${branded ? "How Fort Green can help" : "Next step"}</th></tr></thead>
+      <tbody>${rows.map((q,i) => { const a = state.answers[q.id] || "none"; return `
+        <tr><td class="pd-num">${i+1}</td>
+          <td><b>${q.q}</b><div class="pd-why">${q.why}</div></td>
+          <td><span class="pd-pill ${a}">${label[a]}</span></td>
+          <td>${a === "done" ? `<span class="pd-why">Keep under review and brief new staff.</span>` : (branded ? q.help : NEXT_STEPS[q.id])}</td></tr>`; }).join("")}
+      </tbody>
+    </table>` : `
+    <div class="pd-h2">Good practice still counts</div>
+    <p>Even if the Act doesn’t apply, a simple evacuation and lockdown plan and briefed staff protect your guests and your licence.${branded ? " Fort Green can help with both." : ""}</p>`}
+
+    <div class="pd-two">
+      ${rows.length ? `<div><div class="pd-h2">Your duties in plain English</div>
+        ${duties.map(([h,d]) => `<div class="pd-duty"><b>${h}</b><span class="pd-why">${d}</span></div>`).join("")}</div>` : `<div></div>`}
+      <div><div class="pd-h2">Key dates</div>
+        <ul class="pd-dates">
+          <li><b>Apr 2025</b><span>Terrorism (Protection of Premises) Act receives Royal Assent</span></li>
+          <li><b>Apr 2026</b><span>Home Office publishes final statutory guidance</span></li>
+          <li><b>Now</b><span>SIA guidance in draft; prepare procedures and brief staff</span></li>
+          <li><b>Spring 2027</b><span>Expected to come into force, likely April; exact date to be set by Parliament</span></li>
+        </ul></div>
+    </div>
+
+    ${branded ? `<div class="pd-cta">
+      <div><h3>Book a readiness review</h3><p>We’ll walk your site, close the gaps with you and prepare your team before the law comes into force.</p></div>
+      <div class="pd-contact"><div><b>Email</b> ${CONTACT_EMAIL}</div><div><b>WhatsApp</b> +44 7399 232855 (24/7)</div><div><b>Web</b> fortgreen.co.uk</div></div>
+    </div>` : ""}
+
+    <div class="pd-foot"><span>This report was produced with the Fort Green Martyn’s Law readiness check (fortgreen.co.uk). It gives a general indication only and isn’t legal advice. Confirm your position against the Home Office’s final statutory guidance and the SIA’s guidance, which may change before the law comes into force. Fort Green is not endorsed by the Home Office or the SIA.</span></div>`;
+}
+window.addEventListener("beforeprint", () => { if(state.unlocked) renderPrintDoc(); });
+
+/* ---------- Readiness review request ---------- */
+async function bookReview(r, gaps, btn){
+  const err = $("#book-err");
+  if(!state.lead || !state.lead.email){ openSheet(); return; }
+  btn.disabled = true; btn.textContent = "Sending…"; err.hidden = true;
+  const payload = Object.assign({}, state.lead, {
+    venue:state.name, mode:state.mode, capacity:state.capacity, use:state.use,
+    tier:r.t.title, score:r.score,
+    gaps:gaps.map(q => (state.answers[q.id]==="none" ? "Not started: " : "In progress: ") + q.q),
+    submitted_at:new Date().toISOString()
+  });
+  try{
+    const res = await fetch(REVIEW_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+    if(!res.ok) throw new Error(res.status);
+    state.reviewRequested = true; save(); renderReport();
+  }catch(x){
+    btn.disabled = false; btn.textContent = "Book a readiness review";
+    err.innerHTML = `We couldn’t send that just now. Message us on <a href="https://wa.me/447399232855" target="_blank" rel="noopener">WhatsApp</a> or email <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.`;
+    err.hidden = false;
+  }
 }
 
 /* ---------- Lead sheet ---------- */
@@ -612,10 +786,15 @@ $("#lead-form").onsubmit = async e => {
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Enter a valid email address, like name@venue.co.uk."; err.hidden = false; $("#f-email").focus(); return; }
   err.hidden = true;
   const r = results();
-  const lead = { name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
+  const lead = { name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(), phone:$("#f-phone").value.trim(),
     marketing_opt_in:$("#f-mkt").checked, venue:state.name, mode:state.mode, capacity:state.capacity,
     use:state.use, tier:r.t.key, score:r.score, answers:state.answers, submitted_at:new Date().toISOString() };
-  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  const submitBtn = e.target.querySelector("[type=submit]"); submitBtn.disabled = true; submitBtn.textContent = "Sending…";
+  let sent = false;
+  if(LEAD_ENDPOINT){ try{ const res = await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); sent = res.ok; }catch(x){} }
+  submitBtn.disabled = false; submitBtn.textContent = "Show my full report";
+  state.reportEmailed = sent;
+  state.lead = {name:lead.name, email:lead.email, organisation:lead.organisation, phone:lead.phone, marketing_opt_in:lead.marketing_opt_in};
   state.unlocked = true; save(); closeSheet(); renderReport(); window.scrollTo(0,0);
 };
 

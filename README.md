@@ -34,3 +34,10 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 
 - **Database:** Supabase project FORT GREEN PROJECT1, tables `eq_*`, functions `eq_issue`, `eq_acknowledge`, `eq_check_in` and `eq_cancel`.
 - **Emails:** the n8n workflow "FG Equipment – email notifications" (sierra-six), sent through Gmail. The database posts to it when kit is issued, receipt is confirmed or kit is checked in. A daily 09:00 job (`eq-overdue-reminders`) sends overdue reminders.
+
+## Martyn's Law checker: what lives outside this repo
+
+- **Report form** posts to the n8n workflow "Martyn's Law: report request (lead capture)" (sierra-six, webhook `martyns-law-lead`). It emails the visitor their report via Gmail, logs every lead on the "Martyn's Law leads" tab of the Fort Green email list sheet, and adds opted-in people to the "Email list" tab.
+- **Book a readiness review** posts to the n8n workflow "Martyn's Law: readiness review request alert" (webhook `martyns-law-review`), which emails niall@fortgreen.co.uk.
+- **Save as PDF**: anyone who unlocks the report with an @fortgreen.co.uk email gets the Fort Green-branded version; everyone else gets a neutral version with Fort Green named only in the disclaimer.
+- Both webhooks are public; a bot check (e.g. Cloudflare Turnstile) is still to be added.
