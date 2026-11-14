@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Martyn’s Law readiness check | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
+  --yellow:#e0a800; --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-out:#ffffff; --zone-std:#cecece;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --yellow:#f5c518; --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --yellow:#f5c518; --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top, 0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* Top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.brand{display:flex;align-items:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+
+.tool-name{font-size:14px;color:var(--muted);font-weight:500}
+
+main{max-width:560px;margin:0 auto;padding:20px 18px 120px}
+.screen{display:none}
+.screen.on{display:block}
+
+h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(46px,13vw,72px);line-height:.9;letter-spacing:-.01em;margin:8px 0 16px}
+h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:28px;line-height:1.1;margin:0 0 6px}
+h3{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:22px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}
+.lede{font-size:18px;color:var(--muted);max-width:34em}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:18px;margin:16px 0}
+.status{display:flex;gap:10px;align-items:flex-start;border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0;margin:18px 0}
+.status strong{display:block}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:0;border:0;cursor:pointer;font-family:"Manrope",system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:grid;gap:10px;margin-top:18px}
+.link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Capacity scale - signature element */
+.scale{margin:18px 0 6px}
+.scale-track{position:relative;display:grid;grid-template-columns:20fr 60fr 20fr;height:46px;overflow:visible}
+.zone{display:flex;align-items:center;padding:0 10px;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden}
+.z-out{background:var(--zone-out);color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+.z-std{background:var(--zone-std);color:var(--ink)}
+.z-enh{background:var(--accent);color:var(--accent-ink)}
+.scale-ticks{position:relative;height:22px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.scale-ticks span{position:absolute;top:4px;transform:translateX(-50%)}
+.marker{position:absolute;top:-10px;bottom:-10px;width:0;transition:left .35s ease}
+.marker::before{content:"";position:absolute;left:-1.5px;top:0;bottom:0;width:3px;background:var(--ink);border-radius:2px}
+.marker::after{content:attr(data-label);position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:12px;font-weight:600;padding:1px 7px;border-radius:0;white-space:nowrap}
+.scale.has-marker{margin-top:38px}
+
+/* Forms */
+.field{margin:0 0 18px}
+.field label,.field .label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-size:14px;color:var(--muted);margin-top:6px}
+input[type=text],input[type=email],input[type=number],select{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:0}
+.seg button{min-height:44px;border:0;border-radius:0;background:transparent;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.check{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent);flex:none}
+
+/* Verdict */
+.verdict{border-radius:0;padding:18px;margin:18px 0;border:1.5px solid var(--line);background:var(--surface)}
+.verdict.v-standard{border-color:var(--accent)}
+.verdict.v-enhanced{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.verdict.v-enhanced .muted{color:inherit;opacity:.8}
+.verdict.v-check{border-color:var(--ink);border-style:dashed}
+.verdict h2{margin-bottom:4px}
+
+/* Questions */
+.progress{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 53px);z-index:5;background:var(--bg);padding:10px 0 12px}
+.bar{height:6px;background:var(--surface-2);border-radius:0;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s ease}
+.q{padding:16px 0;border-bottom:1px solid var(--line)}
+.q:last-of-type{border-bottom:0}
+.q-group{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:22px 0 2px;padding-top:6px}
+.q p{margin:2px 0 10px;font-size:14px;color:var(--muted)}
+.q .seg button[data-v="done"][aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.q .seg button[data-v="progress"][aria-pressed="true"]{background:var(--amber-soft);color:var(--amber)}
+.q .seg button[data-v="none"][aria-pressed="true"]{background:var(--red-soft);color:var(--red)}
+
+/* Report */
+.report-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.score-wrap{display:flex;align-items:center;gap:18px}
+.ring{width:112px;height:112px;flex:none}
+.ring circle{fill:none;stroke-width:10}
+.ring .bg{stroke:var(--surface-2)}
+.ring .fg{stroke:var(--accent);stroke-linecap:butt;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .6s ease}
+.ring text{fill:var(--ink);font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:30px;text-anchor:middle;dominant-baseline:central}
+.tally{list-style:none;padding:0;margin:0;font-size:15px}
+.tally li{display:flex;align-items:center;gap:8px;margin:3px 0}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.gap{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.gap:last-child{border-bottom:0}
+.gap .pill{grid-row:span 2;align-self:start;font-size:12px;font-weight:600;padding:3px 8px;border-radius:0;white-space:nowrap;margin-top:2px}
+.pill-none{background:var(--red-soft);color:var(--red)}
+.pill-progress{background:var(--amber-soft);color:var(--amber)}
+.gap strong{display:block;line-height:1.3}
+.gap .help{font-size:14px;color:var(--muted)}
+.gap .help b{color:var(--accent);font-weight:600}
+.locked{border:1.5px dashed var(--line);border-radius:0;padding:20px;margin:18px 0;text-align:left}
+.duty{margin:0 0 14px}
+.duty strong{display:block}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+.empty{padding:40px 0;text-align:left}
+
+/* Bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent);border-radius:0}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;line-height:18px;text-align:center}
+
+/* Bottom sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--surface);border-radius:0;padding:10px 20px calc(20px + env(safe-area-inset-bottom, 0px));max-height:90vh;overflow-y:auto;transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.grabber{width:42px;height:5px;border-radius:0;background:var(--line);margin:4px auto 14px}
+.error{color:var(--red);font-size:14px;margin-top:6px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+@media print{
+  .topbar,.nav,.no-print,.overlay,.sheet{display:none!important}
+  :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc}
+  body{background:#fff}
+  main{padding:0;max-width:none}
+  .screen{display:none!important}
+  #screen-report{display:block!important}
+  .panel,.gap,.verdict{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="https://www.fortgreen.co.uk" target="_blank" rel="noopener">Fort Green</a>
+    <div class="tool-name">Martyn’s Law check</div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="screen" id="screen-start" aria-labelledby="h-start"></section>
+  <section class="screen" id="screen-scope" aria-labelledby="h-scope"></section>
+  <section class="screen" id="screen-ready" aria-labelledby="h-ready"></section>
+  <section class="screen" id="screen-report" aria-labelledby="h-report"></section>
+</main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="start"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="scope"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/><path d="M2 12h3M19 12h3"/></svg>Scope</button>
+    <button data-tab="ready"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.3 1.3L7 5M3.5 12l1.3 1.3L7 11M3.5 18l1.3 1.3L7 17"/></svg>Readiness<span class="badge" id="badge" hidden></span></button>
+    <button data-tab="report"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Report</button>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="h-sheet">
+  <div class="grabber"></div>
+  <h2 id="h-sheet">Get your full report</h2>
+  <p class="muted">We’ll show your full gap list now and email you a copy.</p>
+  <form id="lead-form" novalidate>
+    <div class="field"><label for="f-name">Your name</label><input type="text" id="f-name" autocomplete="name"></div>
+    <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" autocomplete="email" inputmode="email"><div class="error" id="f-email-err" hidden></div></div>
+    <div class="field"><label for="f-org">Organisation</label><input type="text" id="f-org" autocomplete="organization"></div>
+    <label class="check"><input type="checkbox" id="f-mkt"><span>Send me Martyn’s Law updates and occasional news from Fort Green. You can unsubscribe at any time.</span></label>
+    <p class="small muted">We use your details to send this report and follow up about it. See our privacy notice on fortgreen.co.uk.</p>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-block">Show my full report</button>
+      <button type="button" class="btn btn-ghost btn-block" id="sheet-close">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+/* ---------- Config ----------
+   LEAD_ENDPOINT: set to the n8n webhook URL when this runs on fortgreen.co.uk.
+   Left empty here: the report unlocks on the device without sending anything. */
+const LEAD_ENDPOINT = "";
+const CONTACT_EMAIL = "info@fortgreen.co.uk";
+const STORE_KEY = "fg-martyns-law-v1";
+
+const USES = [
+  ["bar","Bar, pub or nightclub"],
+  ["food","Restaurant or café"],
+  ["ent","Music venue, theatre or cinema"],
+  ["sport","Sports ground or stadium"],
+  ["attraction","Museum, gallery or visitor attraction"],
+  ["hotel","Hotel or conference venue"],
+  ["retail","Shop or shopping centre"],
+  ["worship","Place of worship"],
+  ["education","School, college, university or childcare"],
+  ["other","Something else or not sure"]
+];
+
+const QUESTIONS = [
+  {id:"notify", tier:"standard", group:"Standard duties",
+   q:"We know who the responsible person is and are ready to notify the SIA",
+   why:"Every premises or event in scope must be notified to the Security Industry Authority.",
+   help:"We can handle the notification paperwork with you."},
+  {id:"evac", tier:"standard", group:"Standard duties",
+   q:"Evacuation procedure is written down and works for this site",
+   why:"How everyone gets out quickly and safely if there’s an attack outside the building.",
+   help:"We write site-specific procedures based on our festival and venue RAMS."},
+  {id:"invac", tier:"standard", group:"Standard duties",
+   q:"Invacuation procedure is in place",
+   why:"How people are moved inside to a safer area when leaving would put them at risk.",
+   help:"We write site-specific procedures based on our festival and venue RAMS."},
+  {id:"lockdown", tier:"standard", group:"Standard duties",
+   q:"Lockdown procedure is in place",
+   why:"How doors and entrances are secured quickly to keep an attacker out.",
+   help:"We write site-specific procedures and walk your team through them."},
+  {id:"comms", tier:"standard", group:"Standard duties",
+   q:"We have a way to alert staff and the public during an incident",
+   why:"Radios, PA, staff codes and how you tell people what to do.",
+   help:"We supply licensed radios and set up a control-room comms plan."},
+  {id:"training", tier:"standard", group:"Standard duties",
+   q:"Staff know the procedures and their role in them",
+   why:"Recommended by the guidance. Procedures only work if people know them.",
+   help:"We run on-site staff briefings and SIA-led training sessions."},
+  {id:"plan", tier:"enhanced", group:"Enhanced duties",
+   q:"We have a documented security plan",
+   why:"Enhanced tier sites must record their procedures and measures and share them with the SIA.",
+   help:"We draft your security plan and keep it up to date."},
+  {id:"monitor", tier:"enhanced", group:"Enhanced duties",
+   q:"The site is monitored for suspicious activity",
+   why:"CCTV, patrols and trained staff watching for hostile reconnaissance.",
+   help:"We install and monitor CCTV and supply patrol officers."},
+  {id:"movement", tier:"enhanced", group:"Enhanced duties",
+   q:"We control how people and vehicles move in and out",
+   why:"Entry checks, searching, queue design and vehicle access.",
+   help:"We supply SIA door supervisors and search teams, and plan entry layouts."},
+  {id:"physical", tier:"enhanced", group:"Enhanced duties",
+   q:"Physical safety measures are in place",
+   why:"Barriers, protective features and safe areas that reduce harm.",
+   help:"We assess your site and source barriers and protective measures."},
+  {id:"info", tier:"enhanced", group:"Enhanced duties",
+   q:"Sensitive security information is protected",
+   why:"Plans, codes and rotas kept away from people who could misuse them.",
+   help:"We set up secure handling for plans, codes and rotas."},
+  {id:"senior", tier:"enhanced", group:"Enhanced duties",
+   q:"A senior individual is designated to oversee compliance",
+   why:"Required where the responsible person is a company or other organisation.",
+   help:"We support your senior individual with planning, records and readiness reviews."}
+];
+
+const DUTIES = {
+  standard:[
+    ["Notify the SIA","Tell the regulator who is responsible for the premises or event."],
+    ["Have public protection procedures","Plans for evacuation, invacuation, lockdown and communication that are reasonably practicable for your site."],
+    ["Make sure staff can follow them","Not a strict legal duty at standard tier, but the guidance expects staff to understand what to do."]
+  ],
+  enhanced:[
+    ["Everything in the standard tier","Notification and procedures still apply."],
+    ["Put public protection measures in place","Reasonably practicable measures for monitoring, movement, physical safety and protecting information."],
+    ["Document a security plan","Record your procedures and measures and provide them to the SIA."],
+    ["Designate a senior individual","Where the responsible person is an organisation, a named senior person oversees compliance."]
+  ]
+};
+
+/* ---------- State ---------- */
+let state = {mode:"premises", name:"", capacity:"", use:"", controlled:null, answers:{}, unlocked:false};
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- Tier logic ---------- */
+function getTier(){
+  const cap = parseInt(state.capacity,10);
+  if(!cap || cap < 1) return {key:"incomplete"};
+  if(state.mode === "event"){
+    if(state.controlled === null) return {key:"incomplete"};
+    if(cap < 800) return {key:"out", title:"Likely out of scope as an event",
+      body:"Only public events of 800 or more with controlled entry count as qualifying events. If the event is held at premises that are in scope, those premises’ duties still apply."};
+    if(!state.controlled) return {key:"check", title:"Check the guidance",
+      body:"Events without any entry checks may fall outside the definition of a qualifying event. Confirm against the statutory guidance before relying on this."};
+    return {key:"enhanced", title:"Likely enhanced tier",
+      body:"A public event of 800+ with controlled entry is treated like an enhanced tier premises."};
+  }
+  if(!state.use) return {key:"incomplete"};
+  if(cap < 200) return {key:"out", title:"Likely out of scope",
+    body:"Premises with a capacity under 200 aren’t covered by the Act, though good security practice still applies."};
+  if(state.use === "other") return {key:"check", title:"Check the guidance",
+    body:"Only premises used for the purposes listed in the Act are in scope. Check whether your use is listed in the statutory guidance."};
+  if(cap < 800) return {key:"standard", title:"Likely standard tier",
+    body:"Capacity of 200 to 799 means standard duties: notify the SIA and have public protection procedures."};
+  if(state.use === "worship" || state.use === "education") return {key:"standard", title:"Likely standard tier",
+    body:"Places of worship and education or childcare premises stay in the standard tier even at 800+."};
+  return {key:"enhanced", title:"Likely enhanced tier",
+    body:"Capacity of 800+ means standard duties plus public protection measures, a documented security plan and a senior individual."};
+}
+function activeQuestions(t){
+  if(t.key === "standard" || t.key === "check") return QUESTIONS.filter(q => q.tier === "standard");
+  if(t.key === "enhanced") return QUESTIONS;
+  return [];
+}
+function results(){
+  const t = getTier(), qs = activeQuestions(t);
+  let done=0, prog=0, none=0, unanswered=0;
+  qs.forEach(q => { const a = state.answers[q.id];
+    if(a==="done") done++; else if(a==="progress") prog++; else if(a==="none") none++; else unanswered++; });
+  const score = qs.length ? Math.round((done + prog*0.5) / qs.length * 100) : null;
+  return {t, qs, done, prog, none, unanswered, score};
+}
+
+/* ---------- Capacity scale ---------- */
+function scaleHTML(withMarker){
+  const cap = parseInt(state.capacity,10);
+  const ev = state.mode === "event";
+  let marker = "";
+  if(withMarker && cap > 0){
+    const pos = Math.min(cap, 1000) / 1000 * 100;
+    const label = cap >= 1000 ? cap.toLocaleString("en-GB") + " →" : cap.toLocaleString("en-GB");
+    marker = `<div class="marker" style="left:${pos}%" data-label="${label}"></div>`;
+  }
+  return `<div class="scale ${marker ? "has-marker":""}" aria-hidden="true">
+    <div class="scale-track">
+      <div class="zone z-out">Out</div>
+      <div class="zone ${ev ? "z-out" : "z-std"}">${ev ? "Out of scope for events" : "Standard tier"}</div>
+      <div class="zone z-enh">Enhanced</div>
+      ${marker}
+    </div>
+    <div class="scale-ticks"><span style="left:20%">200</span><span style="left:80%">800</span></div>
+  </div>`;
+}
+function verdictHTML(t){
+  if(t.key === "incomplete") return `<div class="verdict"><p class="muted" style="margin:0">Fill in the details above to see your result.</p></div>`;
+  return `<div class="verdict v-${t.key}" role="status"><h2>${t.title}</h2><p class="muted" style="margin:0">${t.body}</p></div>`;
+}
+
+/* ---------- Screens ---------- */
+function renderStart(){
+  const started = state.capacity || Object.keys(state.answers).length;
+  $("#screen-start").innerHTML = `
+    <h1 id="h-start">Is your venue ready for Martyn’s Law?</h1>
+    <p class="lede">Find out if your venue or event is in scope, which tier applies and what still needs doing. It takes about three minutes.</p>
+    ${scaleHTML(false)}
+    <p class="small muted">Capacity is the most people you could reasonably expect on site at one time.</p>
+    <div class="status"><div><strong>Expected in force: spring 2027</strong><span class="small muted">Likely April 2027, with the exact date to be set by Parliament. The Home Office’s final guidance was published in April 2026. The Security Industry Authority will regulate it and says it will take a support-first approach.</span></div></div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="scope">${started ? "Continue your check" : "Start the check"}</button>
+      ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start a new check</button>` : ""}
+    </div>
+    <div class="panel">
+      <h3>Smart people, on short notice, solving problems.</h3>
+      <p class="muted" style="margin:0">Venue managers, event organisers and operators across London. Fort Green provides SIA staff, CCTV, training and security planning to help you close any gaps.</p>
+    </div>`;
+  bindGo($("#screen-start"));
+  const r = $("#reset");
+  if(r) r.onclick = () => { state = {mode:"premises", name:"", capacity:"", use:"", controlled:null, answers:{}, unlocked:false}; save(); renderAll(); go("scope"); };
+}
+
+function renderScope(){
+  const ev = state.mode === "event";
+  $("#screen-scope").innerHTML = `
+    <h1 id="h-scope">Scope and tier</h1>
+    <p class="muted">Tell us about the place or event you’re checking.</p>
+    <div class="field">
+      <span class="label" id="l-mode">Are you checking…</span>
+      <div class="seg" role="group" aria-labelledby="l-mode">
+        <button type="button" data-mode="premises" aria-pressed="${!ev}">A venue or premises</button>
+        <button type="button" data-mode="event" aria-pressed="${ev}">A one-off event</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="i-name">${ev ? "Event name" : "Venue name"}</label>
+      <input type="text" id="i-name" value="${esc(state.name)}" placeholder="${ev ? "e.g. Summer Yard Party" : "e.g. The Latimer"}">
+    </div>
+    <div class="field">
+      <label for="i-cap">Maximum capacity at one time</label>
+      <input type="number" id="i-cap" inputmode="numeric" min="0" step="1" value="${esc(state.capacity)}" placeholder="e.g. 450">
+      <div class="hint">Include everyone you could reasonably expect on site at once, staff included.</div>
+    </div>
+    ${ev ? `
+    <div class="field">
+      <span class="label" id="l-ctrl">Will entry be checked or controlled?</span>
+      <div class="hint" style="margin:0 0 8px">Tickets, wristbands, bag checks or search.</div>
+      <div class="seg" role="group" aria-labelledby="l-ctrl">
+        <button type="button" data-ctrl="yes" aria-pressed="${state.controlled===true}">Yes</button>
+        <button type="button" data-ctrl="no" aria-pressed="${state.controlled===false}">No</button>
+      </div>
+    </div>` : `
+    <div class="field">
+      <label for="i-use">What is it mainly used for?</label>
+      <select id="i-use"><option value="">Choose one</option>
+        ${USES.map(([v,l]) => `<option value="${v}" ${state.use===v?"selected":""}>${l}</option>`).join("")}
+      </select>
+    </div>`}
+    <div id="scope-result"></div>`;
+
+  document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { state.mode = b.dataset.mode; save(); renderScope(); updateBadge(); });
+  document.querySelectorAll("[data-ctrl]").forEach(b => b.onclick = () => { state.controlled = b.dataset.ctrl === "yes"; save(); renderScope(); updateBadge(); });
+  $("#i-name").oninput = e => { state.name = e.target.value; save(); };
+  $("#i-cap").oninput = e => { state.capacity = e.target.value.replace(/[^0-9]/g,""); save(); scopeResult(); updateBadge(); };
+  const u = $("#i-use"); if(u) u.onchange = e => { state.use = e.target.value; save(); scopeResult(); updateBadge(); };
+  scopeResult();
+}
+function scopeResult(){
+  const t = getTier();
+  const inScope = ["standard","enhanced","check"].includes(t.key);
+  $("#scope-result").innerHTML = `
+    ${scaleHTML(true)}
+    ${verdictHTML(t)}
+    ${t.key === "incomplete" ? "" : `<div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="${inScope ? "ready" : "report"}">${inScope ? "Check your readiness" : "See your report"}</button>
+    </div>`}`;
+  bindGo($("#scope-result"));
+}
+
+function renderReady(){
+  const r = results();
+  const el = $("#screen-ready");
+  if(r.t.key === "incomplete"){
+    el.innerHTML = `<div class="empty"><h1 id="h-ready">Readiness</h1><p class="muted">Start with the scope questions so we know which duties apply to you.</p><button class="btn btn-primary btn-block" data-go="scope">Go to scope</button></div>`;
+    bindGo(el); return;
+  }
+  if(r.t.key === "out"){
+    el.innerHTML = `<div class="empty"><h1 id="h-ready">Readiness</h1><p class="muted">Based on your answers, the Act likely doesn’t apply, so there are no duties to check. Your report explains why.</p><button class="btn btn-primary btn-block" data-go="report">See your report</button></div>`;
+    bindGo(el); return;
+  }
+  const answered = r.qs.length - r.unanswered;
+  let lastGroup = "";
+  el.innerHTML = `
+    <h1 id="h-ready">Readiness</h1>
+    <p class="muted">For each duty, choose where you are today.${r.t.key==="check" ? " We’ve shown the standard duties while your scope needs checking." : ""}</p>
+    <div class="progress">
+      <div class="small"><strong>${answered} of ${r.qs.length}</strong> answered</div>
+      <div class="bar"><i style="width:${answered / r.qs.length * 100}%"></i></div>
+    </div>
+    ${r.qs.map(q => {
+      const head = q.group !== lastGroup && r.t.key === "enhanced" ? `<div class="q-group">${q.group}</div>` : "";
+      lastGroup = q.group;
+      const a = state.answers[q.id];
+      return `${head}<div class="q">
+        <h3 id="q-${q.id}">${q.q}</h3>
+        <p>${q.why}</p>
+        <div class="seg" role="group" aria-labelledby="q-${q.id}">
+          <button type="button" data-q="${q.id}" data-v="done" aria-pressed="${a==="done"}">Done</button>
+          <button type="button" data-q="${q.id}" data-v="progress" aria-pressed="${a==="progress"}">In progress</button>
+          <button type="button" data-q="${q.id}" data-v="none" aria-pressed="${a==="none"}">Not started</button>
+        </div></div>`;
+    }).join("")}
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="report" ${r.unanswered ? "disabled" : ""}>See my results</button>
+      ${r.unanswered ? `<p class="small muted" style="text-align:center;margin:0">Answer all ${r.qs.length} to see your results.</p>` : ""}
+    </div>`;
+  el.querySelectorAll("[data-q]").forEach(b => b.onclick = () => {
+    state.answers[b.dataset.q] = b.dataset.v; save();
+    const y = window.scrollY; renderReady(); window.scrollTo(0, y); updateBadge();
+  });
+  bindGo(el);
+}
+
+function ringHTML(score){
+  const C = 2 * Math.PI * 44, off = C * (1 - score / 100);
+  return `<svg class="ring" viewBox="0 0 112 112" role="img" aria-label="Readiness score ${score} out of 100">
+    <circle class="bg" cx="56" cy="56" r="44"/>
+    <circle class="fg" cx="56" cy="56" r="44" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>
+    <text x="56" y="56">${score}</text></svg>`;
+}
+
+function renderReport(){
+  const r = results(), el = $("#screen-report");
+  const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+  const title = state.name ? esc(state.name) : (state.mode === "event" ? "Your event" : "Your venue");
+
+  if(r.t.key === "incomplete"){
+    el.innerHTML = `<div class="empty"><h1 id="h-report">Report</h1><p class="muted">Your report appears here once you’ve answered the scope questions.</p><button class="btn btn-primary btn-block" data-go="scope">Go to scope</button></div>`;
+    bindGo(el); return;
+  }
+  if(r.t.key !== "out" && r.unanswered){
+    el.innerHTML = `<div class="empty"><h1 id="h-report">Report</h1><p class="muted">You have ${r.unanswered} readiness question${r.unanswered>1?"s":""} left to answer.</p><button class="btn btn-primary btn-block" data-go="ready">Finish readiness</button></div>`;
+    bindGo(el); return;
+  }
+
+  const head = `
+    <div class="report-head">
+      <div><h1 id="h-report" style="margin-bottom:4px">${title}</h1><p class="small muted" style="margin:0">Martyn’s Law readiness check, ${today}</p></div>
+    </div>
+    ${scaleHTML(true)}
+    ${verdictHTML(r.t)}`;
+
+  const disclaimer = `<p class="disclaimer">This check gives a general indication only and isn’t legal advice. Confirm your position against the Home Office’s final statutory guidance (April 2026) and the SIA’s guidance, which is still in draft and may change before the law comes into force. Fort Green is not endorsed by the Home Office or the SIA.</p>`;
+
+  if(r.t.key === "out"){
+    el.innerHTML = head + `
+      <div class="panel"><h3>Good practice still counts</h3><p class="muted" style="margin:0">Even if the Act doesn’t apply, a simple evacuation and lockdown plan and briefed staff protect your guests and your licence. Fort Green can help with both.</p></div>
+      <div class="btn-row no-print">
+        <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Security advice: " + (state.name || "my venue"))}">Talk to Fort Green</a>
+        <a class="btn btn-ghost btn-block" href="https://wa.me/447399232855" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+        <button class="btn btn-ghost btn-block" data-go="scope">Change my answers</button>
+      </div>` + disclaimer;
+    bindGo(el); return;
+  }
+
+  const gaps = r.qs.filter(q => state.answers[q.id] !== "done")
+    .sort((a,b) => (state.answers[a.id]==="none" ? 0 : 1) - (state.answers[b.id]==="none" ? 0 : 1));
+
+  const scoreBlock = `
+    <div class="panel score-wrap">
+      ${ringHTML(r.score)}
+      <div>
+        <h3>Readiness score</h3>
+        <ul class="tally">
+          <li><span class="dot" style="background:var(--accent)"></span>${r.done} done</li>
+          <li><span class="dot" style="background:var(--yellow)"></span>${r.prog} in progress</li>
+          <li><span class="dot" style="background:var(--red)"></span>${r.none} not started</li>
+        </ul>
+      </div>
+    </div>`;
+
+  let body;
+  if(!state.unlocked){
+    body = `
+      <div class="locked">
+        <h3>${gaps.length ? `You have ${gaps.length} gap${gaps.length>1?"s":""} to close` : "You’re in good shape"}</h3>
+        <p class="muted">Your full report lists each gap in priority order, explains your duties in plain English and shows where Fort Green can help.</p>
+        <button class="btn btn-primary btn-block" id="unlock">Get my full report</button>
+      </div>`;
+  } else {
+    const tierDuties = r.t.key === "enhanced" ? DUTIES.enhanced : DUTIES.standard;
+    body = `
+      <div class="panel">
+        <h2>${gaps.length ? "Gaps to close" : "No gaps found"}</h2>
+        ${gaps.length ? gaps.map(q => {
+          const a = state.answers[q.id];
+          return `<div class="gap">
+            <span class="pill ${a==="none" ? "pill-none" : "pill-progress"}">${a==="none" ? "Not started" : "In progress"}</span>
+            <strong>${q.q}</strong>
+            <div class="help"><b>Fort Green:</b> ${q.help}</div>
+          </div>`; }).join("")
+          : `<p class="muted" style="margin:0">Keep your procedures under review and brief new staff as they join.</p>`}
+      </div>
+      <div class="panel">
+        <h2>Your duties in plain English</h2>
+        ${tierDuties.map(([h,d]) => `<div class="duty"><strong>${h}</strong><span class="muted">${d}</span></div>`).join("")}
+      </div>
+      <div class="panel">
+        <h2>Next steps</h2>
+        <p class="muted">Start with anything marked not started. Most venues can close standard tier gaps in a few weeks with written procedures and a staff briefing.</p>
+        <div class="btn-row no-print">
+          <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Martyn’s Law review: " + (state.name || "my venue"))}&body=${encodeURIComponent("Readiness score: " + r.score + "/100\nTier: " + r.t.title + "\nGaps: " + gaps.length)}">Book a readiness review</a>
+          <a class="btn btn-ghost btn-block" href="https://wa.me/447399232855" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+          <button class="btn btn-ghost btn-block" id="print">Save as PDF</button>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = head + scoreBlock + body + `<div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="ready">Change my answers</button></div>` + disclaimer;
+  const u = $("#unlock"); if(u) u.onclick = openSheet;
+  const p = $("#print"); if(p) p.onclick = () => window.print();
+  bindGo(el);
+}
+
+/* ---------- Lead sheet ---------- */
+function openSheet(){ $("#overlay").classList.add("on"); $("#sheet").classList.add("on"); setTimeout(() => $("#f-name").focus(), 250); }
+function closeSheet(){ $("#overlay").classList.remove("on"); $("#sheet").classList.remove("on"); }
+$("#overlay").onclick = closeSheet;
+$("#sheet-close").onclick = closeSheet;
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+$("#lead-form").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("#f-email").value.trim(), err = $("#f-email-err");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Enter a valid email address, like name@venue.co.uk."; err.hidden = false; $("#f-email").focus(); return; }
+  err.hidden = true;
+  const r = results();
+  const lead = { name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
+    marketing_opt_in:$("#f-mkt").checked, venue:state.name, mode:state.mode, capacity:state.capacity,
+    use:state.use, tier:r.t.key, score:r.score, answers:state.answers, submitted_at:new Date().toISOString() };
+  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  state.unlocked = true; save(); closeSheet(); renderReport(); window.scrollTo(0,0);
+};
+
+/* ---------- Navigation ---------- */
+const TABS = ["start","scope","ready","report"];
+function go(tab){
+  TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  ({start:renderStart, scope:renderScope, ready:renderReady, report:renderReport})[tab]();
+  if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+  window.scrollTo(0,0);
+}
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go)); }
+function updateBadge(){
+  const r = results(), b = $("#badge");
+  if(r.qs.length && r.unanswered){ b.textContent = r.unanswered; b.hidden = false; } else b.hidden = true;
+}
+function renderAll(){ updateBadge(); }
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(TABS.includes(h)) go(h); });
+
+updateBadge();
+go(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "start");
+</script>
+</body>
+</html>

@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Event licensing check | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
+  --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-a:#cecece;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-a:#4a494a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+  --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-a:#4a494a;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top, 0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* Top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.brand{display:flex;align-items:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.tool-name{font-size:14px;color:var(--muted);font-weight:500}
+
+main{max-width:560px;margin:0 auto;padding:20px 18px 120px}
+.screen{display:none}
+.screen.on{display:block}
+
+h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(46px,13vw,72px);line-height:.9;letter-spacing:-.01em;margin:8px 0 16px}
+h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:28px;line-height:1.1;margin:0 0 6px}
+h3{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:22px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}
+.lede{font-size:18px;color:var(--muted);max-width:34em}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+a{color:inherit}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:18px;margin:16px 0}
+.status{display:flex;gap:10px;align-items:flex-start;border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0;margin:18px 0}
+.status strong{display:block}
+.status.s-warn{border-left-color:var(--red)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:0;border:0;cursor:pointer;font-family:"Manrope",system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:grid;gap:10px;margin-top:18px}
+.link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Attendance scale */
+.scale{margin:18px 0 6px}
+.scale-track{position:relative;display:grid;grid-template-columns:50fr 50fr;height:46px;overflow:visible}
+.zone{display:flex;align-items:center;padding:0 10px;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden}
+.z-a{background:var(--zone-a);color:var(--ink)}
+.z-b{background:var(--accent);color:var(--accent-ink)}
+.scale-ticks{position:relative;height:22px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.scale-ticks span{position:absolute;top:4px;transform:translateX(-50%)}
+.marker{position:absolute;top:-10px;bottom:-10px;width:0;transition:left .35s ease}
+.marker::before{content:"";position:absolute;left:-1.5px;top:0;bottom:0;width:3px;background:var(--red);border-radius:0}
+.marker::after{content:attr(data-label);position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:12px;font-weight:600;padding:1px 7px;border-radius:0;white-space:nowrap}
+.scale.has-marker{margin-top:38px}
+
+/* Forms */
+.field{margin:0 0 18px}
+.field label,.field .label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-size:14px;color:var(--muted);margin-top:6px}
+input[type=text],input[type=email],input[type=number],input[type=date],select{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.row2{display:grid;grid-template-columns:1.6fr 1fr;gap:10px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:0}
+.seg.seg-2{grid-auto-flow:row;grid-template-columns:1fr 1fr}
+.seg button{min-height:44px;border:0;border-radius:0;background:transparent;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);padding:4px 6px;line-height:1.2}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.chips button{min-height:48px;text-align:left;padding:8px 12px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;line-height:1.25;border-radius:0}
+.chips button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.check{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent);flex:none}
+.group-title{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:26px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+
+/* Verdict */
+.verdict{border-radius:0;padding:18px;margin:18px 0;border:1.5px solid var(--line);background:var(--surface)}
+.verdict.v-ok{border-color:var(--accent)}
+.verdict.v-act{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.verdict.v-act .muted{color:inherit;opacity:.8}
+.verdict.v-check{border-color:var(--ink);border-style:dashed}
+.verdict.v-stop{border-color:var(--red);border-width:2px}
+.verdict.v-stop h2{color:var(--red)}
+.verdict h2{margin-bottom:4px}
+
+/* Deadline block */
+.deadline{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:center}
+.deadline .big{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:56px;line-height:.9;grid-row:span 2;font-variant-numeric:tabular-nums}
+.deadline .big small{display:block;font-size:14px;font-family:"Manrope",sans-serif;font-weight:600;color:var(--muted);line-height:1.2;margin-top:4px}
+
+/* Licence items */
+.item{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.pill{grid-row:span 2;align-self:start;font-size:12px;font-weight:600;padding:3px 8px;border-radius:0;white-space:nowrap;margin-top:2px;min-width:86px;text-align:center}
+.pill-need{background:var(--accent);color:var(--accent-ink)}
+.pill-check{background:var(--amber-soft);color:var(--amber)}
+.pill-ok{background:var(--surface-2);color:var(--muted)}
+.pill-stop{background:var(--red-soft);color:var(--red)}
+.item strong{display:block;line-height:1.3}
+.item .body{font-size:14px;color:var(--muted)}
+.rules{margin:0;padding-left:18px}
+.rules li{margin:0 0 8px}
+
+/* Timeline (plan) */
+.tl{list-style:none;margin:8px 0 0;padding:0;position:relative}
+.tl::before{content:"";position:absolute;left:83px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.tl li{display:grid;grid-template-columns:72px 1fr;gap:22px;padding:0 0 18px;position:relative}
+.tl li::before{content:"";position:absolute;left:78px;top:6px;width:12px;height:12px;background:var(--bg);border:2px solid var(--ink)}
+.tl li.done-past::before{background:var(--red);border-color:var(--red)}
+.tl li.event::before{background:var(--ink)}
+.tl .when{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:17px;line-height:1.1;text-align:right;font-variant-numeric:tabular-nums}
+.tl .when small{display:block;font-family:"Manrope",sans-serif;font-size:12px;font-weight:600;color:var(--muted)}
+.tl li.done-past .when{color:var(--red)}
+.tl strong{display:block;line-height:1.3}
+.tl .body{font-size:14px;color:var(--muted)}
+.tl .late{display:inline-block;font-size:12px;font-weight:600;background:var(--red-soft);color:var(--red);padding:1px 6px;margin-bottom:3px}
+
+.locked{border:1.5px dashed var(--line);border-radius:0;padding:20px;margin:18px 0;text-align:left}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+.empty{padding:40px 0;text-align:left}
+.cta{background:var(--accent);color:var(--accent-ink);padding:20px 18px;margin:20px 0}
+.cta h2{margin-bottom:6px}
+.cta p{opacity:.85}
+.cta .btn-primary{background:var(--accent-ink);color:var(--accent)}
+.cta .btn-ghost{border-color:currentColor;color:inherit}
+
+/* Bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent);border-radius:0}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;line-height:18px;text-align:center}
+
+/* Bottom sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--surface);border-radius:0;padding:10px 20px calc(20px + env(safe-area-inset-bottom, 0px));max-height:90vh;overflow-y:auto;transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.grabber{width:42px;height:5px;border-radius:0;background:var(--line);margin:4px auto 14px}
+.error{color:var(--red);font-size:14px;margin-top:6px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+@media print{
+  .topbar,.nav,.no-print,.overlay,.sheet{display:none!important}
+  :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc}
+  body{background:#fff}
+  main{padding:0;max-width:none}
+  .screen{display:none!important}
+  #screen-plan{display:block!important}
+  .panel,.item,.tl li,.verdict{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="https://www.fortgreen.co.uk" target="_blank" rel="noopener">Fort Green</a>
+    <div class="tool-name">Event licensing check</div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="screen" id="screen-start" aria-labelledby="h-start"></section>
+  <section class="screen" id="screen-event" aria-labelledby="h-event"></section>
+  <section class="screen" id="screen-licence" aria-labelledby="h-licence"></section>
+  <section class="screen" id="screen-plan" aria-labelledby="h-plan"></section>
+</main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="start"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="event"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Event<span class="badge" id="badge" hidden>!</span></button>
+    <button data-tab="licence"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h7M9 16h5"/></svg>Licensing</button>
+    <button data-tab="plan"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14.5l2 2 4-4"/></svg>Plan</button>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="h-sheet">
+  <div class="grabber"></div>
+  <h2 id="h-sheet">Get your action plan</h2>
+  <p class="muted">We’ll show your dated plan now and email you a copy.</p>
+  <form id="lead-form" novalidate>
+    <div class="field"><label for="f-name">Your name</label><input type="text" id="f-name" autocomplete="name"></div>
+    <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" autocomplete="email" inputmode="email"><div class="error" id="f-email-err" hidden></div></div>
+    <div class="field"><label for="f-org">Organisation</label><input type="text" id="f-org" autocomplete="organization"></div>
+    <label class="check"><input type="checkbox" id="f-mkt"><span>Send me licensing updates and occasional news from Fort Green. You can unsubscribe at any time.</span></label>
+    <p class="small muted">We use your details to send this plan and follow up about it. See our privacy notice on fortgreen.co.uk.</p>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-block">Show my action plan</button>
+      <button type="button" class="btn btn-ghost btn-block" id="sheet-close">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+/* ---------- Config ----------
+   LEAD_ENDPOINT: set to the n8n webhook URL when this runs on fortgreen.co.uk.
+   POSTCODE_API: postcodes.io fills in the council and nation on the live site.
+   Inside the claude.ai preview the lookup is blocked, so the nation is read from
+   the postcode area instead and the council is typed in by hand. */
+const LEAD_ENDPOINT = "";
+const POSTCODE_API = "https://api.postcodes.io/postcodes/";
+const CONTACT_EMAIL = "info@fortgreen.co.uk";
+const WHATSAPP = "https://wa.me/447399232855";
+const STORE_KEY = "fg-licensing-v1";
+const FIND_COUNCIL = "https://www.gov.uk/find-local-council";
+
+const NATIONS = [["england","England"],["wales","Wales"],["scotland","Scotland"],["ni","Northern Ireland"]];
+const VENUES = [
+  ["licensed","A venue with an alcohol licence (pub, bar, club, hotel)"],
+  ["unlicensed","A venue without an alcohol licence (hall, warehouse, studio)"],
+  ["outdoor","Outdoor space (park, field, car park, yard, street)"],
+  ["private","A private home or garden"]
+];
+const ACTS = [
+  ["alcohol","Selling alcohol (incl. drinks in the ticket price)"],
+  ["livemusic","Live music"],
+  ["recorded","DJ or recorded music"],
+  ["performance","Plays, dance or performance"],
+  ["film","Film screening"],
+  ["boxing","Boxing, wrestling or combat sport"],
+  ["latefood","Hot food or drink after 11pm"],
+  ["food","Food traders or catering"],
+  ["structures","Stage, marquee or temporary structures"],
+  ["pyro","Fireworks or pyrotechnics"],
+  ["road","Closing or using a road"]
+];
+const ENT = ["livemusic","recorded","performance","film","boxing"];
+
+/* England and Wales bank holidays, used to count clear working days for TENs */
+const BANK_HOLS = new Set([
+  "2026-01-01","2026-04-03","2026-04-06","2026-05-04","2026-05-25","2026-08-31","2026-12-25","2026-12-28",
+  "2027-01-01","2027-03-26","2027-03-29","2027-05-03","2027-05-31","2027-08-30","2027-12-27","2027-12-28",
+  "2028-01-03","2028-04-14","2028-04-17","2028-05-01","2028-05-29","2028-08-28","2028-12-25","2028-12-26"
+]);
+
+/* ---------- State ---------- */
+const BLANK = {ack:false, name:"", postcode:"", nation:"", nationNote:"", council:"", venue:"", covered:"",
+  access:"", date:"", days:"1", finish:"", capacity:"", acts:[], plh:"", tensUsed:"", unlocked:false};
+let state = Object.assign({}, BLANK, {acts:[]});
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const has = a => state.acts.includes(a);
+const nationName = k => (NATIONS.find(n => n[0]===k)||["",""])[1];
+
+/* ---------- Dates ---------- */
+const pad = n => String(n).padStart(2,"0");
+const isoOf = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const today0 = () => { const t = new Date(); t.setHours(0,0,0,0); return t; };
+function parseDate(s){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s||""); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; }
+const fmt = d => d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+const fmtShort = d => d.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+const isWorking = d => d.getDay()!==0 && d.getDay()!==6 && !BANK_HOLS.has(isoOf(d));
+function nthWorkingBefore(ev, n){ let d = addDays(ev,-1), c = 0; for(;;){ if(isWorking(d) && ++c===n) return d; d = addDays(d,-1); } }
+function prevWorking(d){ let r = addDays(d,-1); while(!isWorking(r)) r = addDays(r,-1); return r; }
+function nextWorking(d){ let r = addDays(d,1); while(!isWorking(r)) r = addDays(r,1); return r; }
+function tenDates(ev){
+  const std = prevWorking(nthWorkingBefore(ev,10));
+  const lateLast = prevWorking(nthWorkingBefore(ev,5));
+  return {std, lateFirst: nextWorking(std), lateLast};
+}
+function clearDaysNow(ev){
+  let r = today0(); while(!isWorking(r)) r = addDays(r,1);
+  let c = 0, d = addDays(r,1);
+  while(d < ev){ if(isWorking(d)) c++; d = addDays(d,1); }
+  return c;
+}
+
+/* ---------- Postcode ---------- */
+const PC_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
+function nationFromPostcode(pc){
+  const m = /^([A-Z]{1,2})\d/i.exec(pc.replace(/\s/g,""));
+  if(!m) return null;
+  const a = m[1].toUpperCase();
+  if(a==="BT") return {n:"ni"};
+  if(["AB","DD","DG","EH","FK","G","HS","IV","KA","KW","KY","ML","PA","PH","ZE"].includes(a)) return {n:"scotland"};
+  if(["CF","LL","NP","SA"].includes(a)) return {n:"wales"};
+  if(a==="LD") return {n:"wales", note:"LD postcodes cross the Wales–England border. Check the nation below."};
+  if(a==="TD") return {n:"scotland", note:"TD postcodes cross the Scotland–England border. Check the nation below."};
+  if(a==="SY"||a==="CH") return {n:"england", note:`${a} postcodes cross the England–Wales border. Check the nation below.`};
+  return {n:"england"};
+}
+async function lookupPostcode(pc){
+  if(!POSTCODE_API) return null;
+  try{
+    const r = await fetch(POSTCODE_API + encodeURIComponent(pc.replace(/\s/g,"")));
+    if(!r.ok) return null;
+    const j = await r.json();
+    const map = {"England":"england","Wales":"wales","Scotland":"scotland","Northern Ireland":"ni"};
+    return j && j.result ? {council:j.result.admin_district||"", nation:map[j.result.country]||""} : null;
+  }catch(e){ return null; }
+}
+
+/* ---------- Assessment ---------- */
+function missing(){
+  const m = [];
+  if(!state.nation) m.push("where the event is");
+  if(!state.venue) m.push("the type of venue");
+  if(state.venue==="licensed" && !state.covered) m.push("whether your licence covers it");
+  if(!state.access) m.push("who can come");
+  if(!parseDate(state.date)) m.push("the date");
+  if(!state.finish) m.push("the finish time");
+  if(!(parseInt(state.capacity,10)>0)) m.push("peak attendance");
+  return m;
+}
+
+function assess(){
+  if(missing().length) return null;
+  const n = state.nation, ew = n==="england"||n==="wales";
+  const cap = parseInt(state.capacity,10), days = Math.max(1, parseInt(state.days,10)||1);
+  const ev = parseDate(state.date), today = today0();
+  const priv = state.access==="private";
+  const by11 = state.finish==="by11";
+  const covered = state.venue==="licensed" && state.covered==="yes";
+  const items = [], rules = [];
+  let verdict, deadline = null, actions = [];
+
+  const A = (offset, title, body) => actions.push({date: addDays(ev,-offset), title, body});
+
+  if(ev < today) return {past:true};
+
+  /* --- Entertainment --- */
+  const entActs = ENT.filter(has);
+  const entLabel = a => ACTS.find(x=>x[0]===a)[1];
+
+  if(ew){
+    const alcohol = has("alcohol");
+    const lnr = has("latefood") && !priv;
+    const entNeeded = [], entExempt = [], entCheck = [];
+    entActs.forEach(a => {
+      if(priv){ entExempt.push(a); return; }
+      if(a==="performance" && by11 && cap<=500){ entExempt.push(a); return; }
+      if((a==="livemusic"||a==="recorded") && by11 && cap<=500){
+        if(state.venue==="licensed") entExempt.push(a); else entCheck.push(a); return;
+      }
+      entNeeded.push(a);
+    });
+    const regEnt = entNeeded.length + entCheck.length > 0;
+    const licensable = alcohol || regEnt || lnr;
+
+    if(alcohol) items.push({p:covered?"ok":"need", t:"Sale of alcohol", b: covered ? "Covered by your premises licence, as long as you stay inside its hours and conditions and a personal licence holder authorises sales." : "Any sale of alcohol is licensable, including drinks bundled into a ticket price or a ‘donation’ for drinks. Free drinks at a genuinely private, free event aren’t a sale."});
+    entNeeded.forEach(a => items.push({p:covered?"ok":"need", t:entLabel(a), b: covered ? "Covered if your licence permits it for these hours." : (a==="film" ? "Film exhibition is licensable, apart from some not-for-profit community screenings." : "Licensable for your audience size or hours.")}));
+    entCheck.forEach(a => items.push({p:covered?"ok":"check", t:entLabel(a), b:"Up to 500 people between 8am and 11pm this is often exempt in community premises, workplaces, or when unamplified. In other spaces, plan on including it in your notice or licence."}));
+    entExempt.forEach(a => items.push({p:"ok", t:entLabel(a), b: priv ? "Not regulated entertainment when the event is private, invite-only and not run for profit." : "Exempt for audiences up to 500 between 8am and 11pm in this setting."}));
+    if(has("latefood")) items.push({p: lnr ? (covered?"ok":"need") : "ok", t:"Late night refreshment", b: lnr ? "Selling hot food or drink to the public between 11pm and 5am is licensable." : "Not licensable when it’s only for invited guests at a private event."});
+
+    if(!licensable){
+      verdict = {k:"ok", t:"No licence needed for these activities", b:"Nothing you’ve listed is a licensable activity. You still need the other permissions in your plan, like fire safety and any council event approval."};
+    } else if(covered){
+      verdict = {k:"ok", t:"Covered by your premises licence", b:"Check your licence’s hours, capacity and conditions match the event. If anything falls outside them, give a TEN or apply for a variation."};
+      rules.push("Read your premises licence summary and conditions before the event, especially hours, capacity and any event-specific conditions.");
+      rules.push("A personal licence holder must authorise every alcohol sale, and the designated premises supervisor should know about the event.");
+      A(28, "Check your premises licence covers the event", "Compare hours, capacity and conditions. Give a TEN or apply for a variation if anything falls outside them.");
+    } else if(cap > 499 || days > 7){
+      const why = cap > 499 ? `With ${cap.toLocaleString("en-GB")} people on site at once, a Temporary Event Notice can’t be used (the limit is 499, staff included).` : "Your event runs longer than 7 days, which is longer than a Temporary Event Notice allows.";
+      verdict = {k:"act", t: state.venue==="licensed" ? "Premises licence variation or new licence" : "You need a premises licence", b: why + " Most one-off events use a time-limited premises licence from the council."};
+      rules.push("Apply to the council’s licensing team with an operating schedule, a plan of the site and the fee. Fees depend on the site’s rateable value, with extra fees for events of 5,000 or more.");
+      rules.push("Anyone can comment during a 28-day consultation period. If the police, environmental health or residents object, there’s a hearing before a decision.");
+      rules.push("If you’re selling alcohol, you need a designated premises supervisor who holds a personal licence.");
+      rules.push("Councils expect an event management plan and early talks with the licensing team, police and environmental health. Large events usually go through a Safety Advisory Group.");
+      A(cap>=5000?180:120, "Pre-application talks", "Speak to the council licensing team, police and environmental health about your plans before you apply.");
+      A(cap>=5000?150:90, "Submit your premises licence application", "Send the application, operating schedule, site plan and fee, and put up the public notices the regulations require.");
+      A((cap>=5000?150:90)-28, "Consultation period ends", "The 28-day consultation ends around now. Be ready for a hearing if anyone objects.");
+    } else {
+      const t = tenDates(ev), cd = clearDaysNow(ev);
+      const plh = state.plh==="yes";
+      const myLimit = plh ? 50 : 5, myLate = plh ? 10 : 2;
+      const used = parseInt(state.tensUsed,10)||0;
+      const yr = ev.getFullYear();
+      const premLimit = yr >= 2027 ? "20 TENs covering 26 days" : "15 TENs covering 21 days";
+      deadline = {std:t.std, lateFirst:t.lateFirst, lateLast:t.lateLast, cd};
+      if(used >= myLimit){
+        verdict = {k:"stop", t:"You’ve reached your TEN limit", b:`${plh ? "Personal licence holders" : "People without a personal licence"} can give ${myLimit} TENs a year. Another person can give the notice, or the event can run under a licence held by someone else.`};
+      } else if(cd >= 10){
+        verdict = {k:"act", t:"Temporary Event Notice (TEN)", b:`Your event fits a standard TEN: up to 499 people and no more than 7 days. Give it by ${fmt(t.std)}.`};
+      } else if(cd >= 5){
+        verdict = {k:"check", t:"Late Temporary Event Notice", b:`It’s too late for a standard TEN. A late TEN must reach the council by ${fmt(t.lateLast)}. If the police or environmental health object to a late TEN, the event can’t go ahead with licensable activities.`};
+      } else {
+        verdict = {k:"stop", t:"Too late for a TEN", b:"A TEN needs at least 5 clear working days. Drop the licensable activities, bring in a licensed operator whose licence covers the site, or move the date."};
+      }
+      rules.push("A TEN covers up to 499 people at any one time, counting staff, performers and volunteers, for no more than 168 hours (7 days).");
+      rules.push("It’s given by an individual aged 18 or over, not a company. The fee is £21.");
+      rules.push(`Standard TENs need 10 clear working days’ notice. The day the council receives it and the first day of the event don’t count, and nor do weekends or bank holidays.`);
+      rules.push(`Late TENs need between 5 and 9 clear working days. ${plh ? "As a personal licence holder you can give 50 TENs a year, 10 of them late." : "Without a personal licence you can give 5 TENs a year, 2 of them late."}`);
+      rules.push(`Each premises can host ${premLimit} a year.${yr >= 2027 ? " This is the expected limit from 1 January 2027 if Parliament approves the change; until then it’s 15 TENs and 21 days." : " The government plans to raise this to 20 TENs and 26 days from 1 January 2027, subject to Parliament."}`);
+      rules.push("The police and environmental health can object. For a standard TEN this can lead to a hearing, conditions or a counter notice.");
+      rules.push("Leave at least 24 hours between your TEN events at the same premises.");
+      if(cd >= 10) A(0, "Give your TEN", `Standard deadline: the council must receive it by ${fmt(t.std)}. Submit sooner to leave time for questions.`);
+      if(cd >= 10) actions[actions.length-1].date = t.std;
+      else if(cd >= 5){ A(0, "Give your late TEN", `Must reach the council by ${fmt(t.lateLast)}.`); actions[actions.length-1].date = t.lateLast; }
+      if(cd >= 5){ const sent = cd >= 10 ? t.std : t.lateLast; A(0, "Confirm the council received your TEN", "Ask for an acknowledgement and keep a copy to display on the day."); actions[actions.length-1].date = nextWorking(sent); }
+    }
+    if(alcohol && !covered && verdict.k!=="ok") rules.push("Alcohol sales under a TEN don’t need a personal licence holder, but whoever gives the notice is responsible for them.");
+  }
+
+  else if(n==="scotland"){
+    const alcohol = has("alcohol");
+    const pubEnt = entActs.length && !priv;
+    const lhc = has("latefood") && !priv;
+    if(alcohol){
+      if(covered) items.push({p:"ok", t:"Sale of alcohol", b:"Covered by your premises licence within its operating plan and hours."});
+      else items.push({p:"need", t:"Occasional licence (alcohol)", b:"Granted by the local Licensing Board. Applicants are a premises licence holder, a personal licence holder, or a voluntary organisation for an event connected with its activities."});
+    }
+    if(entActs.length) items.push({p: pubEnt ? "check" : "ok", t:"Public entertainment licence", b: pubEnt ? "Under the Civic Government (Scotland) Act 1982, councils choose which kinds of entertainment they license. Many license outdoor events, concerts and large gatherings. Check your council’s list." : "Usually not needed for a private, invite-only event that isn’t open to the public."});
+    if(has("latefood")) items.push({p: lhc ? "check" : "ok", t:"Late hours catering licence", b: lhc ? "Some councils require one for food served to the public between 11pm and 5am." : "Not needed for invited guests only."});
+    if(alcohol && !covered){
+      verdict = {k:"act", t:"Occasional licence from the Licensing Board", b:"Each occasional licence lasts up to 14 days. Apply early: the police and Licensing Standards Officer have 21 days to comment, and many Boards ask for at least 28 days’ notice."};
+      rules.push("Each occasional licence can last up to 14 days.");
+      rules.push("Police Scotland and the Licensing Standards Officer can report on the application within 21 days, and anyone can object. Many Boards ask for 28 days’ notice; some ask for 6 or 7 weeks.");
+      rules.push("A voluntary organisation can hold up to 12 occasional licences of under 4 days and 4 of 4 days or more in 12 months, with no more than 56 days in total.");
+      rules.push("Mandatory conditions apply, and the Board can add its own. Large events may be asked for a full premises licence.");
+      if(days > 14) rules.push("Your event is longer than 14 days, so you’ll need more than one occasional licence or a premises licence.");
+      A(49, "Apply for your occasional licence", "Send it to the Licensing Board with the fee. Seven weeks gives room for Boards that need longer than 28 days.");
+    } else if(pubEnt){
+      verdict = {k:"check", t:"Check for a public entertainment licence", b:"You’re not selling alcohol, but your council may license this kind of entertainment."};
+    } else if(covered && alcohol){
+      verdict = {k:"ok", t:"Covered by your premises licence", b:"Check the event fits your operating plan, hours and capacity. If not, speak to the Licensing Board about an occasional licence or variation."};
+    } else {
+      verdict = {k:"ok", t:"No alcohol licence needed", b:"Nothing you’ve listed needs an alcohol licence. Check the council permissions in your plan."};
+    }
+    if(pubEnt) A(56, "Apply for a public entertainment licence if required", "Check the council’s list of licensed activities and apply with your event plan.");
+    if(lhc) A(56, "Check for a late hours catering licence", "Needed in some council areas for food served to the public between 11pm and 5am.");
+  }
+
+  else {
+    const alcohol = has("alcohol");
+    const pubEnt = entActs.length && !priv;
+    if(alcohol){
+      if(covered) items.push({p:"ok", t:"Sale of alcohol", b:"Covered by your liquor licence on its own premises within permitted hours."});
+      else items.push({p:"need", t:"Occasional licence (alcohol)", b:"Granted by the courts. Only the holder of a pub, hotel or restaurant licence can apply, so most organisers bring in a licensed trader to run the bar."});
+    }
+    if(entActs.length) items.push({p: pubEnt ? "need" : "ok", t:"Entertainments licence", b: pubEnt ? "Councils license public dances, music, singing and similar entertainment. One-off events use an occasional entertainments licence." : "Usually not needed for a private, invite-only event that isn’t open to the public."});
+    if(alcohol && !covered){
+      verdict = {k:"act", t:"Occasional licence through a licensed trader", b:"A pub, hotel or restaurant licensee applies to the court for an occasional licence, for up to 6 days. The police and council can object."};
+      rules.push("Only the holder of a pub, hotel or restaurant liquor licence can apply. You’ll need a licensee partner.");
+      rules.push("An occasional licence can cover up to six days, for a genuine special event.");
+      rules.push("The court can refuse if the police or council object, so share your event management plan early.");
+      rules.push("If you need an entertainments licence, the court will expect to see it.");
+      A(42, "Agree a licensed bar partner", "Choose a pub, hotel or restaurant licensee to apply for the occasional licence.");
+      A(28, "Occasional licence application to court", "Your licensee applies and notifies the police. Check local court sitting dates; give the police at least four weeks for outdoor events.");
+    } else if(pubEnt){
+      verdict = {k:"act", t:"Entertainments licence from the council", b:"Public entertainment needs a licence from the district council."};
+    } else if(covered && alcohol){
+      verdict = {k:"ok", t:"Covered by your liquor licence", b:"Check permitted hours and whether you also need an entertainments licence."};
+    } else {
+      verdict = {k:"ok", t:"No alcohol licence needed", b:"Nothing you’ve listed needs an alcohol licence. Check the council permissions in your plan."};
+    }
+    if(pubEnt) A(56, "Apply for an occasional entertainments licence", "Apply to the district council with your event plan. Councils may inspect the venue and consult the police and fire service.");
+  }
+
+  /* --- Other permissions (all nations) --- */
+  const other = [];
+  const fireLaw = ew ? "Regulatory Reform (Fire Safety) Order 2005" : n==="scotland" ? "Fire (Scotland) Act 2005" : "Fire Safety Regulations (Northern Ireland) 2010";
+  other.push({t:"Fire risk assessment", b:`Required under the ${fireLaw}. Cover exits, capacity, stewarding and any temporary structures.`});
+  A(28, "Fire risk assessment and event management plan", "Write or update both. Councils and Safety Advisory Groups will ask for them.");
+  const outdoor = state.venue==="outdoor";
+  if(outdoor || cap >= 500 || has("road")){
+    other.push({t:"Council events team or Safety Advisory Group", b:"Outdoor and larger events are usually reviewed by a Safety Advisory Group of council, police, fire and ambulance. Many ask for 12 weeks’ notice, longer for big events."});
+    A(cap>=5000?180:84, "Notify the council events team or Safety Advisory Group", "Send your event management plan, site plan and risk assessments.");
+  }
+  if(outdoor) other.push({t:"Landowner and planning", b:"Get written permission from the landowner or park team. Land that isn’t normally an event space can only be used for a limited number of days a year without planning permission."});
+  if(has("road")){ other.push({t:"Road closure", b:"Closing a road needs a traffic order from the highway authority. Allow at least 12 weeks."}); A(84, "Apply for a road closure", "Apply to the council’s highways team with a traffic management plan."); }
+  if(has("food")||has("latefood")){ other.push({t:"Food traders", b:"Every trader must be registered with their local council. Collect hygiene ratings, gas safety certificates and insurance."}); A(28, "Collect food trader documents", "Registration, hygiene rating, gas safety certificate, allergen information and public liability insurance."); }
+  if(has("structures")){ other.push({t:"Temporary structures", b:"Stages, marquees and stands need a competent installer, design calculations and sign-off. Some councils require notice."}); A(28, "Confirm temporary structure sign-off", "Get calculations, the installer’s competence evidence and a handover certificate."); }
+  if(has("pyro")){ other.push({t:"Fireworks and pyrotechnics", b:"Use a professional operator. Tell the council and fire service and include it in your risk assessment."}); A(28, "Notify the council and fire service about pyrotechnics", "Share the operator’s method statement and safety zones."); }
+  if(has("livemusic")||has("recorded")){ other.push({t:"Music licence", b:"Playing music in public usually needs TheMusicLicence from PPL PRS. This is separate from council licensing."}); A(14, "Get your music licence", "Arrange TheMusicLicence with PPL PRS, or confirm the venue already holds one."); other.push({t:"Noise", b:"Agree a noise plan and curfew, and tell neighbours. Environmental health can act on noise nuisance."}); }
+  if(has("alcohol") || cap >= 300) { other.push({t:"Security and stewarding", b:"Door supervisors need an SIA licence. The Purple Guide sets out good practice for crowd management at events."}); A(42, "Book SIA security and stewards", "Fort Green can supply licensed door supervisors, stewards and a control room."); }
+  if(cap >= 800 && ev >= new Date(2027,3,1)){ other.push({t:"Martyn’s Law", b:"Public events of 800 or more with controlled entry are expected to fall under the enhanced tier from spring 2027. Use our Martyn’s Law readiness check."}); A(56, "Check your Martyn’s Law duties", "Run the Fort Green Martyn’s Law readiness check for this event."); }
+  other.push({t:"Insurance", b:"Public liability insurance is expected by venues, councils and landowners. Check employer’s liability if you have staff."});
+  A(28, "Confirm insurance", "Public liability, plus employer’s liability for staff.");
+  A(1, "Brief your team", "Cover licence conditions, capacity, refusals, Challenge 25 and incident reporting. Have your licence or TEN on site.");
+
+  actions.push({date: ev, title:"Event day", body: days > 1 ? `Runs for ${days} days.` : "", event:true});
+  actions.sort((a,b) => a.date - b.date);
+
+  /* --- Local checks --- */
+  const where = state.council ? esc(state.council) : "your council";
+  const local = ew ? [
+    `Read ${where}’s statement of licensing policy. It sets local expectations and standard conditions.`,
+    `Check for a cumulative impact area. In these areas, new licences and late hours face extra scrutiny.`,
+    `Check how ${where} accepts TENs and applications, and whether it asks for an event management plan alongside them.`,
+    `Check ${where}’s Safety Advisory Group thresholds and notice periods.`
+  ] : n==="scotland" ? [
+    `Read the Licensing Board’s policy statement for ${where}, including any overprovision areas.`,
+    `Check how much notice the Board wants for occasional licences and when it meets.`,
+    `Check which activities ${where} licenses under the Civic Government (Scotland) Act 1982.`,
+    `Check the council’s event guidance and Safety Advisory Group process.`
+  ] : [
+    `Check ${where}’s entertainments licensing policy and fees.`,
+    `Check court sitting dates with your licensee for the occasional licence.`,
+    `Check the council’s event guidance and Safety Advisory Group process.`
+  ];
+
+  return {verdict, items, rules, deadline, actions, other, local, cap, days, ev, ew};
+}
+
+/* ---------- Attendance scale (England & Wales) ---------- */
+function scaleHTML(){
+  const cap = parseInt(state.capacity,10);
+  let marker = "";
+  if(cap > 0){
+    const pos = Math.min(cap, 1000) / 1000 * 100;
+    marker = `<div class="marker" style="left:${pos}%" data-label="${cap >= 1000 ? cap.toLocaleString("en-GB") + "+" : cap.toLocaleString("en-GB")}"></div>`;
+  }
+  return `<div class="scale ${marker ? "has-marker":""}" aria-hidden="true">
+    <div class="scale-track"><div class="zone z-a">TEN up to 499</div><div class="zone z-b">Premises licence</div>${marker}</div>
+    <div class="scale-ticks"><span style="left:50%">500</span></div></div>`;
+}
+function verdictHTML(v){ return `<div class="verdict v-${v.k}" role="status"><h2>${v.t}</h2><p class="muted" style="margin:0">${v.b}</p></div>`; }
+const pillText = {need:"Needed", check:"Check", ok:"Not needed", stop:"Blocked"};
+function itemsHTML(items){
+  if(!items.length) return `<p class="muted" style="margin:0">You haven’t listed any licensable activities.</p>`;
+  return items.map(i => `<div class="item"><span class="pill pill-${i.p}">${i.p==="ok" && /Covered/.test(i.b) ? "Covered" : pillText[i.p]}</span><strong>${i.t}</strong><div class="body">${i.b}</div></div>`).join("");
+}
+function ctaHTML(){
+  const a = assess();
+  const subj = encodeURIComponent("Licensing support: " + (state.name || "my event"));
+  const body = encodeURIComponent([
+    "Event: " + (state.name||"-"), "Date: " + (state.date||"-"), "Where: " + (state.council||"-") + ", " + nationName(state.nation) + " " + (state.postcode||""),
+    "Peak attendance: " + (state.capacity||"-"), "Route: " + (a && a.verdict ? a.verdict.t : "-")].join("\n"));
+  return `<div class="cta no-print">
+    <h2>Let Fort Green do your licensing</h2>
+    <p>We prepare and submit your TEN or licence application, deal with the council, police and Safety Advisory Group, and supply the SIA security and stewards your licence needs.</p>
+    <div class="btn-row">
+      <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${subj}&body=${body}">Ask Fort Green to handle it</a>
+      <a class="btn btn-ghost btn-block" href="${WHATSAPP}" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+    </div></div>`;
+}
+const DISCLAIMER = `<p class="disclaimer">This tool gives general information about UK event licensing to help you plan. It isn’t legal advice and doesn’t replace advice from your licensing authority, Licensing Board, court or a licensing solicitor. Rules, fees, limits and local policies vary between areas and change over time. Fort Green Limited accepts no responsibility or liability for any refusal, counter notice, enforcement action, cost or loss arising from the use of this tool or reliance on its results. You remain responsible for checking what applies and for submitting complete applications on time. Fort Green isn’t affiliated with or endorsed by any council, Licensing Board, court or police service.</p>`;
+
+/* ---------- Screens ---------- */
+function renderStart(){
+  const started = state.date || state.capacity || state.acts.length;
+  $("#screen-start").innerHTML = `
+    <h1 id="h-start">What licence does your event need?</h1>
+    <p class="lede">Tell us where and what you’re planning. We’ll show which licences and notices apply, including Temporary Event Notices, the deadlines, and what to check with your council.</p>
+    <div class="status"><div><strong>Covers England, Wales, Scotland and Northern Ireland</strong><span class="small muted">Each nation has its own licensing law, so the result depends on where your event takes place.</span></div></div>
+    <div class="panel">
+      <h3>Before you start</h3>
+      <p class="small muted">This check gives general guidance only. It isn’t legal advice, and Fort Green Limited accepts no responsibility for decisions made using it. Always confirm with your council or Licensing Board before you rely on it.</p>
+      <label class="check" style="margin-bottom:0"><input type="checkbox" id="ack" ${state.ack?"checked":""}><span>I understand this is general guidance, not legal advice.</span></label>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="go-start" ${state.ack?"":"disabled"}>${started ? "Continue your check" : "Start the check"}</button>
+      ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start a new check</button>` : ""}
+    </div>
+    <div class="panel">
+      <h3>Smart people, on short notice, solving problems.</h3>
+      <p class="muted" style="margin:0">Event organisers and venue managers across London and the UK. Fort Green handles licensing, security, stewarding and event operations so your event opens on time.</p>
+    </div>`;
+  $("#ack").onchange = e => { state.ack = e.target.checked; save(); $("#go-start").disabled = !state.ack; updateBadge(); };
+  $("#go-start").onclick = () => go("event");
+  const r = $("#reset");
+  if(r) r.onclick = () => { state = Object.assign({}, BLANK, {acts:[], ack:state.ack}); save(); updateBadge(); go("event"); };
+}
+
+function seg(name, opts, val, cls=""){
+  return `<div class="seg ${cls}" role="group" aria-labelledby="l-${name}">${opts.map(([v,l]) => `<button type="button" data-set="${name}" data-v="${v}" aria-pressed="${val===v}">${l}</button>`).join("")}</div>`;
+}
+
+function renderEvent(){
+  if(!state.ack){ $("#screen-event").innerHTML = `<div class="empty"><h1 id="h-event">Your event</h1><p class="muted">Confirm you’ve read the note on the home screen to start.</p><button class="btn btn-primary btn-block" data-go="start">Go to home</button></div>`; bindGo($("#screen-event")); return; }
+  const ew = state.nation==="england"||state.nation==="wales";
+  const showPlh = ew && (has("alcohol") || ENT.some(has) || has("latefood"));
+  const minDate = isoOf(today0());
+  $("#screen-event").innerHTML = `
+    <h1 id="h-event">Your event</h1>
+    <p class="muted">The more accurate your answers, the more useful your result.</p>
+    <div class="field"><label for="i-name">Event name</label><input type="text" id="i-name" value="${esc(state.name)}" placeholder="e.g. Summer Yard Party"></div>
+
+    <div class="group-title">Where</div>
+    <div class="row2">
+      <div class="field"><label for="i-pc">Postcode</label><input type="text" id="i-pc" value="${esc(state.postcode)}" placeholder="e.g. W10 5BU" autocomplete="postal-code" autocapitalize="characters"></div>
+      <div class="field"><label for="i-council">Council</label><input type="text" id="i-council" value="${esc(state.council)}" placeholder="e.g. Brent"></div>
+    </div>
+    <div class="hint" id="pc-note" style="margin:-10px 0 14px">${state.nationNote ? esc(state.nationNote) : `Not sure which council? <a href="${FIND_COUNCIL}" target="_blank" rel="noopener">Find it on GOV.UK</a>.`}</div>
+    <div class="field"><span class="label" id="l-nation">Nation</span>${seg("nation", NATIONS, state.nation, "seg-2")}</div>
+    <div class="field"><label for="i-venue">Type of venue</label>
+      <select id="i-venue"><option value="">Choose one</option>${VENUES.map(([v,l]) => `<option value="${v}" ${state.venue===v?"selected":""}>${l}</option>`).join("")}</select></div>
+    ${state.venue==="licensed" ? `<div class="field"><span class="label" id="l-covered">Does the venue’s licence already cover your activities, hours and numbers?</span>${seg("covered", [["yes","Yes"],["no","No"],["unsure","Not sure"]], state.covered)}<div class="hint">If you’re not sure, ask the venue for its licence summary.</div></div>` : ""}
+
+    <div class="group-title">When and who</div>
+    <div class="row2">
+      <div class="field"><label for="i-date">First day</label><input type="date" id="i-date" min="${minDate}" value="${esc(state.date)}"></div>
+      <div class="field"><label for="i-days">Days</label><input type="number" id="i-days" min="1" max="60" inputmode="numeric" value="${esc(state.days)}"></div>
+    </div>
+    <div class="field"><span class="label" id="l-finish">Latest finish time</span>${seg("finish", [["by11","By 11pm"],["midnight","11pm–midnight"],["late","After midnight"]], state.finish)}</div>
+    <div class="field"><span class="label" id="l-access">Who can come?</span>${seg("access", [["public","Open to public"],["ticketed","Ticketed or paid"],["private","Private and free"]], state.access)}<div class="hint">Private and free means invite-only guests, no charge and not run for profit.</div></div>
+    <div class="field"><label for="i-cap">Most people on site at one time</label><input type="number" id="i-cap" min="1" inputmode="numeric" value="${esc(state.capacity)}" placeholder="e.g. 350"><div class="hint">Count staff, performers and volunteers as well as guests.</div></div>
+
+    <div class="group-title">What’s happening</div>
+    <div class="chips" role="group" aria-label="Activities">${ACTS.map(([v,l]) => `<button type="button" data-act="${v}" aria-pressed="${has(v)}">${l}</button>`).join("")}</div>
+
+    ${showPlh ? `<div class="group-title">About you</div>
+    <div class="field"><span class="label" id="l-plh">Do you hold a personal licence?</span>${seg("plh", [["yes","Yes"],["no","No"]], state.plh)}</div>
+    <div class="field"><label for="i-tens">TENs you’ve given so far this year</label><input type="number" id="i-tens" min="0" inputmode="numeric" value="${esc(state.tensUsed)}" placeholder="0"></div>` : ""}
+
+    <div id="event-foot"></div>`;
+
+  const el = $("#screen-event");
+  el.querySelectorAll("[data-set]").forEach(b => b.onclick = () => {
+    state[b.dataset.set] = b.dataset.v;
+    if(b.dataset.set === "nation") state.nationNote = "";
+    save(); const y = window.scrollY; renderEvent(); window.scrollTo(0,y); updateBadge();
+  });
+  el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
+    const a = b.dataset.act;
+    state.acts = has(a) ? state.acts.filter(x => x!==a) : state.acts.concat(a);
+    save(); const y = window.scrollY; renderEvent(); window.scrollTo(0,y);
+  });
+  $("#i-name").oninput = e => { state.name = e.target.value; save(); };
+  $("#i-council").oninput = e => { state.council = e.target.value; save(); };
+  $("#i-pc").onchange = async e => {
+    const pc = e.target.value.trim().toUpperCase(); state.postcode = pc; save();
+    if(!PC_RE.test(pc)){ $("#pc-note").textContent = "Enter a full UK postcode, like W10 5BU."; return; }
+    const g = nationFromPostcode(pc);
+    if(g){ state.nation = g.n; state.nationNote = g.note || `Looks like ${nationName(g.n)}. Change it below if that’s wrong.`; }
+    save(); const y = window.scrollY; renderEvent(); window.scrollTo(0,y); updateBadge();
+    const r = await lookupPostcode(pc);
+    if(r && state.postcode === pc){
+      if(r.nation){ state.nation = r.nation; state.nationNote = `${r.council ? r.council + ", " : ""}${nationName(r.nation)}.`; }
+      if(r.council) state.council = r.council;
+      save(); const y2 = window.scrollY; renderEvent(); window.scrollTo(0,y2); updateBadge();
+    }
+  };
+  $("#i-venue").onchange = e => { state.venue = e.target.value; if(state.venue!=="licensed") state.covered = ""; save(); const y = window.scrollY; renderEvent(); window.scrollTo(0,y); updateBadge(); };
+  $("#i-date").onchange = e => { state.date = e.target.value; save(); eventFoot(); updateBadge(); };
+  $("#i-days").oninput = e => { state.days = e.target.value.replace(/[^0-9]/g,""); save(); };
+  $("#i-cap").oninput = e => { state.capacity = e.target.value.replace(/[^0-9]/g,""); save(); eventFoot(); updateBadge(); };
+  const t = $("#i-tens"); if(t) t.oninput = e => { state.tensUsed = e.target.value.replace(/[^0-9]/g,""); save(); };
+  eventFoot();
+}
+function eventFoot(){
+  const m = missing();
+  $("#event-foot").innerHTML = `<div class="btn-row">
+    <button class="btn btn-primary btn-block" data-go="licence" ${m.length?"disabled":""}>See my licensing</button>
+    ${m.length ? `<p class="small muted" style="text-align:center;margin:0">Still needed: ${m.join(", ")}.</p>` : ""}</div>`;
+  bindGo($("#event-foot"));
+}
+
+function renderLicence(){
+  const el = $("#screen-licence");
+  const a = assess();
+  if(!a){ el.innerHTML = `<div class="empty"><h1 id="h-licence">Licensing</h1><p class="muted">Your licensing breakdown appears here once you’ve told us about your event.</p><button class="btn btn-primary btn-block" data-go="event">Go to your event</button></div>`; bindGo(el); return; }
+  if(a.past){ el.innerHTML = `<div class="empty"><h1 id="h-licence">Licensing</h1><p class="muted">The event date is in the past. Choose an upcoming date.</p><button class="btn btn-primary btn-block" data-go="event">Change the date</button></div>`; bindGo(el); return; }
+  const where = [state.council, nationName(state.nation)].filter(Boolean).map(esc).join(", ");
+  let dl = "";
+  if(a.deadline){
+    const d = a.deadline;
+    dl = `<div class="panel deadline">
+      <div class="big">${d.cd}<small>clear working<br>days left</small></div>
+      <div><strong>Standard TEN deadline: ${fmt(d.std)}</strong></div>
+      <div class="small muted">Late TEN window: ${fmtShort(d.lateFirst)} to ${fmt(d.lateLast)}. Weekends and England and Wales bank holidays don’t count.</div>
+    </div>`;
+  }
+  el.innerHTML = `
+    <h1 id="h-licence">${state.name ? esc(state.name) : "Your licensing"}</h1>
+    <p class="small muted">${where}, ${fmt(a.ev)}</p>
+    ${a.ew ? scaleHTML() : ""}
+    ${verdictHTML(a.verdict)}
+    ${dl}
+    <div class="panel"><h2>What applies</h2>${itemsHTML(a.items)}</div>
+    ${a.rules.length ? `<div class="panel"><h2>Key rules</h2><ul class="rules">${a.rules.map(r => `<li>${r}</li>`).join("")}</ul></div>` : ""}
+    <div class="btn-row"><button class="btn btn-primary btn-block" data-go="plan">Build my action plan</button></div>
+    ${ctaHTML()}
+    <div class="no-print"><button class="link-btn" data-go="event">Change my answers</button></div>
+    ${DISCLAIMER}`;
+  bindGo(el);
+}
+
+function renderPlan(){
+  const el = $("#screen-plan");
+  const a = assess();
+  if(!a || a.past){ el.innerHTML = `<div class="empty"><h1 id="h-plan">Plan</h1><p class="muted">Your dated action plan appears here once you’ve told us about your event.</p><button class="btn btn-primary btn-block" data-go="event">Go to your event</button></div>`; bindGo(el); return; }
+  const today = today0();
+  const todo = a.actions.filter(x => !x.event);
+  const overdue = todo.filter(x => x.date < today).length;
+  const next = todo.find(x => x.date >= today);
+  const head = `
+    <h1 id="h-plan">Action plan</h1>
+    <p class="small muted">${state.name ? esc(state.name) + ", " : ""}${fmt(a.ev)}. Created ${fmt(today)}.</p>
+    ${verdictHTML(a.verdict)}
+    ${overdue ? `<div class="status s-warn"><div><strong>${overdue} step${overdue>1?"s are":" is"} already past the recommended date</strong><span class="small muted">Start these now, or talk to us about what’s still possible.</span></div></div>` : ""}`;
+
+  if(!state.unlocked){
+    el.innerHTML = head + `
+      <div class="locked">
+        <h3>${todo.length} steps between now and your event</h3>
+        <p class="muted">${next ? `Next: ${next.title}, by ${fmt(next.date)}. ` : ""}Your full plan dates every step, lists the other permissions you need and what to check with your council.</p>
+        <button class="btn btn-primary btn-block" id="unlock">Get my action plan</button>
+      </div>
+      ${ctaHTML()}${DISCLAIMER}`;
+    $("#unlock").onclick = openSheet; return;
+  }
+
+  const tl = a.actions.map(x => {
+    const past = !x.event && x.date < today;
+    return `<li class="${x.event ? "event" : past ? "done-past" : ""}">
+      <div class="when">${fmtShort(x.date)}<small>${x.date.getFullYear()}</small></div>
+      <div>${past ? `<span class="late">Past recommended date</span>` : ""}<strong>${x.title}</strong>${x.body ? `<div class="body">${x.body}</div>` : ""}</div></li>`;
+  }).join("");
+
+  el.innerHTML = head + `
+    <div class="panel"><h2>Timeline</h2><ul class="tl">${tl}</ul></div>
+    <div class="panel"><h2>Other permissions</h2>${a.other.map(o => `<div class="item" style="grid-template-columns:1fr"><strong>${o.t}</strong><div class="body">${o.b}</div></div>`).join("")}</div>
+    <div class="panel"><h2>Check with ${state.council ? esc(state.council) : "your council"}</h2><ul class="rules">${a.local.map(l => `<li>${l}</li>`).join("")}</ul>
+      <p class="small muted no-print" style="margin:0"><a href="${FIND_COUNCIL}" target="_blank" rel="noopener">Find your council’s website on GOV.UK</a></p></div>
+    ${ctaHTML()}
+    <div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>
+    <div class="no-print" style="margin-top:12px"><button class="link-btn" data-go="event">Change my answers</button></div>
+    ${DISCLAIMER}`;
+  $("#print").onclick = () => window.print();
+  bindGo(el);
+}
+
+/* ---------- Lead sheet ---------- */
+function openSheet(){ $("#overlay").classList.add("on"); $("#sheet").classList.add("on"); setTimeout(() => $("#f-name").focus(), 250); }
+function closeSheet(){ $("#overlay").classList.remove("on"); $("#sheet").classList.remove("on"); }
+$("#overlay").onclick = closeSheet;
+$("#sheet-close").onclick = closeSheet;
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+$("#lead-form").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("#f-email").value.trim(), err = $("#f-email-err");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Enter a valid email address, like name@venue.co.uk."; err.hidden = false; $("#f-email").focus(); return; }
+  err.hidden = true;
+  const a = assess();
+  const lead = { tool:"event-licensing", name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
+    marketing_opt_in:$("#f-mkt").checked, event:state.name, postcode:state.postcode, council:state.council, nation:state.nation,
+    venue:state.venue, date:state.date, days:state.days, capacity:state.capacity, access:state.access, activities:state.acts,
+    route: a && a.verdict ? a.verdict.t : "", submitted_at:new Date().toISOString() };
+  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  state.unlocked = true; save(); closeSheet(); renderPlan(); window.scrollTo(0,0);
+};
+
+/* ---------- Navigation ---------- */
+const TABS = ["start","event","licence","plan"];
+function go(tab){
+  TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  ({start:renderStart, event:renderEvent, licence:renderLicence, plan:renderPlan})[tab]();
+  if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+  window.scrollTo(0,0);
+}
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go)); }
+function updateBadge(){ $("#badge").hidden = !(state.ack && missing().length && (state.date || state.capacity || state.nation)); }
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(TABS.includes(h)) go(h); });
+
+updateBadge();
+go(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "start");
+</script>
+</body>
+</html>

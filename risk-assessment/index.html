@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Event risk assessment builder | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
+  --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-std:#cecece;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-std:#4a494a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+  --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-std:#4a494a;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top, 0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.brand{display:flex;align-items:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.tool-name{font-size:14px;color:var(--muted);font-weight:500}
+
+main{max-width:560px;margin:0 auto;padding:20px 18px 120px}
+.screen{display:none}
+.screen.on{display:block}
+
+h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(46px,13vw,72px);line-height:.9;letter-spacing:-.01em;margin:8px 0 16px}
+h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:28px;line-height:1.1;margin:0 0 6px}
+h3{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:22px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}
+.lede{font-size:18px;color:var(--muted);max-width:34em}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:18px;margin:16px 0}
+.status{display:flex;gap:10px;align-items:flex-start;border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0;margin:18px 0}
+.status strong{display:block}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:0;border:0;cursor:pointer;font-family:"Manrope",system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:grid;gap:10px;margin-top:18px}
+.link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Terms gate */
+.terms{border:1.5px solid var(--ink);padding:18px;margin:18px 0;background:var(--surface)}
+.terms p{font-size:15px}
+.terms ul{margin:0 0 12px;padding-left:20px;font-size:15px}
+.terms li{margin:4px 0}
+
+/* Forms */
+.field{margin:0 0 22px}
+.field label,.field .label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-size:14px;color:var(--muted);margin:-2px 0 8px}
+input[type=text],input[type=email],input[type=date]{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px}
+input:focus{border-color:var(--accent);outline:none}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:0}
+.seg button{min-height:44px;border:0;border-radius:0;background:transparent;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.seg button[data-v="no"][aria-pressed="true"],.seg button[data-v="unsure"][aria-pressed="true"]{background:var(--red-soft);color:var(--red)}
+.seg button[data-v="yes"][aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.check{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent);flex:none}
+
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.opts button{position:relative;min-height:52px;text-align:left;padding:10px 12px;border:1.5px solid var(--line);background:var(--surface);border-radius:0;font-weight:600;font-size:15px;line-height:1.25;cursor:pointer}
+.opts button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.opts.multi button{padding-left:38px}
+.opts.multi button::before{content:"";position:absolute;left:12px;top:50%;width:16px;height:16px;margin-top:-8px;border:1.5px solid currentColor}
+.opts.multi button[aria-pressed="true"]::after{content:"";position:absolute;left:17px;top:50%;width:5px;height:9px;margin-top:-6px;border:solid var(--accent-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.opts .wide{grid-column:1 / -1}
+
+.progress{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 53px);z-index:5;background:var(--bg);padding:10px 0 12px}
+.bar{height:6px;background:var(--surface-2);border-radius:0;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s ease}
+.q-group{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:26px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+.prov{padding:12px 0;border-bottom:1px solid var(--line)}
+.prov:last-child{border-bottom:0}
+.prov strong{display:block;margin-bottom:8px}
+
+/* Risk map - signature element */
+.rmap{display:grid;grid-template-columns:22px repeat(5,1fr);gap:3px;margin:12px 0 4px}
+.rmap .cell{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:22px;border-radius:0}
+.rmap .ax{display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);font-weight:600}
+.b-l{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)}
+.b-m{background:var(--surface-2);color:var(--ink)}
+.b-h{background:var(--zone-std);color:var(--ink)}
+.b-vh{background:var(--red);color:#fff}
+.rmap .empty-cell{color:transparent}
+.rmap-axes{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding-left:25px}
+.tally{list-style:none;padding:0;margin:12px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:15px}
+.tally li{display:flex;align-items:center;gap:8px}
+.sw{width:14px;height:14px;flex:none}
+
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:3px 8px;border-radius:0;white-space:nowrap}
+.p-vh{background:var(--red);color:#fff}
+.p-h{background:var(--accent);color:var(--accent-ink)}
+.p-m{background:var(--zone-std);color:var(--ink)}
+.p-l{box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)}
+.hz{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.hz:last-child{border-bottom:0}
+.hz strong{line-height:1.3}
+.hz .muted{font-size:14px;grid-column:1}
+.hz .pill{grid-row:1 / span 2;grid-column:2;align-self:start;margin-top:2px}
+details.hz{display:block;padding:0;border-bottom:1px solid var(--line)}
+details.hz:last-of-type{border-bottom:0}
+details.hz summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 26px 12px 0;position:relative}
+details.hz summary::-webkit-details-marker{display:none}
+details.hz summary::after{content:"";position:absolute;right:4px;top:18px;width:8px;height:8px;border:solid var(--muted);border-width:0 2px 2px 0;transform:rotate(45deg);transition:transform .2s}
+details.hz[open] summary::after{transform:rotate(-135deg);top:22px}
+details.hz summary strong{line-height:1.3}
+details.hz summary .muted{font-size:14px;grid-column:1}
+details.hz summary .pill{grid-row:1 / span 2;grid-column:2;align-self:start;margin-top:2px}
+.acts{padding:0 0 14px}
+.act{display:grid;grid-template-columns:86px 1fr;gap:10px;padding:6px 0;font-size:15px;border-top:1px dotted var(--line)}
+.act .ph{font-size:12px;font-weight:600;color:var(--muted);padding-top:2px}
+.fg{margin:10px 0 0;padding:10px 12px;background:var(--surface-2);font-size:14px}
+.fg b{font-weight:700}
+.gapact{padding:12px 0;border-bottom:1px solid var(--line)}
+.gapact:last-child{border-bottom:0}
+.gapact strong{display:block;line-height:1.3}
+.gapact .muted{font-size:14px;display:block;margin-top:2px}
+.locked{border:1.5px dashed var(--line);border-radius:0;padding:20px;margin:18px 0}
+.gapline{display:flex;gap:10px;align-items:baseline;margin:6px 0}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+.empty{padding:40px 0}
+
+/* Bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent);border-radius:0}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;line-height:18px;text-align:center}
+
+/* Bottom sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--surface);border-radius:0;padding:10px 20px calc(20px + env(safe-area-inset-bottom, 0px));max-height:90vh;overflow-y:auto;transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.grabber{width:42px;height:5px;border-radius:0;background:var(--line);margin:4px auto 14px}
+.error{color:var(--red);font-size:14px;margin-top:6px}
+
+/* Live hazards bar */
+.live{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom, 0px));z-index:8;display:none;pointer-events:none}
+.live.on{display:block}
+.live-in{max-width:560px;margin:0 auto;padding:0 12px 8px;pointer-events:auto}
+#live-btn{display:flex;width:100%;min-height:50px;align-items:center;justify-content:space-between;gap:10px;padding:0 16px;border:0;border-radius:0;background:var(--accent);color:var(--accent-ink);font-size:15px;font-weight:500;cursor:pointer;text-align:left}
+#live-btn strong{font-weight:700}
+#live-btn .view{font-weight:700;text-decoration:underline;text-underline-offset:3px;flex:none}
+.new-tag{display:inline-block;background:var(--red);color:#fff;font-size:12px;font-weight:700;padding:1px 6px;margin-left:8px}
+body.has-live main{padding-bottom:190px}
+.lh{padding:12px 8px;margin:0 -8px;border-bottom:1px solid var(--line)}
+.lh:last-child{border-bottom:0}
+.lh-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.lh-top strong{line-height:1.3}
+.lh .cat{display:block;font-size:13px;color:var(--muted)}
+.lh .sol{font-size:14px;margin-top:6px}
+.lh .sol b{font-weight:700}
+.lh.new{animation:flash 2s ease}
+@keyframes flash{from{background:var(--surface-2)}to{background:transparent}}
+.live-sec{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:20px;margin:16px 0 4px}
+
+#print-doc{display:none}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* Unbranded print document */
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
+  body::before{display:none}
+  .topbar,.nav,main,.overlay,.sheet{display:none!important}
+  #print-doc{display:block!important;font-size:9pt;line-height:1.35;color:#000}
+  #print-doc h1{font-family:Arial,Helvetica,sans-serif;text-transform:none;font-size:18pt;line-height:1.2;margin:0 0 4pt;letter-spacing:0}
+  #print-doc h2{font-family:Arial,Helvetica,sans-serif;text-transform:none;font-size:12pt;margin:14pt 0 6pt;break-after:avoid}
+  #print-doc .warn{border:1.5pt solid #000;padding:6pt 8pt;margin:8pt 0;font-weight:bold}
+  #print-doc table{width:100%;border-collapse:collapse;margin:0 0 8pt}
+  #print-doc th,#print-doc td{border:0.75pt solid #777;padding:3pt 4pt;vertical-align:top;text-align:left}
+  #print-doc th{background:#e6e6e6}
+  #print-doc thead{display:table-header-group}
+  #print-doc tr{break-inside:avoid}
+  #print-doc .num{text-align:center;white-space:nowrap}
+  #print-doc .ref{white-space:nowrap}
+  #print-doc .kv th{width:22%}
+  #print-doc .sign td{height:22pt}
+  #print-doc .foot{margin-top:10pt;font-size:8pt;color:#333}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="https://www.fortgreen.co.uk" target="_blank" rel="noopener">Fort Green</a>
+    <div class="tool-name">Risk assessment builder</div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="screen" id="screen-start" aria-labelledby="h-start"></section>
+  <section class="screen" id="screen-event" aria-labelledby="h-event"></section>
+  <section class="screen" id="screen-site" aria-labelledby="h-site"></section>
+  <section class="screen" id="screen-report" aria-labelledby="h-report"></section>
+</main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="start"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="event"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Event<span class="badge" id="badge-event" hidden></span></button>
+    <button data-tab="site"><svg viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M5 20V10l7-5 7 5v10"/><path d="M10 20v-5h4v5"/></svg>Site<span class="badge" id="badge-site" hidden></span></button>
+    <button data-tab="report"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 12h7M9 16h7"/></svg>Report</button>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="h-sheet">
+  <div class="grabber"></div>
+  <h2 id="h-sheet">Get your draft as a PDF</h2>
+  <p class="muted">We’ll unlock the PDF now and email you a copy.</p>
+  <form id="lead-form" novalidate>
+    <div class="field"><label for="f-name">Your name</label><input type="text" id="f-name" autocomplete="name"></div>
+    <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" autocomplete="email" inputmode="email"><div class="error" id="f-email-err" hidden></div></div>
+    <div class="field"><label for="f-org">Organisation</label><input type="text" id="f-org" autocomplete="organization"></div>
+    <label class="check"><input type="checkbox" id="f-mkt"><span>Send me event safety updates and occasional news from Fort Green. You can unsubscribe at any time.</span></label>
+    <p class="small muted">We use your details to send this draft and follow up about it. See our privacy notice on fortgreen.co.uk.</p>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-block">Unlock my PDF</button>
+      <button type="button" class="btn btn-ghost btn-block" id="sheet-close">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<div class="live" id="live"><div class="live-in"><button type="button" id="live-btn" aria-haspopup="dialog"></button></div></div>
+<div class="sheet" id="live-sheet" role="dialog" aria-modal="true" aria-labelledby="h-live">
+  <div class="grabber"></div>
+  <h2 id="h-live">Hazards so far</h2>
+  <p class="small muted">Based on your answers so far, highest risk first. Your report adds the full set of solutions for your top hazards.</p>
+  <div id="live-body"></div>
+  <div class="btn-row"><button type="button" class="btn btn-ghost btn-block" id="live-close">Back to the questions</button></div>
+</div>
+
+<div id="print-doc" aria-hidden="true"></div>
+
+<script>
+/* ---------- Config ----------
+   LEAD_ENDPOINT: set to the n8n webhook URL when this runs on fortgreen.co.uk.
+   Left empty here: the PDF unlocks on the device without sending anything. */
+const LEAD_ENDPOINT = "";
+const CONTACT_EMAIL = "info@fortgreen.co.uk";
+const WHATSAPP = "https://wa.me/447399232855";
+const MARTYNS_LAW_URL = "https://claude.ai/artifact/AGZi7jKK2Zh3czKseT1oBW";
+const STORE_KEY = "fg-ra-builder-v1";
+const FREE_LIMIT = 10;
+const TERMS_VERSION = "2026-11-06";
+
+/* Hazard library: generated from FGL-RA-Generator-Hazard-Library-v0.1.xlsx */
+const HAZARDS = [{"id": "CRW-01", "cat": "Crowd management", "haz": "Overcrowding / exceeding safe capacity", "con": "Crush and compression injuries, fatalities", "who": "Audience, staff", "trig": "ALWAYS", "L": 3, "S": 5, "ctrl": "Safe capacity calculated from usable floor/ground area and exit widths; capacity agreed with licensing authority / Safety Advisory Group; ticketing and real-time in/out counting (scanners or clickers); entry halted at agreed threshold; supervisors and CCTV monitor crowd density", "rL": 1, "rS": 5, "law": "MHSWR 1999; Fire Safety Order 2005; Licensing Act 2003 (premises licence conditions)", "gd": "HSE event safety – crowd management; Purple Guide – Crowd management", "free": "Y", "fg": "We supply SIA door supervisors and stewards, and run live ingress counts.", "acts": [{"ph": "before", "t": "Get a written capacity calculation based on usable area and exit widths, and agree it with the licensing authority.", "c": null}, {"ph": "before", "t": "Present your crowd management plan to the Safety Advisory Group.", "c": "cap>=800"}, {"ph": "day", "t": "Run live in and out counts and stop entry at an agreed threshold below capacity, such as 90%.", "c": null}]}, {"id": "CRW-02", "cat": "Crowd management", "haz": "Crowd surge or crush at front of stage", "con": "Crush injuries, fatalities, fainting", "who": "Audience", "trig": "struct:stage | event:concert | event:festival | event:club", "L": 3, "S": 5, "ctrl": "Front-of-stage pit barrier rated for crowd loading; trained pit team with water; agreed show-stop procedure and scripted announcement; elevated observation of crowd; artist liaison on crowd interaction", "rL": 1, "rS": 5, "law": "HSWA 1974; MHSWR 1999", "gd": "Purple Guide – Crowd management; Purple Guide – Barriers", "free": "N", "fg": "We supply trained front-of-stage pit teams.", "acts": [{"ph": "before", "t": "Get the front-of-stage barrier design and load rating from your supplier.", "c": null}, {"ph": "before", "t": "Agree a show-stop procedure and its wording with the artist, stage manager and sound engineer.", "c": null}, {"ph": "day", "t": "Keep a supervisor in an elevated position watching the front of the crowd during every performance.", "c": null}]}, {"id": "CRW-03", "cat": "Crowd management", "haz": "Congestion and queuing at ingress and egress", "con": "Trips, crush, frustration leading to disorder", "who": "Audience, staff, public", "trig": "cap>=500", "L": 3, "S": 4, "ctrl": "Queue lanes with barriers; staggered entry times communicated to ticket holders; search lanes sized to capacity; egress plan with stewards at pinch points; dispersal routes agreed with transport operators and local authority", "rL": 2, "rS": 3, "law": "HSWA 1974; MHSWR 1999", "gd": "Purple Guide – Crowd management; Purple Guide – Transport management", "free": "N", "fg": "We plan entry and exit layouts and staff search lanes and pinch points.", "acts": [{"ph": "before", "t": "Work out how many search lanes you need from your capacity and planned entry window.", "c": null}, {"ph": "before", "t": "Tell ticket holders their entry times and what they can bring, to cut queuing.", "c": null}, {"ph": "day", "t": "Stagger the exit with last orders, a music wind-down and stewards at pinch points.", "c": null}]}, {"id": "CRW-04", "cat": "Crowd management", "haz": "Disorder, violence and anti-social behaviour", "con": "Assaults, injuries, damage", "who": "Audience, staff", "trig": "ALWAYS", "L": 3, "S": 4, "ctrl": "SIA-licensed door supervisors at ratio for assessed risk; search and refusal/ejection policy; body-worn cameras; incident log; police liaison; drinks policy", "rL": 2, "rS": 3, "law": "Licensing Act 2003; Private Security Industry Act 2001", "gd": "Purple Guide – Crowd management", "free": "Y", "fg": "We supply SIA door supervisors with body-worn cameras and incident reporting.", "acts": [{"ph": "before", "t": "Set security numbers from this risk assessment and share your plan with local police licensing.", "c": null}, {"ph": "before", "t": "Write a refusal and ejection policy and brief bar and door teams together.", "c": "alcohol:any"}, {"ph": "after", "t": "Review incident logs and act on what they show before your next event.", "c": null}]}, {"id": "CRW-05", "cat": "Crowd management", "haz": "Lost or vulnerable adults", "con": "Distress, exploitation, harm", "who": "Vulnerable people", "trig": "cap>=500 | time:night", "L": 3, "S": 3, "ctrl": "Lost persons / welfare point; reporting procedure and radio codes; staff briefed; welfare team; safe space", "rL": 2, "rS": 2, "law": "HSWA 1974", "gd": "Purple Guide – Information and welfare; Welfare Handbook", "free": "N", "fg": "Our teams run lost-person procedures linked to the control room.", "acts": [{"ph": "before", "t": "Set up a welfare or information point and a radio code for lost or vulnerable people.", "c": null}, {"ph": "day", "t": "Brief every staff member on what to do when someone reports a missing or vulnerable person.", "c": null}]}, {"id": "CRW-06", "cat": "Crowd management", "haz": "Lost children / safeguarding of under-18s", "con": "Child harm, abduction, distress", "who": "Children and young people", "trig": "aud:u18", "L": 3, "S": 4, "ctrl": "Lost child procedure; designated point staffed by DBS-checked staff (never one adult alone with a child); wristbands with parent contact numbers; ID check on collection; safeguarding lead and policy", "rL": 1, "rS": 4, "law": "Children Act 1989 / 2004 (safeguarding duties)", "gd": "Purple Guide – Children", "free": "N", "fg": "We supply DBS-checked staff for lost child points.", "acts": [{"ph": "before", "t": "Write a lost child procedure and name a safeguarding lead.", "c": null}, {"ph": "day", "t": "Offer wristbands with a parent’s phone number at entry.", "c": null}, {"ph": "day", "t": "Never leave one adult alone with a child at the lost child point.", "c": null}]}, {"id": "FIR-01", "cat": "Fire", "haz": "Fire within venue or site", "con": "Burns, smoke inhalation, fatalities", "who": "All persons", "trig": "ALWAYS", "L": 2, "S": 5, "ctrl": "Fire risk assessment by the responsible person; trained fire marshals; extinguishers suited to risks; means of raising the alarm; evacuation plan; control of ignition sources and smoking; pre-open and periodic fire checks", "rL": 1, "rS": 5, "law": "Fire Safety Order 2005", "gd": "HM Government fire safety risk assessment guide – open air events and venues; Purple Guide – Fire safety", "free": "Y", "fg": "We brief our stewards on your fire plan and can support your fire marshals.", "acts": [{"ph": "before", "t": "Make sure the responsible person has a written fire risk assessment for this event.", "c": null}, {"ph": "before", "t": "Appoint and brief fire marshals for each area.", "c": null}, {"ph": "day", "t": "Do a fire check before doors open and log it.", "c": null}]}, {"id": "FIR-02", "cat": "Fire", "haz": "Blocked, locked or obstructed escape routes", "con": "Delayed evacuation, crush, fatalities", "who": "All persons", "trig": "ALWAYS", "L": 3, "S": 5, "ctrl": "Exits checked before opening and at intervals; stewards at exits; illuminated exit signage and emergency lighting; no storage in escape routes; final exits openable without a key", "rL": 1, "rS": 5, "law": "Fire Safety Order 2005", "gd": "Purple Guide – Fire safety; Purple Guide – Venue and site design", "free": "Y", "fg": "Our stewards hold exits and check escape routes throughout the event.", "acts": [{"ph": "before", "t": "Check emergency lighting and exit signs work and can be seen.", "c": null}, {"ph": "day", "t": "Walk every escape route and final exit before doors open.", "c": null}, {"ph": "day", "t": "Put a steward on each final exit during the event.", "c": null}]}, {"id": "FIR-03", "cat": "Fire", "haz": "Fire in marquee or temporary structure", "con": "Rapid fire spread, fatalities", "who": "Audience, staff", "trig": "struct:marquee", "L": 2, "S": 5, "ctrl": "Certified flame-retardant fabrics (certificate held on site); exits sized to capacity; no naked flames; approved heaters positioned safely; extinguishers at exits", "rL": 1, "rS": 5, "law": "Fire Safety Order 2005", "gd": "Purple Guide – Fire safety; Purple Guide – Structures", "free": "N", "fg": "Our production team coordinates competent suppliers and checks their sign-off.", "acts": [{"ph": "before", "t": "Get the marquee fabric’s flame-retardant certificate and keep it on site.", "c": null}, {"ph": "before", "t": "Ban naked flames inside and site any heaters to the supplier’s specification.", "c": null}]}, {"id": "FIR-04", "cat": "Fire", "haz": "LPG and cooking fires", "con": "Explosion, burns, fire spread", "who": "Traders, audience", "trig": "site:cooking", "L": 3, "S": 4, "ctrl": "Gas Safe certificates for traders; cylinders upright, secured, outdoors and away from exits; leak checks; fire blanket and extinguisher per unit; separation distances between units", "rL": 1, "rS": 4, "law": "Fire Safety Order 2005; Gas Safety (Installation and Use) Regs 1998; DSEAR 2002", "gd": "Purple Guide – Fire safety; Purple Guide – Food, drink and water", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Collect a Gas Safe certificate from every trader before they arrive.", "c": null}, {"ph": "day", "t": "Check LPG storage and fire blankets at each unit before opening.", "c": null}]}, {"id": "FIR-05", "cat": "Fire", "haz": "Fuel storage and generator refuelling", "con": "Fire, spills, burns", "who": "Staff, contractors", "trig": "site:generators", "L": 2, "S": 4, "ctrl": "Bunded fuel storage; refuel only when off and cool by trained staff; spill kits; no-smoking signage; fenced compound", "rL": 1, "rS": 4, "law": "DSEAR 2002; Fire Safety Order 2005", "gd": "Purple Guide – Electrical installations", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Store fuel in bunded containers inside a fenced compound.", "c": null}, {"ph": "day", "t": "Refuel generators only when they’re off and cool, with a spill kit to hand.", "c": null}]}, {"id": "STR-01", "cat": "Structures", "haz": "Collapse of stage or temporary demountable structure", "con": "Crush injuries, fatalities", "who": "Audience, performers, crew", "trig": "struct:stage | struct:scaffold", "L": 2, "S": 5, "ctrl": "Competent designer and supplier; design calculations including wind loading; handover/completion certificate; structural inspection before use; exclusion zones during build; wind monitoring with action levels", "rL": 1, "rS": 5, "law": "HSWA 1974; CDM 2015; PUWER 1998", "gd": "IStructE Temporary demountable structures guidance; Purple Guide – Structures", "free": "N", "fg": "Our production team coordinates competent suppliers and checks their sign-off.", "acts": [{"ph": "before", "t": "Get design calculations, including wind loading, from the structure supplier.", "c": null}, {"ph": "day", "t": "Get a signed handover certificate before anyone uses the structure.", "c": null}, {"ph": "day", "t": "Set wind speed action levels and check them throughout the event.", "c": null}]}, {"id": "STR-02", "cat": "Structures", "haz": "Marquee or tent failure in high wind", "con": "Collapse, flying debris, injuries", "who": "Audience, staff", "trig": "struct:marquee", "L": 2, "S": 5, "ctrl": "Competent supplier (e.g. MUTA member); anchoring and ballast to specification; anemometer on site; wind action plan with evacuation threshold; handover certificate", "rL": 1, "rS": 5, "law": "HSWA 1974; CDM 2015", "gd": "MUTA best practice guide; Purple Guide – Structures", "free": "N", "fg": "Our production team coordinates competent suppliers and checks their sign-off.", "acts": [{"ph": "before", "t": "Use a competent marquee supplier and get their anchoring specification.", "c": null}, {"ph": "day", "t": "Keep an anemometer on site and evacuate at the supplier’s wind limit.", "c": null}]}, {"id": "STR-03", "cat": "Structures", "haz": "Barrier failure", "con": "Crush injuries, falls", "who": "Audience", "trig": "struct:barriers", "L": 2, "S": 4, "ctrl": "Barrier type matched to expected load (pedestrian vs front-of-stage); manufacturer load rating; correct joining and footing; inspection after install and during event", "rL": 1, "rS": 4, "law": "HSWA 1974; PUWER 1998", "gd": "Purple Guide – Barriers", "free": "N", "fg": "We plan barrier layouts and staff them.", "acts": [{"ph": "before", "t": "Match barrier type to the load: front-of-stage barrier where crowds push, pedestrian barrier elsewhere.", "c": null}, {"ph": "day", "t": "Inspect barriers after they’re installed and again during the event.", "c": null}]}, {"id": "STR-04", "cat": "Structures", "haz": "Falling objects from rigging or flown equipment", "con": "Head injuries, fatalities", "who": "Crew, performers, audience", "trig": "struct:rigging", "L": 2, "S": 5, "ctrl": "LOLER-compliant equipment with thorough examination records; rigging by competent riggers; secondary safety bonds; exclusion zones during rigging", "rL": 1, "rS": 5, "law": "LOLER 1998; PUWER 1998; Work at Height Regs 2005", "gd": "Purple Guide – Structures", "free": "N", "fg": "Our production team coordinates competent suppliers and checks their sign-off.", "acts": [{"ph": "before", "t": "Get thorough examination records for all lifting equipment.", "c": null}, {"ph": "day", "t": "Fit secondary safety bonds and keep exclusion zones during rigging.", "c": null}]}, {"id": "STR-05", "cat": "Structures", "haz": "Seating stand or tiered seating failure", "con": "Collapse, falls, fatalities", "who": "Audience", "trig": "struct:seating", "L": 2, "S": 5, "ctrl": "Designed for static and dynamic crowd loading; competent installer; inspection before use; capacity marked and enforced", "rL": 1, "rS": 5, "law": "HSWA 1974; CDM 2015", "gd": "SGSA Green Guide; IStructE Temporary demountable structures guidance", "free": "N", "fg": "Our production team coordinates competent suppliers and checks their sign-off.", "acts": [{"ph": "before", "t": "Get design and inspection certificates that cover dynamic crowd loading.", "c": null}, {"ph": "day", "t": "Mark the seated capacity and enforce it.", "c": null}]}, {"id": "CDM-01", "cat": "Structures", "haz": "Uncontrolled build and break activities", "con": "Multiple injury types, contractor clashes", "who": "Contractors, staff", "trig": "struct:any", "L": 3, "S": 4, "ctrl": "CDM duty holders identified; construction phase plan; contractor RAMS reviewed; site inductions; permit system for high-risk work; build/break schedule avoids overlapping trades", "rL": 1, "rS": 4, "law": "CDM 2015", "gd": "HSE CDM guidance for the entertainment industry", "free": "N", "fg": "We manage build and break as part of event production.", "acts": [{"ph": "before", "t": "Name the principal designer and principal contractor, and write a construction phase plan.", "c": null}, {"ph": "before", "t": "Collect and review RAMS from every contractor.", "c": null}, {"ph": "day", "t": "Induct every contractor and keep a log of who’s on site.", "c": null}]}, {"id": "WAH-01", "cat": "Work at height", "haz": "Falls from height during build or break", "con": "Fractures, fatalities", "who": "Crew, contractors", "trig": "struct:any", "L": 3, "S": 5, "ctrl": "Work at height hierarchy applied; MEWPs with trained (e.g. IPAF) operators; tower scaffolds erected by trained (e.g. PASMA) staff; harnesses where required; edge protection on stages", "rL": 1, "rS": 5, "law": "Work at Height Regs 2005; CDM 2015", "gd": "HSE work at height guidance; Purple Guide – Working at height", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Check MEWP and tower operators hold current training cards, such as IPAF or PASMA.", "c": null}, {"ph": "day", "t": "Fit edge protection to stages and platforms before work starts.", "c": null}]}, {"id": "WAH-02", "cat": "Work at height", "haz": "Audience climbing structures, stage edges or trees", "con": "Falls, crush below", "who": "Audience", "trig": "struct:stage | outdoor", "L": 2, "S": 4, "ctrl": "Edge protection; anti-climb measures on towers; stewards and security monitor; ejection policy", "rL": 1, "rS": 4, "law": "HSWA 1974", "gd": "Purple Guide – Structures", "free": "N", "fg": "Our security teams patrol structures and remove climbers.", "acts": [{"ph": "before", "t": "Fit anti-climb measures to towers and lighting structures.", "c": null}, {"ph": "day", "t": "Brief security and stewards to watch for climbers.", "c": null}]}, {"id": "ELE-01", "cat": "Electrical", "haz": "Electric shock from temporary installations", "con": "Electrocution, burns", "who": "Crew, audience", "trig": "site:generators | struct:stage | outdoor", "L": 2, "S": 5, "ctrl": "Installation by competent electrician to BS 7909; RCD protection; inspected and certified before use; outdoor-rated connectors; cables protected or flown", "rL": 1, "rS": 5, "law": "Electricity at Work Regs 1989", "gd": "BS 7909; Purple Guide – Electrical installations", "free": "N", "fg": "Our production team coordinates competent suppliers and checks their sign-off.", "acts": [{"ph": "before", "t": "Use a competent electrician working to BS 7909 and get the installation certificate.", "c": null}, {"ph": "day", "t": "Check RCD protection is fitted and tested before power-up.", "c": null}]}, {"id": "ELE-02", "cat": "Electrical", "haz": "Electrical equipment in wet conditions", "con": "Electrocution, fire", "who": "Crew, audience", "trig": "outdoor", "L": 2, "S": 5, "ctrl": "IP-rated equipment; covered distribution boards raised off the ground; isolation procedure in heavy rain", "rL": 1, "rS": 5, "law": "Electricity at Work Regs 1989", "gd": "BS 7909; Purple Guide – Electrical installations", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Use IP-rated equipment and raise distribution boards off the ground.", "c": null}, {"ph": "day", "t": "Agree when power will be isolated in heavy rain.", "c": null}]}, {"id": "ELE-03", "cat": "Electrical", "haz": "Generator exhaust and carbon monoxide", "con": "CO poisoning, burns", "who": "Crew, audience", "trig": "site:generators", "L": 2, "S": 4, "ctrl": "Generators sited away from audience, tents and air intakes; fenced; never in enclosed spaces", "rL": 1, "rS": 4, "law": "HSWA 1974; COSHH 2002", "gd": "Purple Guide – Electrical installations", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Mark generator positions on the site plan, away from tents, audience areas and air intakes.", "c": null}, {"ph": "day", "t": "Fence generators off from the public.", "c": null}]}, {"id": "STF-01", "cat": "Slips, trips and falls", "haz": "Uneven ground, cables, wet floors and steps", "con": "Sprains, fractures, head injuries", "who": "All persons", "trig": "ALWAYS", "L": 4, "S": 2, "ctrl": "Cable ramps or flown cables; ground surveyed and trackway laid where needed; adequate lighting; spill procedure; step edges marked", "rL": 2, "rS": 2, "law": "HSWA 1974; Workplace (Health, Safety and Welfare) Regs 1992", "gd": "HSE slips and trips guidance", "free": "Y", "fg": "", "acts": [{"ph": "before", "t": "Survey the ground and plan trackway or matting where it’s uneven.", "c": null}, {"ph": "day", "t": "Ramp or fly every cable that crosses a walkway.", "c": null}, {"ph": "day", "t": "Give someone the job of dealing with spills and wet floors quickly.", "c": null}]}, {"id": "STF-02", "cat": "Slips, trips and falls", "haz": "Poor lighting after dark", "con": "Falls, collisions, crime", "who": "All persons", "trig": "time:evening", "L": 3, "S": 3, "ctrl": "Site and route lighting; emergency lighting; staff issued torches", "rL": 1, "rS": 3, "law": "HSWA 1974; Fire Safety Order 2005", "gd": "Purple Guide – Venue and site design", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Plan lighting for every route, car park and exit used after dark.", "c": null}, {"ph": "day", "t": "Issue torches to all staff.", "c": null}]}, {"id": "VEH-01", "cat": "Vehicles and traffic", "haz": "Vehicle and pedestrian collisions during build and break", "con": "Crush injuries, fatalities", "who": "Crew, contractors", "trig": "site:vehicles", "L": 3, "S": 5, "ctrl": "Traffic management plan; segregated pedestrian and vehicle routes; banksmen for reversing; site speed limit; hi-vis; no vehicle movement in audience areas while open unless escorted", "rL": 1, "rS": 5, "law": "HSWA 1974; CDM 2015", "gd": "HSE workplace transport guidance; Purple Guide – Transport management", "free": "Y", "fg": "Our logistics team runs site traffic management with trained banksmen.", "acts": [{"ph": "before", "t": "Write a site traffic management plan with separate pedestrian and vehicle routes.", "c": null}, {"ph": "day", "t": "Use banksmen for every reversing manoeuvre and enforce a site speed limit.", "c": null}]}, {"id": "VEH-02", "cat": "Vehicles and traffic", "haz": "Vehicle movement during the event / blocked emergency access", "con": "Collisions, delayed emergency response", "who": "Audience, staff", "trig": "site:vehicles", "L": 2, "S": 5, "ctrl": "Essential movements only, escorted with steward walking ahead and hazard lights; emergency access routes kept clear and checked", "rL": 1, "rS": 5, "law": "HSWA 1974", "gd": "Purple Guide – Transport management", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Mark emergency access routes on the site plan and agree them with the emergency services.", "c": null}, {"ph": "day", "t": "Only let vehicles into audience areas with a steward walking ahead.", "c": null}]}, {"id": "VEH-03", "cat": "Vehicles and traffic", "haz": "Public road traffic and road closures", "con": "Collisions with pedestrians", "who": "Audience, public", "trig": "site:road_closures | venue:urban", "L": 3, "S": 5, "ctrl": "Road closure order in place; competent traffic management contractor; signage; stewards at closure points; liaison with highway authority and police", "rL": 1, "rS": 5, "law": "Road Traffic Regulation Act 1984; Town Police Clauses Act 1847", "gd": "DfT Traffic Signs Manual Chapter 8; Purple Guide – Transport management", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Apply early for any road closure order and check your council’s notice period.", "c": null}, {"ph": "before", "t": "Use a competent traffic management contractor.", "c": null}]}, {"id": "SEC-01", "cat": "Security and counter-terrorism", "haz": "Terrorist attack (e.g. marauding attacker, explosive device)", "con": "Mass casualties", "who": "All persons", "trig": "ALWAYS", "L": 2, "S": 5, "ctrl": "Public protection procedures for evacuation, invacuation, lockdown and communication; staff counter-terrorism awareness training; proportionate search and screening; CCTV; liaison with police counter-terrorism security advisers", "rL": 1, "rS": 5, "law": "Terrorism (Protection of Premises) Act 2025 (tier applies from 200 capacity; enhanced at 800+)", "gd": "ProtectUK guidance; Purple Guide – security topics", "free": "Y", "fg": "We write public protection procedures and run staff counter-terrorism briefings.", "acts": [{"ph": "before", "t": "Write evacuation, invacuation, lockdown and communication procedures for this site.", "c": null}, {"ph": "before", "t": "Have staff complete counter-terrorism awareness training, such as ProtectUK’s ACT e-learning.", "c": null}, {"ph": "day", "t": "Brief all staff on the procedures and code words before doors open.", "c": null}]}, {"id": "SEC-02", "cat": "Security and counter-terrorism", "haz": "Hostile vehicle attack", "con": "Mass casualties", "who": "Audience, public", "trig": "cap>=800 & (outdoor | venue:urban)", "L": 2, "S": 5, "ctrl": "Hostile vehicle mitigation assessment; rated barriers or blocking vehicles at approaches; vehicle access control", "rL": 1, "rS": 5, "law": "Terrorism (Protection of Premises) Act 2025", "gd": "ProtectUK / NPSA hostile vehicle mitigation guidance", "free": "N", "fg": "We assess vehicle approaches and plan protective measures.", "acts": [{"ph": "before", "t": "Get a hostile vehicle mitigation assessment for crowded approaches.", "c": null}, {"ph": "day", "t": "Block or control vehicle access wherever crowds gather.", "c": null}]}, {"id": "SEC-03", "cat": "Security and counter-terrorism", "haz": "Weapons brought on site", "con": "Stabbings, serious injury", "who": "Audience, staff", "trig": "cap>=200", "L": 2, "S": 5, "ctrl": "Search policy with conditions of entry signage; search wands or arches; amnesty bins; refusal and police liaison", "rL": 1, "rS": 5, "law": "Private Security Industry Act 2001; Licensing Act 2003", "gd": "Purple Guide – security topics", "free": "N", "fg": "We supply SIA search teams with wands and arches.", "acts": [{"ph": "before", "t": "Publish conditions of entry, including search, on tickets and signs.", "c": null}, {"ph": "day", "t": "Search everyone on entry and provide amnesty bins.", "c": null}]}, {"id": "SEC-04", "cat": "Security and counter-terrorism", "haz": "Theft and crime (pickpocketing, cash handling)", "con": "Loss, distress, assault", "who": "Audience, staff", "trig": "ALWAYS", "L": 3, "S": 2, "ctrl": "Cashless payments where possible; escorted cash collections; CCTV; crime awareness messaging", "rL": 2, "rS": 2, "law": "HSWA 1974", "gd": "Purple Guide – security topics", "free": "N", "fg": "We install and monitor CCTV.", "acts": [{"ph": "before", "t": "Go cashless wherever you can.", "c": null}, {"ph": "day", "t": "Escort cash collections and vary their timing.", "c": null}]}, {"id": "SEC-05", "cat": "Security and counter-terrorism", "haz": "Unauthorised access / perimeter breach", "con": "Overcrowding, crime", "who": "Audience, staff", "trig": "outdoor", "L": 3, "S": 3, "ctrl": "Perimeter fencing inspected; patrols; CCTV; response team", "rL": 2, "rS": 2, "law": "HSWA 1974", "gd": "Purple Guide – Venue and site design", "free": "N", "fg": "We supply patrol teams and CCTV for perimeters.", "acts": [{"ph": "day", "t": "Patrol the perimeter and check fencing at set times.", "c": null}]}, {"id": "ALC-01", "cat": "Alcohol and drugs", "haz": "Excessive intoxication", "con": "Falls, assaults, alcohol poisoning", "who": "Audience", "trig": "alcohol:any", "L": 4, "S": 3, "ctrl": "Licensing objectives promoted; trained bar staff; refusal policy; free drinking water; welfare provision; staff briefed on intoxication", "rL": 2, "rS": 3, "law": "Licensing Act 2003", "gd": "Purple Guide – Information and welfare", "free": "Y", "fg": "We supply door teams experienced in managing intoxicated guests.", "acts": [{"ph": "before", "t": "Train bar staff on refusing service and brief them alongside security.", "c": null}, {"ph": "day", "t": "Give out free drinking water at every bar.", "c": null}, {"ph": "day", "t": "Wind down bar service before the end to make the exit calmer.", "c": "time:night"}]}, {"id": "ALC-02", "cat": "Alcohol and drugs", "haz": "Underage alcohol sales", "con": "Harm to young people, licence breach", "who": "Under-18s", "trig": "alcohol:any & aud:u18", "L": 3, "S": 3, "ctrl": "Challenge 25; over-18 wristbands; refusals log; bar staff trained", "rL": 1, "rS": 3, "law": "Licensing Act 2003", "gd": "Home Office licensing guidance", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Run Challenge 25 and keep a refusals log.", "c": null}, {"ph": "day", "t": "Wristband over-18s at a separate check point.", "c": null}]}, {"id": "ALC-03", "cat": "Alcohol and drugs", "haz": "Glass injuries", "con": "Cuts, glassing assaults", "who": "Audience, staff", "trig": "alcohol:bar", "L": 3, "S": 3, "ctrl": "Polycarbonate drinkware; no-glass policy; glass collection", "rL": 1, "rS": 3, "law": "HSWA 1974; Licensing Act 2003", "gd": "Purple Guide – Food, drink and water", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Switch to polycarbonate drinkware.", "c": null}, {"ph": "day", "t": "Run regular glass collections.", "c": null}]}, {"id": "DRG-01", "cat": "Alcohol and drugs", "haz": "Drug-related harm and overdose", "con": "Collapse, fatalities", "who": "Audience", "trig": "event:club | event:festival | event:concert | time:night", "L": 3, "S": 5, "ctrl": "Drugs policy; search; medical provider experienced in drug-related presentations; welfare and chill-out areas; drug safety messaging; amnesty bins; police liaison", "rL": 2, "rS": 4, "law": "Misuse of Drugs Act 1971; HSWA 1974", "gd": "Purple Guide – Medical; Purple Guide – Information and welfare", "free": "N", "fg": "We supply search teams and work alongside your medical and welfare providers.", "acts": [{"ph": "before", "t": "Brief your medical provider on the event so they staff for drug-related cases.", "c": null}, {"ph": "before", "t": "Agree your drugs policy with local police.", "c": null}, {"ph": "day", "t": "Provide amnesty bins and a welfare or chill-out area.", "c": null}]}, {"id": "DRG-02", "cat": "Alcohol and drugs", "haz": "Drink spiking", "con": "Incapacitation, assault", "who": "Audience", "trig": "alcohol:any & time:evening", "L": 3, "S": 4, "ctrl": "Staff awareness training (e.g. Ask for Angela); reporting procedure; testing kits at welfare; drink covers available", "rL": 2, "rS": 3, "law": "Licensing Act 2003", "gd": "Home Office spiking guidance", "free": "N", "fg": "We brief our door teams on spiking awareness and reporting.", "acts": [{"ph": "before", "t": "Train bar and security staff in spiking awareness, such as Ask for Angela.", "c": null}, {"ph": "day", "t": "Make drink covers available at bars.", "c": null}]}, {"id": "MED-01", "cat": "Medical and welfare", "haz": "Medical emergency (illness, injury, cardiac arrest)", "con": "Serious harm, fatalities", "who": "All persons", "trig": "ALWAYS", "L": 3, "S": 5, "ctrl": "Medical cover set by a medical needs assessment; CQC-registered provider where required; AEDs on site with locations known to staff; first aiders; ambulance access route; incident recording and RIDDOR reporting", "rL": 2, "rS": 4, "law": "Health and Safety (First-Aid) Regs 1981; RIDDOR 2013", "gd": "Purple Guide – Medical", "free": "Y", "fg": "", "acts": [{"ph": "before", "t": "Do a medical needs assessment and book a provider to match it, CQC-registered where required.", "c": null}, {"ph": "before", "t": "Map where the AEDs are and tell every staff member.", "c": null}, {"ph": "day", "t": "Keep an ambulance access route clear at all times.", "c": null}]}, {"id": "MED-02", "cat": "Medical and welfare", "haz": "Heat illness and dehydration", "con": "Heat exhaustion, heat stroke", "who": "Audience, staff", "trig": "outdoor", "L": 3, "S": 4, "ctrl": "Free drinking water points; shade; sun safety messaging; hot weather plan with action levels; medical team briefed", "rL": 1, "rS": 4, "law": "HSWA 1974", "gd": "UKHSA heat-health guidance; Purple Guide – Weather", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Write a hot weather plan with action levels.", "c": null}, {"ph": "day", "t": "Set up free water points and shade, and share sun safety messages.", "c": null}]}, {"id": "MED-03", "cat": "Medical and welfare", "haz": "Cold exposure and hypothermia", "con": "Hypothermia, worsening intoxication", "who": "Audience, staff", "trig": "outdoor & (time:night | time:camping)", "L": 2, "S": 4, "ctrl": "Warm indoor or sheltered areas; weather messaging; welfare checks on vulnerable people", "rL": 1, "rS": 4, "law": "HSWA 1974", "gd": "Purple Guide – Weather", "free": "N", "fg": "", "acts": [{"ph": "day", "t": "Provide a warm, sheltered space and check on vulnerable people overnight.", "c": null}]}, {"id": "MED-04", "cat": "Medical and welfare", "haz": "Inadequate sanitation and toilets", "con": "Illness, queues, public urination", "who": "Audience", "trig": "outdoor | cap>=500", "L": 3, "S": 3, "ctrl": "Toilet numbers to Purple Guide ratios; accessible toilets; servicing schedule; hand-washing facilities", "rL": 1, "rS": 3, "law": "HSWA 1974; Equality Act 2010", "gd": "Purple Guide – Sanitary facilities", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Work out toilet numbers using the Purple Guide’s ratios, including accessible toilets.", "c": null}, {"ph": "day", "t": "Service toilets on a set schedule.", "c": null}]}, {"id": "MED-05", "cat": "Medical and welfare", "haz": "Insufficient drinking water", "con": "Dehydration, heat illness", "who": "Audience, staff", "trig": "outdoor", "L": 2, "S": 4, "ctrl": "Potable supply with free water points; supply tested; water points shown on site map", "rL": 1, "rS": 4, "law": "Private Water Supplies Regs 2016 (where applicable); Licensing Act 2003 (free water condition)", "gd": "Purple Guide – Food, drink and water", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Arrange a potable water supply and get it tested.", "c": null}, {"ph": "day", "t": "Show free water points on the site map.", "c": null}]}, {"id": "MED-06", "cat": "Medical and welfare", "haz": "Unmet welfare needs (distressed, intoxicated, vulnerable people)", "con": "Harm to vulnerable people", "who": "Audience", "trig": "cap>=500 | time:night", "L": 3, "S": 3, "ctrl": "Welfare team and space; welfare procedures; referral pathway to medical; staff briefed", "rL": 1, "rS": 3, "law": "HSWA 1974", "gd": "Purple Guide – Information and welfare; Welfare Handbook", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Book a welfare team and agree how they refer people to medical.", "c": null}]}, {"id": "NOI-01", "cat": "Noise", "haz": "Hearing damage to staff", "con": "Noise-induced hearing loss, tinnitus", "who": "Staff, crew", "trig": "struct:stage | event:concert | event:club | event:festival", "L": 3, "S": 4, "ctrl": "Noise exposure assessment; hearing protection zones with protection provided; job rotation; monitoring against exposure action values", "rL": 1, "rS": 4, "law": "Control of Noise at Work Regs 2005", "gd": "HSE Sound Advice; Purple Guide – Sound, noise and vibration", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Do a noise exposure assessment for staff working near the PA and stage.", "c": null}, {"ph": "day", "t": "Issue hearing protection and enforce it in hearing protection zones.", "c": null}]}, {"id": "NOI-02", "cat": "Noise", "haz": "Hearing damage to audience", "con": "Hearing loss, tinnitus", "who": "Audience", "trig": "struct:stage | event:concert | event:club | event:festival", "L": 3, "S": 3, "ctrl": "Sound level limits monitored at front of house; free earplugs; audience kept back from speakers", "rL": 2, "rS": 2, "law": "HSWA 1974", "gd": "Purple Guide – Sound, noise and vibration", "free": "N", "fg": "", "acts": [{"ph": "day", "t": "Monitor sound levels at front of house and offer free earplugs.", "c": null}]}, {"id": "NOI-03", "cat": "Noise", "haz": "Noise nuisance to neighbours", "con": "Complaints, licence breach", "who": "Residents", "trig": "outdoor", "L": 3, "S": 2, "ctrl": "Noise management plan; off-site limits agreed with local authority; monitoring; curfew observed", "rL": 2, "rS": 2, "law": "Environmental Protection Act 1990; Licensing Act 2003", "gd": "Code of Practice on Environmental Noise Control at Concerts; Purple Guide – Sound, noise and vibration", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Agree off-site noise limits with the local authority.", "c": null}, {"ph": "day", "t": "Monitor noise at the nearest homes and keep to the curfew.", "c": null}, {"ph": "after", "t": "Log and respond to every complaint.", "c": null}]}, {"id": "SFX-01", "cat": "Special effects", "haz": "Pyrotechnics and stage special effects", "con": "Burns, fire, eye injuries", "who": "Performers, crew, audience", "trig": "act:pyro", "L": 2, "S": 5, "ctrl": "Competent pyrotechnician; storage and licensing to explosives regulations; safety distances; firing only on clearance; fire cover", "rL": 1, "rS": 5, "law": "Explosives Regs 2014; Pyrotechnic Articles (Safety) Regs 2015", "gd": "Purple Guide – Special effects, fireworks and pyrotechnics", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Use a competent pyrotechnician and get their method statement and licences.", "c": null}, {"ph": "day", "t": "Fire effects only on the stage manager’s clearance.", "c": null}]}, {"id": "SFX-02", "cat": "Special effects", "haz": "Fireworks display", "con": "Burns, debris injuries, fire", "who": "Audience, operators", "trig": "act:fireworks", "L": 2, "S": 5, "ctrl": "Professional display operator; fallout zone fenced and stewarded; wind check before firing; secure firing site; debris sweep afterwards", "rL": 1, "rS": 5, "law": "Explosives Regs 2014; Pyrotechnic Articles (Safety) Regs 2015", "gd": "HSE HSG123 Working together on firework displays", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Use a professional display operator and plan a fenced fallout zone.", "c": null}, {"ph": "day", "t": "Check wind direction before firing and sweep for debris afterwards.", "c": null}]}, {"id": "SFX-03", "cat": "Special effects", "haz": "Laser effects", "con": "Eye injuries", "who": "Audience, performers, crew", "trig": "act:lasers", "L": 2, "S": 4, "ctrl": "Laser safety assessment; competent operator; audience scanning only within safe exposure limits; emergency stop", "rL": 1, "rS": 4, "law": "HSWA 1974", "gd": "BS EN 60825; HSE laser guidance", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Get a laser safety assessment from the operator.", "c": null}, {"ph": "day", "t": "Make sure the operator has an emergency stop within reach.", "c": null}]}, {"id": "SFX-04", "cat": "Special effects", "haz": "Strobe and flashing lights", "con": "Seizures in people with photosensitive epilepsy", "who": "Audience", "trig": "event:club | event:concert | event:festival | act:lasers", "L": 2, "S": 4, "ctrl": "Advance warnings on tickets and signage; flash rate limits; medical team aware", "rL": 1, "rS": 4, "law": "Equality Act 2010", "gd": "Purple Guide – Special effects, fireworks and pyrotechnics", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Warn about strobe lighting on tickets and signs.", "c": null}]}, {"id": "SFX-05", "cat": "Special effects", "haz": "Smoke and haze effects", "con": "Reduced visibility, false fire alarms, respiratory irritation", "who": "Audience, crew", "trig": "struct:stage | event:club", "L": 3, "S": 2, "ctrl": "Water-based fluids; any fire alarm isolation agreed with the fire safety lead with a fire watch in place; signage", "rL": 1, "rS": 2, "law": "COSHH 2002; Fire Safety Order 2005", "gd": "Purple Guide – Special effects, fireworks and pyrotechnics", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Agree any fire alarm isolation in writing, with a fire watch in place.", "c": null}]}, {"id": "WEA-01", "cat": "Weather", "haz": "High winds", "con": "Structure collapse, flying debris", "who": "All persons", "trig": "outdoor | struct:marquee", "L": 3, "S": 5, "ctrl": "Wind action plan with set thresholds; forecast and anemometer monitoring; loose items secured; banners and flags removed at threshold; structure suppliers' limits followed", "rL": 1, "rS": 5, "law": "HSWA 1974; MHSWR 1999", "gd": "Purple Guide – Weather", "free": "Y", "fg": "Our control room monitors the weather and runs wind action plans.", "acts": [{"ph": "before", "t": "Write a wind action plan with set speeds for each response, from removing banners to evacuating.", "c": null}, {"ph": "day", "t": "Check forecasts and anemometer readings at set times and log them.", "c": null}]}, {"id": "WEA-02", "cat": "Weather", "haz": "Lightning", "con": "Electrocution, fatalities", "who": "All persons", "trig": "outdoor", "L": 2, "S": 5, "ctrl": "Forecast monitoring; lightning action plan; suspend activities and clear exposed areas; shelter messaging; structures earthed", "rL": 1, "rS": 5, "law": "HSWA 1974", "gd": "Purple Guide – Weather", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Write a lightning plan that says when activities stop.", "c": null}, {"ph": "day", "t": "Watch lightning alerts and clear exposed areas when a storm approaches.", "c": null}]}, {"id": "WEA-03", "cat": "Weather", "haz": "Heavy rain, flooding and poor ground", "con": "Slips, vehicles stuck, site closure", "who": "All persons", "trig": "outdoor", "L": 3, "S": 3, "ctrl": "Ground assessment; trackway and matting; drainage; cancellation contingency", "rL": 2, "rS": 2, "law": "HSWA 1974", "gd": "Purple Guide – Weather", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Order trackway and matting in case of poor ground.", "c": null}, {"ph": "before", "t": "Agree who decides to cancel, and by when.", "c": null}]}, {"id": "FOO-01", "cat": "Food safety", "haz": "Food poisoning", "con": "Illness", "who": "Audience", "trig": "site:catering | site:cooking", "L": 2, "S": 4, "ctrl": "Registered food businesses only; hygiene ratings checked; temperature control; hand-washing; liaison with environmental health", "rL": 1, "rS": 4, "law": "Food Safety Act 1990; Food Safety and Hygiene (England) Regs 2013", "gd": "FSA guidance; Purple Guide – Food, drink and water", "free": "N", "fg": "We provide catering support staff.", "acts": [{"ph": "before", "t": "Check every trader is registered with their council and has a good hygiene rating.", "c": null}]}, {"id": "FOO-02", "cat": "Food safety", "haz": "Allergic reactions", "con": "Anaphylaxis, fatalities", "who": "Audience", "trig": "site:catering | site:cooking", "L": 3, "S": 5, "ctrl": "Information on the 14 regulated allergens available; trained staff; correct labelling of pre-packed food; medical team aware", "rL": 1, "rS": 5, "law": "Food Information Regs 2014", "gd": "FSA allergen guidance", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Get allergen information for the 14 regulated allergens from every trader.", "c": null}, {"ph": "day", "t": "Brief the medical team on allergy risks.", "c": null}]}, {"id": "FOO-03", "cat": "Food safety", "haz": "Burns and scalds from cooking", "con": "Burns", "who": "Traders, audience", "trig": "site:cooking", "L": 3, "S": 3, "ctrl": "Competent traders; fire blankets; layout keeps public away from cooking areas; first aid available", "rL": 1, "rS": 3, "law": "HSWA 1974", "gd": "Purple Guide – Food, drink and water", "free": "N", "fg": "", "acts": [{"ph": "day", "t": "Lay out cooking areas so the public can’t reach hot equipment.", "c": null}]}, {"id": "MAN-01", "cat": "Manual handling", "haz": "Lifting and carrying during build, break and deliveries", "con": "Back and musculoskeletal injuries", "who": "Staff, crew", "trig": "ALWAYS", "L": 3, "S": 3, "ctrl": "Manual handling assessments; trolleys and mechanical aids; team lifts; training", "rL": 2, "rS": 2, "law": "Manual Handling Operations Regs 1992", "gd": "HSE manual handling guidance", "free": "N", "fg": "Our logistics crews handle load-in and load-out.", "acts": [{"ph": "before", "t": "Plan load-in and load-out with trolleys, forklifts or tail-lifts.", "c": null}, {"ph": "day", "t": "Use team lifts for anything heavy or awkward.", "c": null}]}, {"id": "ACT-01", "cat": "Activities and attractions", "haz": "Inflatables and fairground rides", "con": "Falls, collapse, crush", "who": "Users, especially children", "trig": "act:rides", "L": 2, "S": 4, "ctrl": "Inspection certificates (e.g. ADIPS or PIPA); competent operators; anchoring; wind limits; supervision; age and height limits", "rL": 1, "rS": 4, "law": "HSWA 1974; PUWER 1998", "gd": "HSE HSG175 Fairgrounds and amusement parks; Purple Guide – Amusements and attractions", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Get ADIPS or PIPA inspection certificates for every ride and inflatable.", "c": null}, {"ph": "day", "t": "Stop inflatables at the operator’s wind limit.", "c": null}]}, {"id": "ACT-02", "cat": "Activities and attractions", "haz": "Water features and waterside areas", "con": "Drowning", "who": "Audience", "trig": "act:water | site:waterside", "L": 2, "S": 5, "ctrl": "Barriers at water edges; rescue equipment; trained lifeguards where needed; stewarding; access restricted after dark", "rL": 1, "rS": 5, "law": "HSWA 1974", "gd": "RoSPA water safety guidance", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Fence water edges and provide rescue equipment.", "c": null}, {"ph": "day", "t": "Close off water areas after dark.", "c": "time:evening"}]}, {"id": "ACT-03", "cat": "Activities and attractions", "haz": "Animals", "con": "Bites, kicks, infection", "who": "Audience, handlers", "trig": "act:animals", "L": 2, "S": 3, "ctrl": "Licensed handlers; barriers; hand-washing stations; local authority licence where required", "rL": 1, "rS": 3, "law": "Animal Welfare (Licensing of Activities Involving Animals) (England) Regs 2018", "gd": "HSE guidance on preventing infection at visitor attractions", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Check the handler’s licence and insurance.", "c": null}, {"ph": "day", "t": "Put hand-washing stations next to animal areas.", "c": null}]}, {"id": "ACC-01", "cat": "Accessibility", "haz": "Disabled people unable to access or evacuate safely", "con": "Injury, exclusion", "who": "Disabled people", "trig": "ALWAYS", "L": 2, "S": 4, "ctrl": "Accessible routes and facilities; evacuation arrangements for disabled people; viewing platforms where needed; staff awareness; accessible information", "rL": 1, "rS": 4, "law": "Equality Act 2010; Fire Safety Order 2005", "gd": "Purple Guide – accessibility chapter", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Plan how disabled people will be evacuated, including from raised areas.", "c": null}, {"ph": "before", "t": "Publish access information before the event.", "c": null}]}, {"id": "STA-01", "cat": "Staff safety", "haz": "Violence and aggression towards staff", "con": "Assault, injury, trauma", "who": "Staff", "trig": "ALWAYS", "L": 3, "S": 4, "ctrl": "Conflict management training; working in pairs; body-worn cameras; radios; incident reporting; welfare support after incidents", "rL": 2, "rS": 3, "law": "HSWA 1974; RIDDOR 2013", "gd": "HSE work-related violence guidance", "free": "Y", "fg": "Our teams are trained in conflict management and use body-worn cameras.", "acts": [{"ph": "before", "t": "Train front-line staff in conflict management.", "c": null}, {"ph": "day", "t": "Give a radio to everyone dealing with the public.", "c": null}, {"ph": "after", "t": "Check in with staff after any incident and log it.", "c": null}]}, {"id": "STA-02", "cat": "Staff safety", "haz": "Fatigue from long shifts", "con": "Errors, accidents", "who": "Staff", "trig": "time:night | time:multi", "L": 3, "S": 3, "ctrl": "Shift patterns planned; breaks and rest areas; working hours monitored", "rL": 1, "rS": 3, "law": "Working Time Regs 1998", "gd": "HSE fatigue guidance", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Plan shifts with breaks and enough rest between them.", "c": null}]}, {"id": "STA-03", "cat": "Staff safety", "haz": "Lone working", "con": "Delayed help after incident", "who": "Staff", "trig": "outdoor | time:night", "L": 2, "S": 3, "ctrl": "Radio check-ins; buddy system; no lone working in high-risk areas", "rL": 1, "rS": 3, "law": "HSWA 1974; MHSWR 1999", "gd": "HSE lone working guidance", "free": "N", "fg": "", "acts": [{"ph": "day", "t": "Set radio check-in times for anyone working alone.", "c": null}]}, {"id": "STA-04", "cat": "Staff safety", "haz": "Communications failure (radios, PA)", "con": "Delayed emergency response", "who": "All persons", "trig": "cap>=500", "L": 2, "S": 4, "ctrl": "Radio plan with channels; spare batteries and handsets; backup phone list; PA with pre-scripted emergency messages; control room", "rL": 1, "rS": 4, "law": "MHSWR 1999", "gd": "Purple Guide – Communication", "free": "N", "fg": "We supply licensed radios and run control-room comms plans.", "acts": [{"ph": "before", "t": "Write a radio plan with channels and call signs, and pre-script emergency PA messages.", "c": null}, {"ph": "day", "t": "Carry spare batteries and handsets, and keep a backup phone list.", "c": null}]}, {"id": "COS-01", "cat": "Staff safety", "haz": "Cleaning chemicals and hazardous substances", "con": "Burns, respiratory harm", "who": "Staff", "trig": "ALWAYS", "L": 2, "S": 3, "ctrl": "COSHH assessments; correct storage; PPE provided; safety data sheets on site", "rL": 1, "rS": 3, "law": "COSHH 2002", "gd": "HSE COSHH guidance", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Get safety data sheets for every cleaning chemical and do COSHH assessments.", "c": null}]}, {"id": "CAM-01", "cat": "Camping", "haz": "Campsite hazards (tent fires, crime, overcrowding)", "con": "Burns, theft, assault", "who": "Campers", "trig": "time:camping", "L": 3, "S": 4, "ctrl": "Fire lanes and tent spacing; no open fires; patrols; lighting; welfare in campsites", "rL": 1, "rS": 4, "law": "Fire Safety Order 2005; HSWA 1974", "gd": "Purple Guide – Camping", "free": "N", "fg": "We supply campsite patrol and security teams.", "acts": [{"ph": "before", "t": "Lay out campsites with fire lanes and set tent spacing.", "c": null}, {"ph": "day", "t": "Patrol campsites overnight.", "c": null}]}, {"id": "WAS-01", "cat": "Waste", "haz": "Waste build-up (fire load, slips, sharps, vermin)", "con": "Fire, injuries, needle-stick", "who": "Staff, audience", "trig": "cap>=500 | outdoor", "L": 3, "S": 3, "ctrl": "Waste management plan; enough bins; regular litter picks; sharps boxes and trained pickers", "rL": 1, "rS": 3, "law": "Environmental Protection Act 1990", "gd": "Purple Guide – Waste management", "free": "N", "fg": "", "acts": [{"ph": "before", "t": "Write a waste plan with bin numbers and collection times.", "c": null}, {"ph": "day", "t": "Give litter pickers sharps boxes and training.", "c": null}]}, {"id": "EMG-01", "cat": "Emergency planning", "haz": "Major incident needing evacuation, invacuation or lockdown", "con": "Mass casualties", "who": "All persons", "trig": "ALWAYS", "L": 2, "S": 5, "ctrl": "Emergency plan with command structure and code words; staff briefings; liaison with emergency services; rendezvous points; scripted announcements", "rL": 1, "rS": 5, "law": "MHSWR 1999 (reg 8); Fire Safety Order 2005; Terrorism (Protection of Premises) Act 2025", "gd": "Purple Guide – Major incident planning", "free": "Y", "fg": "We write emergency plans, brief staff and run event control rooms.", "acts": [{"ph": "before", "t": "Write an emergency plan with a clear command structure and code words.", "c": null}, {"ph": "before", "t": "Share your emergency plan with the emergency services and Safety Advisory Group.", "c": "cap>=800"}, {"ph": "day", "t": "Brief every team on the plan and rendezvous points before doors open.", "c": null}, {"ph": "after", "t": "Debrief after the event and update the plan.", "c": null}]}];
+/* Gap actions: added first when a provision answer is No or Not sure */
+const GAP = {"security": ["Book SIA-licensed security, with numbers set by this risk assessment.", "We supply SIA door supervisors, search teams and response teams across London."], "medical": ["Book medical cover based on a medical needs assessment.", ""], "stewards": ["Book stewards for entry, exits and crowd monitoring.", "We supply trained stewards for entry, exits and crowd monitoring."], "fire": ["Appoint and train fire marshals for each area.", ""]};
+const PHASES = [["before","Before"],["day","On the day"],["after","After"]];
+
+/* ---------- Questions (from the Form Triggers tab) ---------- */
+const SINGLE = {
+  type:{label:"What kind of event is it?", opts:[
+    ["concert","Concert or gig",["event:concert"]],["club","Club night",["event:club"]],
+    ["festival","Festival",["event:festival"]],["conference","Conference",["event:conference"]],
+    ["private","Private party",["event:private"]],["sport","Sporting event",["event:sport"]],
+    ["community","Community event or fete",["event:community"]],["exhibition","Exhibition",["event:exhibition"]]]},
+  venue:{label:"Where is it held?", opts:[
+    ["indoor","Indoors",["indoor"]],["greenfield","Outdoor greenfield",["outdoor"]],
+    ["urban","Outdoor urban or street",["outdoor","venue:urban"]],["marquee","In a marquee",["outdoor","struct:marquee","struct:any"]],
+    ["mixed","Mixed indoor and outdoor",["indoor","outdoor"],true]]},
+  cap:{label:"Maximum number of people on site at once", hint:"Include staff, performers and contractors.", opts:[
+    ["0","Under 200",[]],["200","200 to 499",[]],["500","500 to 799",[]],
+    ["800","800 to 1,999",[]],["2000","2,000 to 4,999",[]],["5000","5,000 or more",[]]]},
+  timing:{label:"When does it run?", opts:[
+    ["day","Daytime only",["time:day"]],["evening","Evening",["time:evening"]],
+    ["night","Late night or overnight",["time:evening","time:night"]],["multi","Several days, no camping",["time:multi"]],
+    ["camping","Several days with camping",["time:multi","time:night","time:evening","time:camping"],true]]},
+  alcohol:{label:"Will alcohol be available?", opts:[
+    ["none","No alcohol",[]],["bar","Bar selling drinks",["alcohol:any","alcohol:bar"]],
+    ["byo","Bring your own",["alcohol:any"]],["inclusive","Free or all-inclusive bar",["alcohol:any","alcohol:bar"]]]},
+  audience:{label:"Who is the audience?", opts:[
+    ["family","Families",["aud:family","aud:u18"]],["adults","Adults only",["aud:adult"]],
+    ["u18","Under-18s event",["aud:u18"]],["mixed","Mixed ages",["aud:u18"]],
+    ["vip","VIP or hospitality guests",["aud:adult"],true]]}
+};
+const MULTI = {
+  struct:{label:"Temporary structures", hint:"Choose all that apply.", opts:[
+    ["stage","Stage"],["marquee","Marquee"],["barriers","Barriers"],["scaffold","Scaffolding or towers"],
+    ["seating","Seating stands"],["rigging","Flown rigging"]], tags:k=>["struct:"+k,"struct:any"]},
+  act:{label:"Activities and effects", hint:"Choose all that apply.", opts:[
+    ["pyro","Pyrotechnics or stage effects"],["lasers","Lasers"],["rides","Rides or inflatables"],
+    ["fireworks","Fireworks display"],["water","Water features"],["animals","Animals"]], tags:k=>["act:"+k]},
+  site:{label:"Site factors", hint:"Choose all that apply.", opts:[
+    ["vehicles","Vehicles on site"],["generators","Generators"],["cooking","Cooking or LPG"],
+    ["catering","Food and drink traders"],["waterside","Near open water"],["road_closures","Road closures"]],
+    tags:k=>k==="cooking" ? ["site:cooking","site:catering"] : ["site:"+k]}
+};
+const PROVISION = [
+  ["security","SIA-licensed security booked", "Security", h=>h.id==="CRW-04"||h.id.startsWith("SEC-")],
+  ["medical","Medical or first aid cover booked", "Medical cover", h=>h.id==="MED-01"],
+  ["stewards","Stewards booked", "Stewards", h=>h.id.startsWith("CRW-")],
+  ["fire","Fire marshals appointed", "Fire marshals", h=>h.id.startsWith("FIR-")]
+];
+
+/* ---------- State ---------- */
+const BLANK = () => ({accepted:null, name:"", date:"", postcode:"", type:"", venue:"", cap:"", timing:"", alcohol:"", audience:"",
+  struct:[], act:[], site:[], provision:{}, unlocked:false});
+let state = BLANK();
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(BLANK(), s); }catch(e){}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const optLabel = (key,v) => (SINGLE[key].opts.find(o=>o[0]===v)||[])[1] || "";
+const multiLabels = key => state[key].includes("none") ? "None" : state[key].map(k => MULTI[key].opts.find(o=>o[0]===k)[1]).join(", ");
+
+/* ---------- Progress ---------- */
+function eventLeft(){ return ["type","venue","cap","timing","alcohol","audience"].filter(k => !state[k]).length; }
+function siteLeft(){ return ["struct","act","site"].filter(k => !state[k].length).length + PROVISION.filter(p => !state.provision[p[0]]).length; }
+function updateBadges(){
+  [["event",eventLeft()],["site",siteLeft()]].forEach(([t,n]) => { const b=$("#badge-"+t); if(state.accepted && n){ b.textContent=n; b.hidden=false; } else b.hidden=true; });
+  updateLive();
+}
+
+/* ---------- Live hazards ---------- */
+let seenIds = null, newIds = new Set();
+function anyAnswer(){ return Object.keys(SINGLE).some(k => state[k]) || Object.keys(MULTI).some(k => state[k].length) || Object.keys(state.provision).length > 0; }
+function updateLive(){
+  const tab = location.hash.slice(1);
+  const show = !!state.accepted && (tab === "event" || tab === "site") && anyAnswer();
+  const r = results(), ids = new Set(r.all.map(h => h.id));
+  if(seenIds) newIds = new Set([...ids].filter(i => !seenIds.has(i)));
+  seenIds = ids;
+  $("#live").classList.toggle("on", show);
+  document.body.classList.toggle("has-live", show);
+  if(!show) return;
+  const vh = r.all.filter(h => h.score >= 16).length;
+  $("#live-btn").innerHTML = `<span><strong>${r.all.length} hazards so far</strong>${vh ? `, ${vh} very high` : ""}${newIds.size ? `<span class="new-tag">+${newIds.size} new</span>` : ""}</span><span class="view">View</span>`;
+  $("#live-btn").setAttribute("aria-label", `${r.all.length} hazards so far${vh ? ", " + vh + " very high" : ""}. View them.`);
+  if($("#live-sheet").classList.contains("on")) renderLive(r);
+}
+function renderLive(r){
+  r = r || results();
+  const gapsHTML = r.gapActs.length ? `<div class="live-sec">Do these first</div>` + r.gapActs.map(a => `<div class="lh">
+      <strong>${esc(a.t)}</strong><span class="cat">${esc(a.label)} not confirmed. Affects ${a.n} of your hazards.</span>
+      ${a.fg ? `<p class="fg"><b>Fort Green:</b> ${esc(a.fg)}</p>` : ""}</div>`).join("") : "";
+  $("#live-body").innerHTML = gapsHTML + `<div class="live-sec">${r.all.length} hazards</div>` + r.all.map(h => {
+    const [lab,b] = rating(h.score), a = h.acts[0];
+    return `<div class="lh ${newIds.has(h.id) ? "new" : ""}">
+      <div class="lh-top"><strong>${esc(h.haz)}</strong><span class="pill p-${b}">${lab}</span></div>
+      <span class="cat">${esc(h.cat)}${newIds.has(h.id) ? " (new)" : ""}</span>
+      ${a ? `<div class="sol"><b>Solution:</b> ${esc(a.t)}</div>` : ""}
+      ${h.fg && h.score >= 16 ? `<p class="fg"><b>Fort Green:</b> ${esc(h.fg)}</p>` : ""}</div>`;
+  }).join("");
+}
+function openLive(){ renderLive(); $("#overlay").classList.add("on"); $("#live-sheet").classList.add("on"); $("#live-sheet").scrollTop = 0; setTimeout(() => $("#live-close").focus({preventScroll:true}), 250); }
+
+/* ---------- Engine ---------- */
+function tags(){
+  const t = new Set();
+  Object.keys(SINGLE).forEach(k => { const o = SINGLE[k].opts.find(o=>o[0]===state[k]); if(o) o[2].forEach(x=>t.add(x)); });
+  Object.keys(MULTI).forEach(k => state[k].filter(v=>v!=="none").forEach(v => MULTI[k].tags(v).forEach(x=>t.add(x))));
+  return t;
+}
+function matches(expr, t, cap){
+  const js = expr.replace(/cap>=(\d+)|ALWAYS|[a-z_]+(?::[a-z0-9_]+)?/g, (m,n) =>
+      n !== undefined ? String(cap >= +n) : m === "ALWAYS" ? "true" : String(t.has(m)))
+    .replace(/&/g,"&&").replace(/\|/g,"||");
+  try{ return Function('"use strict";return (' + js + ')')(); }catch(e){ return false; }
+}
+const rating = s => s>=16 ? ["Very high","vh"] : s>=10 ? ["High","h"] : s>=5 ? ["Medium","m"] : ["Low","l"];
+function gaps(){ return PROVISION.filter(p => ["no","unsure"].includes(state.provision[p[0]])); }
+function results(){
+  const t = tags(), cap = parseInt(state.cap||"0",10), g = gaps();
+  const list = HAZARDS.filter(h => matches(h.trig, t, cap)).map(h => {
+    const bumped = g.some(p => p[3](h));
+    const L = Math.min(5, h.L + (bumped ? 1 : 0));
+    const acts = h.acts.filter(a => !a.c || matches(a.c, t, cap));
+    return Object.assign({}, h, {Li:L, score:L*h.S, rscore:h.rL*h.rS, gap:bumped, acts});
+  }).sort((a,b) => b.score - a.score || (a.free==="Y" ? -1 : 0) - (b.free==="Y" ? -1 : 0) || a.id.localeCompare(b.id));
+  const top = list.slice(0, FREE_LIMIT);
+  const gapActs = g.map(p => ({key:p[0], label:p[2], t:GAP[p[0]][0], fg:GAP[p[0]][1], n:list.filter(h => p[3](h)).length}));
+  const nActs = gapActs.length + top.reduce((n,h) => n + h.acts.length, 0);
+  return {all:list, top, cap, gaps:g, gapActs, nActs};
+}
+function martyns(cap){
+  if(cap >= 800) return {title:"Martyn’s Law is likely to apply", body:"Public events of 800 or more with controlled entry are likely to be enhanced tier under the Terrorism (Protection of Premises) Act 2025."};
+  if(cap >= 200) return {title:"Martyn’s Law may apply to the venue", body:"One-off events under 800 aren’t qualifying events, but a venue holding 200 or more may be standard tier in its own right."};
+  return null;
+}
+
+/* ---------- Components ---------- */
+function singleHTML(key){
+  const q = SINGLE[key];
+  return `<div class="field"><span class="label" id="l-${key}">${q.label}</span>${q.hint?`<div class="hint">${q.hint}</div>`:""}
+    <div class="opts" role="group" aria-labelledby="l-${key}">
+    ${q.opts.map(o => `<button type="button" data-single="${key}" data-v="${o[0]}" aria-pressed="${state[key]===o[0]}" ${o[3]?'class="wide"':""}>${o[1]}</button>`).join("")}
+    </div></div>`;
+}
+function multiHTML(key){
+  const q = MULTI[key], sel = state[key];
+  return `<div class="field"><span class="label" id="l-${key}">${q.label}</span><div class="hint">${q.hint}</div>
+    <div class="opts multi" role="group" aria-labelledby="l-${key}">
+    ${q.opts.map(o => `<button type="button" data-multi="${key}" data-v="${o[0]}" aria-pressed="${sel.includes(o[0])}">${o[1]}</button>`).join("")}
+    <button type="button" class="wide" data-multi="${key}" data-v="none" aria-pressed="${sel.includes("none")}">None of these</button>
+    </div></div>`;
+}
+function gateHTML(id){
+  return `<div class="empty"><h1 id="${id}">Accept the terms first</h1><p class="muted">Read and accept the terms on the home screen before you start.</p><button class="btn btn-primary btn-block" data-go="start">Go to home</button></div>`;
+}
+function progressHTML(left, total){
+  const done = total - left;
+  return `<div class="progress"><div class="small"><strong>${done} of ${total}</strong> answered</div><div class="bar"><i style="width:${done/total*100}%"></i></div></div>`;
+}
+
+/* ---------- Screens ---------- */
+function renderStart(){
+  const started = state.accepted && (state.type || state.struct.length);
+  const ok = !!state.accepted;
+  $("#screen-start").innerHTML = `
+    <h1 id="h-start">Draft a risk assessment for your event</h1>
+    <p class="lede">Answer a few quick questions about your event and site. You’ll get a draft risk assessment with hazards, scores, controls and the law that applies. It takes about five minutes.</p>
+    <div class="status"><div><strong>Built on UK health and safety law and guidance</strong><span class="small muted">Hazards and controls reference the Health and Safety at Work etc. Act 1974, the Management of Health and Safety at Work Regulations 1999, HSE guidance and the Purple Guide.</span></div></div>
+    <div class="terms" role="region" aria-labelledby="h-terms">
+      <h2 id="h-terms">Before you start</h2>
+      <p>This tool produces a general, automatically generated risk assessment based only on the answers you give. It is not a site-specific risk assessment and has not been reviewed by a competent person.</p>
+      <p>You remain fully responsible for:</p>
+      <ul>
+        <li>assessing the risks at your venue or event</li>
+        <li>checking that every hazard and control is accurate and complete</li>
+        <li>meeting your legal duties, including under the Health and Safety at Work etc. Act 1974 and the Management of Health and Safety at Work Regulations 1999</li>
+      </ul>
+      <p>Fort Green Limited gives no warranty that the output is accurate, complete or suitable for your purpose, and accepts no responsibility for any decisions made or actions taken based on it, to the fullest extent permitted by law.</p>
+      <label class="check"><input type="checkbox" id="accept" ${ok?"checked":""}><span>I understand and accept these terms</span></label>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="begin" ${ok?"":"disabled"}>${started ? "Continue your draft" : "Start"}</button>
+      ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start a new draft</button>` : ""}
+    </div>
+    <div class="panel">
+      <h3>Smart people, on short notice, solving problems.</h3>
+      <p class="muted" style="margin:0">Need a full site-specific risk assessment and method statement? Fort Green writes RAMS for venues, festivals and corporate events across London, and supplies the security, stewarding and production to deliver them.</p>
+    </div>`;
+  $("#accept").onchange = e => { state.accepted = e.target.checked ? new Date().toISOString() : null; save(); renderStart(); updateBadges(); };
+  $("#begin").onclick = () => go("event");
+  const r = $("#reset");
+  if(r) r.onclick = () => { const a = state.accepted; state = BLANK(); state.accepted = a; save(); updateBadges(); go("event"); };
+}
+
+function renderEvent(){
+  const el = $("#screen-event");
+  if(!state.accepted){ el.innerHTML = gateHTML("h-event"); bindGo(el); return; }
+  const left = eventLeft();
+  el.innerHTML = `
+    <h1 id="h-event">Your event</h1>
+    <p class="muted">Tap the answer that fits best.</p>
+    ${progressHTML(left, 6)}
+    <div class="field"><label for="i-name">Event name</label><input type="text" id="i-name" value="${esc(state.name)}" placeholder="e.g. Summer Yard Party"></div>
+    <div class="field"><label for="i-date">Event date</label><input type="date" id="i-date" value="${esc(state.date)}"></div>
+    <div class="field"><label for="i-pc">Site postcode</label><input type="text" id="i-pc" value="${esc(state.postcode)}" placeholder="e.g. W10 5AA" autocomplete="postal-code"></div>
+    ${Object.keys(SINGLE).map(singleHTML).join("")}
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="site" ${left?"disabled":""}>Next: your site</button>
+      ${left ? `<p class="small muted" style="text-align:center;margin:0">Answer all 6 questions to continue.</p>` : ""}
+    </div>`;
+  $("#i-name").oninput = e => { state.name = e.target.value; save(); };
+  $("#i-date").onchange = e => { state.date = e.target.value; save(); };
+  $("#i-pc").oninput = e => { state.postcode = e.target.value.toUpperCase(); save(); };
+  el.querySelectorAll("[data-single]").forEach(b => b.onclick = () => {
+    state[b.dataset.single] = b.dataset.v; save();
+    const y = window.scrollY; renderEvent(); window.scrollTo(0,y); updateBadges();
+  });
+  bindGo(el);
+}
+
+function renderSite(){
+  const el = $("#screen-site");
+  if(!state.accepted){ el.innerHTML = gateHTML("h-site"); bindGo(el); return; }
+  const left = siteLeft();
+  el.innerHTML = `
+    <h1 id="h-site">Your site</h1>
+    <p class="muted">What’s going on site, and what’s already in place.</p>
+    ${progressHTML(left, 7)}
+    ${Object.keys(MULTI).map(multiHTML).join("")}
+    <div class="q-group">Already in place</div>
+    <p class="small muted">If you’re not sure, say so. The draft will flag it.</p>
+    ${PROVISION.map(([k,label]) => { const a = state.provision[k]; return `<div class="prov">
+      <strong id="pv-${k}">${label}</strong>
+      <div class="seg" role="group" aria-labelledby="pv-${k}">
+        <button type="button" data-prov="${k}" data-v="yes" aria-pressed="${a==="yes"}">Yes</button>
+        <button type="button" data-prov="${k}" data-v="no" aria-pressed="${a==="no"}">No</button>
+        <button type="button" data-prov="${k}" data-v="unsure" aria-pressed="${a==="unsure"}">Not sure</button>
+      </div></div>`; }).join("")}
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="report" ${left || eventLeft() ?"disabled":""}>Build my risk assessment</button>
+      ${left ? `<p class="small muted" style="text-align:center;margin:0">Answer all 7 to continue.</p>` : eventLeft() ? `<p class="small muted" style="text-align:center;margin:0">Finish the event questions first.</p>` : ""}
+    </div>`;
+  el.querySelectorAll("[data-multi]").forEach(b => b.onclick = () => {
+    const k = b.dataset.multi, v = b.dataset.v;
+    if(v === "none") state[k] = state[k].includes("none") ? [] : ["none"];
+    else { state[k] = state[k].filter(x => x !== "none"); state[k] = state[k].includes(v) ? state[k].filter(x=>x!==v) : state[k].concat(v); }
+    save(); const y = window.scrollY; renderSite(); window.scrollTo(0,y); updateBadges();
+  });
+  el.querySelectorAll("[data-prov]").forEach(b => b.onclick = () => {
+    state.provision[b.dataset.prov] = b.dataset.v; save();
+    const y = window.scrollY; renderSite(); window.scrollTo(0,y); updateBadges();
+  });
+  bindGo(el);
+}
+
+function riskMapHTML(list){
+  const grid = {}; list.forEach(h => { const k = h.Li+"-"+h.S; grid[k] = (grid[k]||0) + 1; });
+  let cells = "";
+  for(let L=5; L>=1; L--){
+    cells += `<div class="ax">${L}</div>`;
+    for(let S=1; S<=5; S++){ const n = grid[L+"-"+S]||0, b = rating(L*S)[1];
+      cells += `<div class="cell b-${b} ${n?"":"empty-cell"}">${n||"·"}</div>`; }
+  }
+  return `<div class="rmap" role="img" aria-label="Risk map of ${list.length} hazards by likelihood and severity">${cells}</div>
+    <div class="rmap-axes"><span>Likelihood ↑</span><span>Severity →</span></div>`;
+}
+
+function renderReport(){
+  const el = $("#screen-report");
+  if(!state.accepted){ el.innerHTML = gateHTML("h-report"); bindGo(el); return; }
+  if(eventLeft() || siteLeft()){
+    el.innerHTML = `<div class="empty"><h1 id="h-report">Report</h1><p class="muted">Your draft appears here once you’ve answered the event and site questions.</p><button class="btn btn-primary btn-block" data-go="${eventLeft()?"event":"site"}">Continue</button></div>`;
+    bindGo(el); return;
+  }
+  const r = results(), title = state.name ? esc(state.name) : "Your event";
+  const counts = {vh:0,h:0,m:0,l:0}; r.all.forEach(h => counts[rating(h.score)[1]]++);
+  const ml = martyns(r.cap), extra = r.all.length - r.top.length;
+  const when = state.date ? new Date(state.date+"T12:00").toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "Date not set";
+
+  const body = !state.unlocked ? `
+    <div class="locked">
+      <h3>Your draft is ready</h3>
+      <p class="muted">The PDF covers your ${r.top.length} highest-scoring hazards with controls, residual risk and the law and guidance behind each one, plus an action plan with ${r.nActs} actions timed to your event date.</p>
+      <button class="btn btn-primary btn-block" id="unlock">Get my PDF</button>
+    </div>` : `
+    <div class="panel">
+      <h2>Your PDF is unlocked</h2>
+      <p class="muted">Choose “Save as PDF” in the print window. Check every line before you rely on it.</p>
+      <div class="btn-row"><button class="btn btn-primary btn-block" id="print">Download PDF</button></div>
+    </div>`;
+
+  el.innerHTML = `
+    <h1 id="h-report" style="margin-bottom:4px">${title}</h1>
+    <p class="small muted">${when}${state.postcode ? ", " + esc(state.postcode) : ""}</p>
+    <div class="panel">
+      <h2>${r.all.length} hazards identified</h2>
+      <p class="muted small" style="margin:0">Before controls, by likelihood and severity.</p>
+      ${riskMapHTML(r.all)}
+      <ul class="tally">
+        <li><span class="sw b-vh"></span>${counts.vh} very high</li>
+        <li><span class="sw b-h"></span>${counts.h} high</li>
+        <li><span class="sw b-m"></span>${counts.m} medium</li>
+        <li><span class="sw b-l"></span>${counts.l} low</li>
+      </ul>
+    </div>
+    ${r.gapActs.length ? `<div class="panel" style="border-left:4px solid var(--red)">
+      <h2>Do these first</h2>
+      <p class="small muted">${r.gapActs.map(a=>a.label).join(", ")} ${r.gapActs.length>1?"aren’t":"isn’t"} confirmed, so we’ve raised the likelihood on the hazards ${r.gapActs.length>1?"they control":"it controls"}.</p>
+      ${r.gapActs.map(a => `<div class="gapact"><strong>${esc(a.t)}</strong><span class="muted">Affects ${a.n} of your hazards.</span>${a.fg ? `<p class="fg"><b>Fort Green:</b> ${esc(a.fg)}</p>` : ""}</div>`).join("")}
+    </div>` : ""}
+    <div class="panel">
+      <h2>Top ${r.top.length} hazards</h2>
+      <p class="small muted">Suggested solutions are listed under each hazard. Tap a hazard to hide them.</p>
+      ${r.top.map((h,i) => { const [lab,b] = rating(h.score); return `<details class="hz" open>
+        <summary><strong>${esc(h.haz)}</strong><span class="pill p-${b}">${lab}</span><span class="muted">${esc(h.cat)}</span></summary>
+        <div class="acts">
+          <div class="small" style="font-weight:700;margin:0 0 4px">Suggested solutions</div>
+          ${h.acts.map(a => `<div class="act"><span class="ph">${PHASES.find(p=>p[0]===a.ph)[1]}</span><span>${esc(a.t)}</span></div>`).join("")}
+          ${h.fg ? `<p class="fg"><b>Fort Green:</b> ${esc(h.fg)}</p>` : ""}
+        </div></details>`; }).join("")}
+      ${extra > 0 ? `<p class="small muted" style="margin:12px 0 0">${extra} more hazard${extra>1?"s":""} identified. A full site-specific assessment covers every one.</p>` : ""}
+    </div>
+    ${body}
+    ${ml ? `<div class="status"><div><strong>${ml.title}</strong><span class="small muted">${ml.body}</span>
+      <div style="margin-top:8px"><a class="link-btn" href="${MARTYNS_LAW_URL}" target="_blank" rel="noopener">Check with our Martyn’s Law tool</a></div></div></div>` : ""}
+    <div class="panel no-print">
+      <h2>Need it done properly?</h2>
+      <p class="muted">Fort Green writes full site-specific RAMS and supplies the security, stewarding and production to deliver them.</p>
+      <div class="btn-row">
+        <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Risk assessment: " + (state.name || "my event"))}&body=${encodeURIComponent("Event: " + (state.name||"") + "\nDate: " + when + "\nCapacity: " + optLabel("cap",state.cap) + "\nHazards identified: " + r.all.length)}">Get a full risk assessment</a>
+        <a class="btn btn-ghost btn-block" href="${WHATSAPP}" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+      </div>
+    </div>
+    <div><button class="link-btn" data-go="event">Change my answers</button></div>
+    <p class="disclaimer">This is an automatically generated draft, not a site-specific risk assessment. It hasn’t been reviewed by a competent person. You remain responsible for assessing the risks at your event and meeting your legal duties. Purple Guide references are to topics only; subscribe at thepurpleguide.co.uk for the full guidance.</p>`;
+  const u = $("#unlock"); if(u) u.onclick = openSheet;
+  const p = $("#print"); if(p) p.onclick = () => { buildPrintDoc(); window.print(); };
+  bindGo(el);
+}
+
+/* ---------- Action plan ---------- */
+function planRows(r){
+  const ev = state.date ? new Date(state.date+"T12:00") : null;
+  const fmt = d => d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+  const due = {
+    before: ev ? "By " + fmt(new Date(ev.getTime() - 14*864e5)) : "Before the event",
+    day: ev ? fmt(ev) : "Event day",
+    after: ev ? "By " + fmt(new Date(ev.getTime() + 14*864e5)) : "Within 2 weeks"
+  };
+  const rows = r.gapActs.map(a => ({ph:"before", ref:"Gap", t:a.t}));
+  PHASES.forEach(([ph]) => r.top.forEach(h => h.acts.filter(a => a.ph === ph).forEach(a => rows.push({ph, ref:h.id, t:a.t}))));
+  rows.sort((a,b) => PHASES.findIndex(p=>p[0]===a.ph) - PHASES.findIndex(p=>p[0]===b.ph));
+  return rows.map(a => Object.assign(a, {when:PHASES.find(p=>p[0]===a.ph)[1], due:due[a.ph]}));
+}
+
+/* ---------- Unbranded print document ---------- */
+function buildPrintDoc(){
+  const r = results(), today = new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+  const when = state.date ? new Date(state.date+"T12:00").toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "Not stated";
+  const ml = martyns(r.cap), extra = r.all.length - r.top.length;
+  const prov = PROVISION.map(p => p[2] + ": " + ({yes:"Yes",no:"No",unsure:"Not sure"}[state.provision[p[0]]])).join("; ");
+  const row = (k,v) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`;
+  $("#print-doc").innerHTML = `
+    <h1>Event risk assessment: draft</h1>
+    <div>${esc(state.name || "Unnamed event")}. Generated ${today}.</div>
+    <div class="warn">Automatically generated draft. Not reviewed by a competent person. It must be checked, adapted to the site and signed off before use.</div>
+    <h2>Event details</h2>
+    <table class="kv"><tbody>
+      ${row("Event name", state.name || "Not stated")}${row("Date", when)}${row("Site postcode", state.postcode || "Not stated")}
+      ${row("Event type", optLabel("type",state.type))}${row("Venue", optLabel("venue",state.venue))}${row("Maximum capacity", optLabel("cap",state.cap))}
+      ${row("Timing", optLabel("timing",state.timing))}${row("Alcohol", optLabel("alcohol",state.alcohol))}${row("Audience", optLabel("audience",state.audience))}
+      ${row("Temporary structures", multiLabels("struct"))}${row("Activities and effects", multiLabels("act"))}${row("Site factors", multiLabels("site"))}
+      ${row("Provision confirmed", prov)}
+    </tbody></table>
+    ${r.gaps.length ? `<p><strong>Provision gaps:</strong> ${r.gaps.map(p=>esc(p[2])).join(", ")} not confirmed. Likelihood has been increased by one on the hazards these normally control (marked *).</p>` : ""}
+    <h2>Risk scoring</h2>
+    <p>Risk = likelihood (1 rare to 5 almost certain) × severity (1 negligible to 5 catastrophic). 1–4 low: acceptable, monitor. 5–9 medium: reduce where reasonably practicable. 10–15 high: further controls needed before the event goes ahead. 16–25 very high: do not proceed until reduced.</p>
+    <h2>Hazards and controls</h2>
+    <table>
+      <thead><tr><th>Ref</th><th>Hazard and consequence</th><th>Who might be harmed</th><th class="num">L</th><th class="num">S</th><th class="num">Risk</th><th>Control measures</th><th class="num">Residual risk</th><th>Legislation and guidance</th></tr></thead>
+      <tbody>
+      ${r.top.map(h => `<tr>
+        <td class="ref">${h.id}</td>
+        <td><strong>${esc(h.haz)}</strong><br>${esc(h.con)}</td>
+        <td>${esc(h.who)}</td>
+        <td class="num">${h.Li}${h.gap?"*":""}</td><td class="num">${h.S}</td>
+        <td class="num">${h.score}<br>${rating(h.score)[0]}</td>
+        <td>${esc(h.ctrl)}</td>
+        <td class="num">${h.rscore}<br>${rating(h.rscore)[0]}</td>
+        <td>${esc(h.law)}<br><em>${esc(h.gd)}</em></td></tr>`).join("")}
+      </tbody>
+    </table>
+    <h2>Action plan</h2>
+    <p>Suggested improvements for the hazards above, in order of priority. ${r.gapActs.length ? "Gaps in confirmed provision come first. " : ""}Assign an owner to each action and record when it’s done.</p>
+    <table>
+      <thead><tr><th>When</th><th>Ref</th><th>Action</th><th>Due</th><th style="width:14%">Owner</th><th style="width:8%">Done</th></tr></thead>
+      <tbody>${planRows(r).map(a => `<tr><td class="ref">${a.when}</td><td class="ref">${a.ref}</td><td>${esc(a.t)}</td><td>${a.due}</td><td></td><td></td></tr>`).join("")}</tbody>
+    </table>
+    ${extra > 0 ? `<p>This draft covers the ${r.top.length} highest-scoring hazards. A further ${extra} hazard${extra>1?"s were":" was"} identified from your answers and ${extra>1?"are":"is"} not included. A complete assessment should cover every hazard on site.</p>` : ""}
+    ${ml ? `<p><strong>Terrorism (Protection of Premises) Act 2025:</strong> ${ml.body} Check the Home Office statutory guidance.</p>` : ""}
+    <p>Residual risk assumes every listed control is in place and working. Purple Guide references are to topic areas of the Purple Guide to Health, Safety and Welfare at Music and Other Events, published by the Events Industry Forum.</p>
+    <h2>Review and sign-off</h2>
+    <table class="sign"><tbody>
+      <tr><th>Assessor (competent person)</th><td></td><th>Signature</th><td></td></tr>
+      <tr><th>Date assessed</th><td></td><th>Next review date</th><td></td></tr>
+      <tr><th>Approved by</th><td></td><th>Signature</th><td></td></tr>
+    </tbody></table>
+    <p class="foot">This document was generated automatically from answers given to an online form. It is a general template, not a site-specific risk assessment, and no warranty is given that it is accurate, complete or suitable for any purpose. The person responsible for the event remains responsible for assessing risk and meeting their duties under the Health and Safety at Work etc. Act 1974, the Management of Health and Safety at Work Regulations 1999 and all other applicable law.</p>`;
+}
+
+/* ---------- Lead sheet ---------- */
+function openSheet(){ $("#overlay").classList.add("on"); $("#sheet").classList.add("on"); setTimeout(() => $("#f-name").focus(), 250); }
+function closeSheet(){ $("#overlay").classList.remove("on"); $("#sheet").classList.remove("on"); $("#live-sheet").classList.remove("on"); newIds = new Set(); updateLive(); }
+$("#live-btn").onclick = openLive;
+$("#live-close").onclick = closeSheet;
+$("#overlay").onclick = closeSheet;
+$("#sheet-close").onclick = closeSheet;
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+$("#lead-form").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("#f-email").value.trim(), err = $("#f-email-err");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Enter a valid email address, like name@venue.co.uk."; err.hidden = false; $("#f-email").focus(); return; }
+  err.hidden = true;
+  const r = results();
+  const lead = { tool:"risk-assessment-builder", name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
+    marketing_opt_in:$("#f-mkt").checked, terms_accepted_at:state.accepted, terms_version:TERMS_VERSION,
+    event:{name:state.name, date:state.date, postcode:state.postcode, type:state.type, venue:state.venue, capacity_band:state.cap,
+      timing:state.timing, alcohol:state.alcohol, audience:state.audience, structures:state.struct, activities:state.act, site:state.site, provision:state.provision},
+    hazards_identified:r.all.length, actions_in_plan:r.nActs, very_high:r.all.filter(h=>h.score>=16).length, provision_gaps:r.gaps.map(p=>p[0]),
+    submitted_at:new Date().toISOString() };
+  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  state.unlocked = true; save(); closeSheet(); renderReport(); window.scrollTo(0,0);
+};
+
+/* ---------- Navigation ---------- */
+const TABS = ["start","event","site","report"];
+function go(tab){
+  TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  ({start:renderStart, event:renderEvent, site:renderSite, report:renderReport})[tab]();
+  if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+  updateLive();
+  window.scrollTo(0,0);
+}
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go)); }
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(TABS.includes(h)) go(h); });
+
+updateBadges();
+go(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "start");
+</script>
+</body>
+</html>

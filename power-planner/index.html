@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Event power planner | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
+  --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-out:#ffffff; --zone-std:#cecece;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+  --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top, 0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.brand{display:flex;align-items:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.tool-name{font-size:14px;color:var(--muted);font-weight:500}
+
+main{max-width:560px;margin:0 auto;padding:20px 18px 120px}
+.screen{display:none}
+.screen.on{display:block}
+
+h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(46px,13vw,72px);line-height:.9;letter-spacing:-.01em;margin:8px 0 16px}
+h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:28px;line-height:1.1;margin:0 0 6px}
+h3{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:22px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}
+.lede{font-size:18px;color:var(--muted);max-width:34em}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:18px;margin:16px 0}
+.status{display:flex;gap:10px;align-items:flex-start;border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0;margin:18px 0}
+.status strong{display:block}
+.status.warn{border-left-color:var(--red)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:0;border:0;cursor:pointer;font-family:"Manrope",system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:grid;gap:10px;margin-top:18px}
+.link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Forms */
+.field{margin:0 0 18px}
+.field label,.field .label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-size:14px;color:var(--muted);margin-top:6px}
+input[type=text],input[type=email],input[type=number],input[type=search],select{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:0}
+.seg button{min-height:44px;border:0;border-radius:0;background:transparent;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);padding:4px 6px;line-height:1.2}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.check{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent);flex:none}
+
+/* Load meter: signature element */
+.meter{margin:40px 0 8px}
+.meter-track{position:relative;height:46px;background:var(--zone-out);box-shadow:inset 0 0 0 1px var(--line)}
+.meter-track .run{position:absolute;left:0;top:0;bottom:0;background:var(--accent);transition:width .4s ease}
+.meter-track .peak{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--zone-std) 0 6px,transparent 6px 11px);box-shadow:inset 0 0 0 1px var(--zone-std);transition:left .4s ease,width .4s ease}
+.meter-track .limit{position:absolute;top:-10px;bottom:-10px;width:0}
+.meter-track .limit::before{content:"";position:absolute;left:-1.5px;top:0;bottom:0;width:3px;background:var(--red)}
+.meter-track .limit::after{content:attr(data-label);position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:12px;font-weight:600;padding:1px 7px;white-space:nowrap}
+.meter-track .over{position:absolute;inset:0;background:var(--red-soft);box-shadow:inset 0 0 0 2px var(--red)}
+.meter-ticks{position:relative;height:22px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter-ticks span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
+.meter-ticks span:first-child{transform:none}
+.meter-ticks span:last-child{transform:translateX(-100%)}
+.legend{list-style:none;padding:0;margin:6px 0 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:14px;height:14px;flex:none;display:inline-block}
+.sw-run{background:var(--accent)}
+.sw-peak{background:repeating-linear-gradient(135deg,var(--zone-std) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1px var(--zone-std)}
+.sw-lim{background:var(--red);width:4px}
+
+/* Verdict */
+.verdict{border-radius:0;padding:18px;margin:18px 0;border:1.5px solid var(--line);background:var(--surface)}
+.verdict.v-main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.verdict.v-main .muted{color:inherit;opacity:.8}
+.verdict.v-alt{border-color:var(--accent)}
+.verdict.v-check{border-color:var(--ink);border-style:dashed}
+.big{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:56px;line-height:.95;text-transform:uppercase;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:16px 0}
+.stats div{background:var(--surface);padding:12px}
+.stats b{display:block;font-family:"Antonio","Arial Narrow",sans-serif;font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+
+/* Equipment */
+.sum{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 53px);z-index:5;background:var(--bg);padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+.sum-row strong{font-size:16px}
+.bar{height:6px;background:var(--surface-2);border-radius:0;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s ease}
+.q-group{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:24px 0 2px;padding-top:6px}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.item strong{display:block;font-weight:600;line-height:1.3}
+.item .muted{font-size:13px}
+.item.has{}
+.item.has strong::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);margin-right:8px;vertical-align:2px}
+.stepper{display:grid;grid-template-columns:44px 40px 44px;border:1.5px solid var(--line);background:var(--surface)}
+.stepper button{height:42px;border:0;background:none;cursor:pointer;font-size:22px;font-weight:600;line-height:1}
+.stepper button:disabled{opacity:.3;cursor:default}
+.stepper output{display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums}
+.rm{font-size:13px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.phase{display:grid;grid-template-columns:34px 1fr 70px;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.phase .bar{margin:0;height:14px}
+.phase b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:18px}
+.ticks{list-style:none;padding:0;margin:0}
+.ticks li{display:grid;grid-template-columns:20px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.ticks li:last-child{border-bottom:0}
+.ticks li::before{content:"";width:16px;height:16px;border:1.5px solid var(--ink);margin-top:3px}
+.ticks strong{display:block}
+.ticks span{color:var(--muted);font-size:14px}
+
+.locked{border:1.5px dashed var(--line);border-radius:0;padding:20px;margin:18px 0;text-align:left}
+.cta{background:var(--accent);color:var(--accent-ink);padding:20px;margin:18px 0}
+.cta .muted{color:inherit;opacity:.8}
+.cta .btn-primary{background:var(--accent-ink);color:var(--accent)}
+.cta .btn-ghost{border-color:currentColor;color:inherit}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+.empty{padding:40px 0;text-align:left}
+
+/* Bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent);border-radius:0}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;line-height:18px;text-align:center}
+
+/* Bottom sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--surface);border-radius:0;padding:10px 20px calc(20px + env(safe-area-inset-bottom, 0px));max-height:90vh;overflow-y:auto;transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.grabber{width:42px;height:5px;border-radius:0;background:var(--line);margin:4px auto 14px}
+.error{color:var(--red);font-size:14px;margin-top:6px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+@media print{
+  .topbar,.nav,.no-print,.overlay,.sheet{display:none!important}
+  :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc;--accent:#000;--accent-ink:#fff}
+  body{background:#fff}
+  main{padding:0;max-width:none}
+  .screen{display:none!important}
+  #screen-power{display:block!important}
+  .panel,.verdict,.stats,.meter,table{break-inside:avoid}
+  .verdict.v-main,.cta{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="https://www.fortgreen.co.uk" target="_blank" rel="noopener">Fort Green</a>
+    <div class="tool-name">Power planner</div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="screen" id="screen-start" aria-labelledby="h-start"></section>
+  <section class="screen" id="screen-event" aria-labelledby="h-event"></section>
+  <section class="screen" id="screen-kit" aria-labelledby="h-kit"></section>
+  <section class="screen" id="screen-power" aria-labelledby="h-power"></section>
+</main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="start"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="event"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Event</button>
+    <button data-tab="kit"><svg viewBox="0 0 24 24"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v3"/></svg>Equipment<span class="badge" id="badge" hidden></span></button>
+    <button data-tab="power"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/></svg>Power</button>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="h-sheet">
+  <div class="grabber"></div>
+  <h2 id="h-sheet">Get your power plan</h2>
+  <p class="muted">We’ll show your full plan now and email you a copy.</p>
+  <form id="lead-form" novalidate>
+    <div class="field"><label for="f-name">Your name</label><input type="text" id="f-name" autocomplete="name"></div>
+    <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" autocomplete="email" inputmode="email"><div class="error" id="f-email-err" hidden></div></div>
+    <div class="field"><label for="f-org">Organisation</label><input type="text" id="f-org" autocomplete="organization"></div>
+    <label class="check"><input type="checkbox" id="f-mkt"><span>Send me event planning updates and occasional news from Fort Green. You can unsubscribe at any time.</span></label>
+    <p class="small muted">We use your details to send this plan and follow up about it. See our privacy notice on fortgreen.co.uk.</p>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-block">Show my power plan</button>
+      <button type="button" class="btn btn-ghost btn-block" id="sheet-close">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+/* ---------- Config ----------
+   LEAD_ENDPOINT: set to the n8n webhook URL when this runs on fortgreen.co.uk.
+   Left empty here: the plan unlocks on the device without sending anything. */
+const LEAD_ENDPOINT = "";
+const CONTACT_EMAIL = "info@fortgreen.co.uk";
+const WHATSAPP = "https://wa.me/447399232855";
+const STORE_KEY = "fg-power-planner-v1";
+
+/* ---------- Equipment library ----------
+   w: typical running watts. pf: power factor. surge: starting multiple (motors and compressors).
+   duty: share of the time it actually draws full power (used for fuel only, never for sizing).
+   ph3: needs a three-phase connection. */
+const CATS = [
+  ["catering","Catering and bar"],
+  ["sound","Sound, stage and screens"],
+  ["light","Lighting"],
+  ["site","Site and welfare"],
+  ["ops","Operations and security"],
+  ["custom","Your own equipment"]
+];
+const LIB = [
+  {id:"urn", cat:"catering", name:"Tea urn", w:3000, pf:1, surge:1, duty:.5},
+  {id:"kettle", cat:"catering", name:"Kettle", w:3000, pf:1, surge:1, duty:.2},
+  {id:"coffee", cat:"catering", name:"Espresso machine, 2-group", w:3500, pf:1, surge:1, duty:.6},
+  {id:"griddle", cat:"catering", name:"Electric griddle", w:3000, pf:1, surge:1, duty:.7},
+  {id:"fryer", cat:"catering", name:"Electric fryer, single tank", w:3000, pf:1, surge:1, duty:.7},
+  {id:"pizza", cat:"catering", name:"Electric pizza oven", w:3000, pf:1, surge:1, duty:.7},
+  {id:"bain", cat:"catering", name:"Bain-marie or hot cupboard", w:1200, pf:1, surge:1, duty:.6},
+  {id:"micro", cat:"catering", name:"Commercial microwave", w:1800, pf:.9, surge:1.2, duty:.3},
+  {id:"truck", cat:"catering", name:"Food truck with gas cooking (lights, fridges, extraction)", w:2500, pf:.85, surge:2.5, duty:.7},
+  {id:"fridge", cat:"catering", name:"Upright fridge", w:350, pf:.8, surge:3, duty:.5},
+  {id:"freezer", cat:"catering", name:"Chest freezer", w:300, pf:.8, surge:3, duty:.5},
+  {id:"backbar", cat:"catering", name:"Back-bar bottle fridge", w:400, pf:.8, surge:3, duty:.5},
+  {id:"cooler", cat:"catering", name:"Beer cooler, flash or python", w:1200, pf:.8, surge:3, duty:.7},
+  {id:"ice", cat:"catering", name:"Ice machine", w:700, pf:.8, surge:3, duty:.6},
+  {id:"glass", cat:"catering", name:"Glasswasher", w:2800, pf:1, surge:1.2, duty:.5},
+  {id:"pos", cat:"catering", name:"Till or card reader", w:60, pf:.9, surge:1, duty:1},
+
+  {id:"pa-s", cat:"sound", name:"Small PA for speeches or background music", w:800, pf:.95, surge:1, duty:.5},
+  {id:"pa-m", cat:"sound", name:"Medium PA for a marquee or club room", w:5000, pf:.95, surge:1, duty:.5},
+  {id:"pa-l", cat:"sound", name:"Large stage PA", w:20000, pf:.95, surge:1, duty:.5, ph3:true},
+  {id:"dj", cat:"sound", name:"DJ booth (decks, mixer, monitors)", w:600, pf:.95, surge:1, duty:.6},
+  {id:"backline", cat:"sound", name:"Band backline (amps, keys)", w:1500, pf:.95, surge:1, duty:.5},
+  {id:"rig-s", cat:"sound", name:"Stage lighting, small LED rig", w:1500, pf:.95, surge:1, duty:.8},
+  {id:"rig-l", cat:"sound", name:"Stage lighting, large rig with moving heads", w:12000, pf:.95, surge:1, duty:.8, ph3:true},
+  {id:"haze", cat:"sound", name:"Smoke or haze machine", w:1500, pf:1, surge:1, duty:.3},
+  {id:"led", cat:"sound", name:"LED screen, per square metre", w:450, pf:.95, surge:1, duty:.5},
+  {id:"proj", cat:"sound", name:"Projector", w:500, pf:.95, surge:1, duty:1},
+
+  {id:"festoon", cat:"light", name:"LED festoon, per 50 m run", w:150, pf:.95, surge:1, duty:1},
+  {id:"flood", cat:"light", name:"LED floodlight", w:200, pf:.95, surge:1, duty:1},
+  {id:"uplight", cat:"light", name:"LED uplighter", w:50, pf:.95, surge:1, duty:1},
+  {id:"tower", cat:"light", name:"LED lighting tower, mains-powered", w:1500, pf:.95, surge:1, duty:1},
+
+  {id:"blower", cat:"site", name:"Inflatable blower", w:1100, pf:.8, surge:3, duty:1},
+  {id:"heater", cat:"site", name:"Electric heater, 3 kW", w:3000, pf:1, surge:1, duty:.7},
+  {id:"aircon", cat:"site", name:"Portable air conditioning", w:2500, pf:.85, surge:3, duty:.7},
+  {id:"loos", cat:"site", name:"Toilet trailer (water heater, lights)", w:3000, pf:.95, surge:1.5, duty:.6},
+  {id:"pump", cat:"site", name:"Water pump", w:750, pf:.8, surge:3, duty:.4},
+  {id:"charge", cat:"site", name:"Phone charging station", w:500, pf:.9, surge:1, duty:.8},
+  {id:"medic", cat:"site", name:"First aid or medical tent", w:2000, pf:.95, surge:1, duty:.5},
+  {id:"stall", cat:"site", name:"Trader stall (lights and till)", w:300, pf:.95, surge:1, duty:1},
+
+  {id:"office", cat:"ops", name:"Production office (laptops, printer)", w:1500, pf:.95, surge:1, duty:.6},
+  {id:"control", cat:"ops", name:"Security control room (CCTV monitors, radio base)", w:1500, pf:.95, surge:1, duty:1},
+  {id:"cctv", cat:"ops", name:"CCTV camera or tower", w:150, pf:.95, surge:1, duty:1},
+  {id:"radios", cat:"ops", name:"Radio charging rack", w:300, pf:.95, surge:1, duty:.6},
+  {id:"wifi", cat:"ops", name:"Wi-Fi or 4G router", w:50, pf:.95, surge:1, duty:1},
+  {id:"scan", cat:"ops", name:"Ticket scanning point", w:150, pf:.95, surge:1, duty:1}
+];
+
+const GEN_1PH = [3, 6, 10, 15];
+const GEN_3PH = [20, 30, 45, 60, 100, 150, 200, 250, 350, 500, 650, 800, 1000];
+const SUPPLY_1PH = [16, 32, 63, 100];
+const SUPPLY_3PH = [16, 32, 63, 125, 200, 400, 630];
+
+/* ---------- State ---------- */
+const BLANK = {agreed:false, name:"", site:"", hours:"", days:"1", qty:{}, custom:[], query:"", unlocked:false};
+let state = JSON.parse(JSON.stringify(BLANK));
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const kw = w => (w/1000).toLocaleString("en-GB", {minimumFractionDigits:1, maximumFractionDigits:1});
+const n0 = x => Math.round(x).toLocaleString("en-GB");
+
+/* ---------- Calculations ---------- */
+function allItems(){ return LIB.concat(state.custom.map(c => Object.assign({cat:"custom", pf:c.motor ? .8 : .95, surge:c.motor ? 3 : 1, duty:.8}, c))); }
+function chosen(){ return allItems().filter(i => (state.qty[i.id]||0) > 0).map(i => Object.assign({}, i, {qty:state.qty[i.id]})); }
+
+function connector(i){
+  if(i.ph3 || i.w > 7360){
+    if(i.w <= 22080) return "32A three-phase";
+    if(i.w <= 43470) return "63A three-phase";
+    return "125A three-phase";
+  }
+  if(i.w <= 2990) return "13A socket";
+  if(i.w <= 3680) return "16A single-phase";
+  return "32A single-phase";
+}
+
+function calc(){
+  const items = chosen();
+  let runW=0, runVA=0, avgW=0, surgeExtra=0, surgeName="", has3=false, units=0;
+  items.forEach(i => {
+    runW += i.w * i.qty; runVA += i.w / i.pf * i.qty; avgW += i.w * i.duty * i.qty; units += i.qty;
+    const extra = i.w / i.pf * (i.surge - 1);
+    if(extra > surgeExtra){ surgeExtra = extra; surgeName = i.name; }
+    if(i.ph3) has3 = true;
+  });
+  const peakVA = runVA + surgeExtra;
+  const needVA = Math.max(runVA * 1.25, peakVA);
+  const threePhase = has3 || needVA > 15000;
+  const sizes = threePhase ? GEN_3PH : GEN_1PH;
+  const gen = sizes.find(s => s * 1000 >= needVA) || null;
+  const loadPct = gen ? runVA / (gen * 1000) : null;
+  const genKW = gen ? gen * .8 : 0;
+  const lph = gen ? 0.06 * genKW + 0.21 * avgW / 1000 : null;
+  const hours = Math.max(0, parseFloat(state.hours) || 0) * Math.max(1, parseInt(state.days,10) || 1);
+
+  // Venue supply needed
+  let supply = null;
+  if(threePhase){
+    const a = needVA / (3 * 230);
+    supply = {amps: SUPPLY_3PH.find(s => s >= a) || null, perPhase: a, label:"three-phase"};
+  } else {
+    const a = needVA / 230;
+    supply = {amps: SUPPLY_1PH.find(s => s >= a) || null, perPhase: a, label:"single-phase"};
+  }
+
+  // Connections
+  const conns = {};
+  let sockW = 0;
+  items.forEach(i => { const c = connector(i); conns[c] = (conns[c]||0) + i.qty; if(c === "13A socket") sockW += i.w * i.qty; });
+  const circuits16 = sockW ? Math.ceil(sockW / (3680 * .8)) : 0;
+
+  // Phase balance
+  let phases = null;
+  if(threePhase){
+    phases = [0,0,0];
+    const singles = [];
+    items.forEach(i => {
+      const va = i.w / i.pf;
+      if(i.ph3 || i.w > 7360){ for(let k=0;k<3;k++) phases[k] += va * i.qty / 3; }
+      else for(let q=0;q<i.qty;q++) singles.push(va);
+    });
+    singles.sort((a,b) => b - a).forEach(va => { const k = phases.indexOf(Math.min(...phases)); phases[k] += va; });
+  }
+
+  return {items, runW, runVA, avgW, peakVA, needVA, surgeExtra, surgeName, threePhase, gen, loadPct, lph, hours, supply, conns, circuits16, phases, units};
+}
+
+/* ---------- Load meter ---------- */
+function meterHTML(c){
+  const cap = c.gen ? c.gen * 1000 : c.peakVA * 1.25;
+  const run = Math.min(c.runVA / cap * 100, 100);
+  const peak = Math.min(c.peakVA / cap * 100, 100);
+  const over = !c.gen;
+  return `<div class="meter" aria-hidden="true">
+    <div class="meter-track">
+      ${over ? `<div class="over"></div>` : ""}
+      <i class="run" style="width:${run}%"></i>
+      <i class="peak" style="left:${run}%;width:${Math.max(peak - run, 0)}%"></i>
+      <span class="limit" style="left:80%" data-label="80% limit"></span>
+    </div>
+    <div class="meter-ticks"><span style="left:0">0</span><span style="left:80%">${kw(cap * .8)}</span><span style="left:100%">${kw(cap)} kVA</span></div>
+  </div>
+  <ul class="legend"><li><span class="sw sw-run"></span>Running load</li><li><span class="sw sw-peak"></span>Start-up surge</li><li><span class="sw sw-lim"></span>Keep running load under this</li></ul>`;
+}
+
+/* ---------- Screens ---------- */
+function renderStart(){
+  const started = Object.values(state.qty).some(q => q > 0) || state.name;
+  $("#screen-start").innerHTML = `
+    <h1 id="h-start">How much power does your event need?</h1>
+    <p class="lede">Add the equipment you’re running and get the generator size, the supply you need from the venue and the sockets to plan for. It takes about three minutes.</p>
+    <div class="panel">
+      <h3>Before you start</h3>
+      <p class="muted small">This check gives general guidance only. It isn’t electrical advice or an electrical design, and Fort Green Limited accepts no responsibility for decisions made using it. Always have a competent electrician confirm your power needs before you rely on it.</p>
+      <label class="check" style="margin-bottom:0"><input type="checkbox" id="agree" ${state.agreed ? "checked" : ""}><span>I understand this is general guidance, not electrical advice.</span></label>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="go-start" ${state.agreed ? "" : "disabled"}>${started ? "Continue your plan" : "Start planning"}</button>
+      ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start a new plan</button>` : ""}
+    </div>
+    <div class="panel">
+      <h3>Smart people, on short notice, solving problems.</h3>
+      <p class="muted" style="margin:0">Festivals, venues and corporate events across London. Fort Green plans event power alongside security, staffing and production, so it all runs from one team.</p>
+    </div>`;
+  $("#agree").onchange = e => { state.agreed = e.target.checked; save(); $("#go-start").disabled = !state.agreed; };
+  $("#go-start").onclick = () => go("event");
+  const r = $("#reset");
+  if(r) r.onclick = () => { state = Object.assign(JSON.parse(JSON.stringify(BLANK)), {agreed:state.agreed}); save(); updateBadge(); go("event"); };
+}
+
+function renderEvent(){
+  const sites = [["outdoor","Outdoor site"],["venue","Venue with power"],["unsure","Not sure yet"]];
+  $("#screen-event").innerHTML = `
+    <h1 id="h-event">Your event</h1>
+    <p class="muted">A few details so we can size fuel and supply.</p>
+    <div class="field">
+      <label for="i-name">Event name</label>
+      <input type="text" id="i-name" value="${esc(state.name)}" placeholder="e.g. Summer Yard Party">
+    </div>
+    <div class="field">
+      <span class="label" id="l-site">Where will the power come from?</span>
+      <div class="seg" role="group" aria-labelledby="l-site">
+        ${sites.map(([v,l]) => `<button type="button" data-site="${v}" aria-pressed="${state.site===v}">${l}</button>`).join("")}
+      </div>
+      <div class="hint">${state.site === "venue" ? "We’ll show what supply to ask the venue for, plus a generator as a fallback." : state.site === "outdoor" ? "We’ll size a generator and estimate the fuel." : "We’ll show both a generator size and a venue supply."}</div>
+    </div>
+    <div class="two">
+      <div class="field">
+        <label for="i-hours">Hours powered per day</label>
+        <input type="number" id="i-hours" inputmode="decimal" min="0" max="24" step="0.5" value="${esc(state.hours)}" placeholder="e.g. 10">
+      </div>
+      <div class="field">
+        <label for="i-days">Number of days</label>
+        <input type="number" id="i-days" inputmode="numeric" min="1" max="30" step="1" value="${esc(state.days)}">
+      </div>
+    </div>
+    <div class="hint" style="margin-top:-8px">Include setup, rehearsals and overnight fridges if they stay on.</div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="kit">Add your equipment</button>
+    </div>`;
+  document.querySelectorAll("[data-site]").forEach(b => b.onclick = () => { state.site = b.dataset.site; save(); renderEvent(); });
+  $("#i-name").oninput = e => { state.name = e.target.value; save(); };
+  $("#i-hours").oninput = e => { state.hours = e.target.value; save(); };
+  $("#i-days").oninput = e => { state.days = e.target.value.replace(/[^0-9]/g,""); save(); };
+  bindGo($("#screen-event"));
+}
+
+function itemRow(i){
+  const q = state.qty[i.id] || 0;
+  const bits = [n0(i.w) + " W each"];
+  if(i.surge >= 2) bits.push("surges on start-up");
+  if(i.ph3) bits.push("three-phase");
+  return `<div class="item ${q ? "has" : ""}">
+    <div><strong>${esc(i.name)}</strong><span class="muted">${bits.join(", ")}</span>${i.cat === "custom" ? ` <button class="link-btn rm" data-rm="${i.id}">Remove</button>` : ""}</div>
+    <div class="stepper" role="group" aria-label="${esc(i.name)} quantity">
+      <button type="button" data-dec="${i.id}" aria-label="Remove one" ${q ? "" : "disabled"}>−</button>
+      <output>${q}</output>
+      <button type="button" data-inc="${i.id}" aria-label="Add one">+</button>
+    </div>
+  </div>`;
+}
+
+function renderKit(keepFocus){
+  const c = calc();
+  const query = state.query.trim().toLowerCase();
+  const list = allItems().filter(i => !query || i.name.toLowerCase().includes(query));
+  const groups = CATS.map(([k, label]) => {
+    const rows = list.filter(i => i.cat === k);
+    if(k === "custom" && !rows.length) return "";
+    return rows.length ? `<div class="q-group">${label}</div>${rows.map(itemRow).join("")}` : "";
+  }).join("");
+  const cap = c.gen ? c.gen * 1000 : (c.runVA || 1);
+  $("#screen-kit").innerHTML = `
+    <h1 id="h-kit">Equipment</h1>
+    <p class="muted">Add everything that plugs in. If something isn’t listed, add it at the bottom using the watts on its rating plate.</p>
+    <div class="sum">
+      <div class="sum-row"><span><strong>${kw(c.runW)} kW</strong> running from ${c.units} item${c.units === 1 ? "" : "s"}</span><span class="muted">${c.gen ? c.gen + " kVA generator" : c.units ? "Over 1,000 kVA" : "Nothing added yet"}</span></div>
+      <div class="bar"><i style="width:${c.units ? Math.min(c.runVA / cap * 100, 100) : 0}%"></i></div>
+    </div>
+    <div class="field" style="margin-top:16px">
+      <label for="i-q" class="label">Search equipment</label>
+      <input type="search" id="i-q" value="${esc(state.query)}" placeholder="e.g. fridge, PA, festoon">
+    </div>
+    ${groups || `<p class="muted">Nothing matches “${esc(state.query)}”. Add it as your own equipment below.</p>`}
+    <div class="panel" style="margin-top:28px">
+      <h3>Add your own equipment</h3>
+      <div class="field"><label for="c-name">What is it?</label><input type="text" id="c-name" placeholder="e.g. Candyfloss machine"></div>
+      <div class="field"><label for="c-w">Watts</label><input type="number" id="c-w" inputmode="numeric" min="1" step="1" placeholder="e.g. 1000"><div class="hint">On the rating plate. If it shows amps only, multiply by 230.</div></div>
+      <label class="check"><input type="checkbox" id="c-motor"><span>It has a motor, pump or compressor (fridges, blowers, chillers)</span></label>
+      <label class="check"><input type="checkbox" id="c-3ph"><span>It needs a three-phase supply</span></label>
+      <div class="error" id="c-err" hidden></div>
+      <div class="btn-row"><button class="btn btn-ghost btn-block" id="c-add">Add to my list</button></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="power" ${c.units ? "" : "disabled"}>See my power needs</button>
+    </div>`;
+  const el = $("#screen-kit");
+  el.querySelectorAll("[data-inc]").forEach(b => b.onclick = () => setQty(b.dataset.inc, 1));
+  el.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => setQty(b.dataset.dec, -1));
+  el.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => {
+    const id = b.dataset.rm; state.custom = state.custom.filter(x => x.id !== id); delete state.qty[id]; save(); rerenderKit();
+  });
+  const qi = $("#i-q");
+  qi.oninput = e => { state.query = e.target.value; save(); renderKit(true); };
+  if(keepFocus){ qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
+  $("#c-add").onclick = () => {
+    const name = $("#c-name").value.trim(), w = parseInt($("#c-w").value, 10), err = $("#c-err");
+    if(!name){ err.textContent = "Enter what the equipment is."; err.hidden = false; $("#c-name").focus(); return; }
+    if(!w || w < 1){ err.textContent = "Enter the watts from the rating plate, like 1000."; err.hidden = false; $("#c-w").focus(); return; }
+    const id = "c" + Date.now();
+    state.custom.push({id, name, w, motor:$("#c-motor").checked, ph3:$("#c-3ph").checked});
+    state.qty[id] = 1; state.query = ""; save(); rerenderKit();
+  };
+  bindGo(el);
+}
+function rerenderKit(){ const y = window.scrollY; renderKit(); window.scrollTo(0, y); updateBadge(); }
+function setQty(id, d){ state.qty[id] = Math.max(0, Math.min(999, (state.qty[id]||0) + d)); if(!state.qty[id]) delete state.qty[id]; save(); rerenderKit(); }
+
+function ctaHTML(c){
+  const lines = c.items.map(i => `${i.qty} × ${i.name}`).join("\n");
+  const body = `Event: ${state.name || "Not named"}\nPower source: ${({outdoor:"Outdoor site",venue:"Venue power",unsure:"Not sure yet"})[state.site] || "Not set"}\nRunning load: ${kw(c.runW)} kW\nGenerator estimate: ${c.gen ? c.gen + " kVA " + (c.threePhase ? "three-phase" : "single-phase") : "over 1,000 kVA"}\nHours: ${state.hours || "?"} per day for ${state.days || 1} day(s)\n\nEquipment:\n${lines}`;
+  return `<div class="cta no-print">
+    <h2>Let Fort Green power your event</h2>
+    <p class="muted">We’ll arrange the generator, distribution and a qualified event electrician, and manage fuel on the day, alongside your security and staffing.</p>
+    <div class="btn-row">
+      <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Event power quote: " + (state.name || "my event"))}&body=${encodeURIComponent(body)}">Get a power quote</a>
+      <a class="btn btn-ghost btn-block" href="${WHATSAPP}" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+    </div>
+  </div>`;
+}
+
+const DISCLAIMER = `<p class="disclaimer">This tool gives general information about event power to help you plan. It isn’t electrical advice or an electrical design, and doesn’t replace advice from a qualified electrician or power engineer. Equipment wattages are typical figures, and real loads, start-up surges and fuel use vary between models, sites and conditions. Every temporary electrical installation must be designed, installed, inspected and tested by a competent person in line with BS 7671 and BS 7909. Fort Green Limited accepts no responsibility or liability for any injury, damage, equipment failure, loss of power, fuel shortfall, enforcement action, cost or loss arising from the use of this tool or reliance on its results. You remain responsible for checking what applies to your event and for the safety of your electrical installation. Fort Green isn’t affiliated with or endorsed by BSI, the IET or any generator or equipment manufacturer.</p>`;
+
+function renderPower(){
+  const c = calc(), el = $("#screen-power");
+  const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+  if(!c.units){
+    el.innerHTML = `<div class="empty"><h1 id="h-power">Power</h1><p class="muted">Your results appear here once you’ve added some equipment.</p><button class="btn btn-primary btn-block" data-go="kit">Add equipment</button></div>`;
+    bindGo(el); return;
+  }
+  const title = state.name ? esc(state.name) : "Your event";
+  const phaseWord = c.threePhase ? "three-phase" : "single-phase";
+  const venueFirst = state.site === "venue";
+
+  const genBlock = c.gen
+    ? `<div class="verdict ${venueFirst ? "v-alt" : "v-main"}" role="status">
+        <h3>${venueFirst ? "Generator, if the venue can’t supply it" : "Generator size"}</h3>
+        <div class="big">${c.gen} kVA</div>
+        <p class="muted" style="margin:0">${phaseWord[0].toUpperCase() + phaseWord.slice(1)}. Runs at about ${Math.round(c.loadPct * 100)}% of its rating, leaving room for start-up surges and late additions.</p>
+      </div>`
+    : `<div class="verdict v-check" role="status"><h3>Generator size</h3><div class="big">1,000+ kVA</div><p class="muted" style="margin:0">This is beyond a single standard generator. You’ll need several sets, possibly synchronised, designed by a power engineer.</p></div>`;
+
+  const supplyBlock = c.supply.amps
+    ? `<div class="verdict ${venueFirst ? "v-main" : "v-alt"}">
+        <h3>${venueFirst ? "Ask the venue for" : "If you use venue power, ask for"}</h3>
+        <div class="big">${c.supply.amps}A ${c.threePhase ? "3-phase" : "1-phase"}</div>
+        <p class="muted" style="margin:0">A dedicated ${c.supply.amps}A ${phaseWord} supply${c.threePhase ? " per phase" : ""}, with your load at about ${n0(c.supply.perPhase)}A${c.threePhase ? " per phase when balanced" : ""}. Normal wall sockets won’t carry this safely.</p>
+      </div>`
+    : `<div class="verdict v-check"><h3>Venue supply</h3><p class="muted" style="margin:0">More than a typical venue supply can provide. Plan on generators.</p></div>`;
+
+  const stats = `<div class="stats">
+      <div><b>${kw(c.runW)}</b><span>kW running</span></div>
+      <div><b>${kw(c.peakVA)}</b><span>kVA at start-up</span></div>
+      <div><b>${c.threePhase ? "3" : "1"}</b><span>phase${c.threePhase ? "s" : ""}</span></div>
+    </div>`;
+
+  const notes = [];
+  if(c.gen && c.loadPct < .3 && c.gen >= 20) notes.push(`<div class="status warn"><div><strong>The generator will run lightly loaded</strong><span class="small muted">Under 30% load, diesel generators can wet-stack and foul. This happens when start-up surges force a bigger set than the running load needs. Ask about a smaller set with a soft-start on ${esc(c.surgeName.toLowerCase())}, or a battery hybrid.</span></div></div>`);
+  if(c.surgeExtra > 0) notes.push(`<div class="status"><div><strong>Start-up surge from ${esc(c.surgeName.toLowerCase())}</strong><span class="small muted">Motors draw several times their running power for a second or two. We’ve sized for the largest one starting while everything else runs. After any power cut, switch motors back on one at a time.</span></div></div>`);
+
+  const connRows = Object.entries(c.conns).sort((a,b) => b[1] - a[1]).map(([k,v]) => `<tr><td>${k}</td><td class="n">${v}</td></tr>`).join("");
+  const connBlock = `<div class="panel">
+      <h2>Connections to plan for</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>Outlet</th><th class="n">Needed</th></tr></thead><tbody>${connRows}</tbody></table></div>
+      ${c.circuits16 ? `<p class="small muted" style="margin:8px 0 0">The 13A items need at least ${c.circuits16} separate 16A circuit${c.circuits16 > 1 ? "s" : ""}, loaded to no more than 80%. Don’t daisy-chain extension leads.</p>` : ""}
+    </div>`;
+
+  const head = `<h1 id="h-power" style="margin-bottom:4px">${title}</h1><p class="small muted">Event power estimate, ${today}</p>`;
+
+  let plan;
+  if(!state.unlocked){
+    plan = `<div class="locked">
+      <h3>Your full power plan</h3>
+      <p class="muted">See the load on each phase, how much fuel to order, an equipment schedule for your electrician and a site safety checklist.</p>
+      <button class="btn btn-primary btn-block" id="unlock">Get my power plan</button>
+    </div>`;
+  } else {
+    const phaseBlock = c.phases ? (() => {
+      const max = Math.max(...c.phases), min = Math.min(...c.phases);
+      const imb = max ? Math.round((max - min) / max * 100) : 0;
+      return `<div class="panel">
+        <h2>Phase balance</h2>
+        <p class="muted small">How the single-phase equipment could be split across the generator’s three phases. Your electrician will finalise this on site.</p>
+        ${c.phases.map((v,k) => `<div class="phase"><b>L${k+1}</b><div class="bar"><i style="width:${max ? v / max * 100 : 0}%"></i></div><span class="small" style="text-align:right">${n0(v / 230)}A</span></div>`).join("")}
+        <p class="small muted" style="margin:8px 0 0">${imb <= 20 ? `Within ${imb}% of each other, which is well balanced.` : `${imb}% apart. Big single items make this hard to even out, so ask for extra headroom on the heaviest phase.`}</p>
+      </div>`;
+    })() : `<div class="panel"><h2>Phase balance</h2><p class="muted" style="margin:0">Single-phase supply, so there’s nothing to balance.</p></div>`;
+
+    const fuelBlock = c.gen ? `<div class="panel">
+        <h2>Fuel</h2>
+        <div class="stats" style="grid-template-columns:repeat(2,1fr);margin-top:8px">
+          <div><b>${c.lph.toFixed(1)} L</b><span>per hour, roughly</span></div>
+          <div><b>${c.hours ? n0(c.lph * c.hours * 1.1) + " L" : "Add hours"}</b><span>${c.hours ? `for ${n0(c.hours)} hours, plus 10%` : "on the Event tab"}</span></div>
+        </div>
+        <p class="small muted" style="margin:0">Diesel or HVO, based on how much of the time each item actually draws power. Real use depends on the generator model and the weather. Agree a refuelling schedule and who carries it out.</p>
+      </div>` : "";
+
+    const sched = `<div class="panel">
+        <h2>Equipment schedule</h2>
+        <div class="tbl-wrap"><table><thead><tr><th>Item</th><th class="n">Qty</th><th class="n">kW</th><th>Outlet</th></tr></thead><tbody>
+        ${c.items.map(i => `<tr><td>${esc(i.name)}</td><td class="n">${i.qty}</td><td class="n">${kw(i.w * i.qty)}</td><td>${connector(i)}</td></tr>`).join("")}
+        <tr><td><strong>Total</strong></td><td class="n"><strong>${c.units}</strong></td><td class="n"><strong>${kw(c.runW)}</strong></td><td></td></tr>
+        </tbody></table></div>
+      </div>`;
+
+    const checks = [
+      ["Competent design and sign-off", "A qualified electrician designs and installs the system to BS 7909 and BS 7671, and hands over a completion certificate before the public arrive."],
+      ["RCD protection", "30 mA RCDs on socket outlets and any circuit the public or traders can reach."],
+      ["Earthing", "Agree the earthing arrangement with your electrician. A generator on its own doesn’t give you a safe earth."],
+      ["Generator siting", "Fenced off from public routes, exhaust clear of tents and air intakes, on a spill tray or bunded, with a suitable fire extinguisher beside it."],
+      ["Cables", "Outdoor-rated flexible cable, protected with ramps where it crosses walkways, and extension reels fully unwound."],
+      ["Traders’ equipment", "Ask traders for in-date inspection records and check plugs and leads before connecting them."],
+      ["Critical loads", "Put first aid, the control room, emergency lighting and the PA for announcements on a protected circuit or a standby generator."],
+      ["Purple Guide", "Check your plan against the electrical chapter of the Purple Guide and anything your Safety Advisory Group asks for."]
+    ];
+    const checkBlock = `<div class="panel"><h2>Site safety checklist</h2><ul class="ticks">${checks.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>`;
+
+    plan = phaseBlock + fuelBlock + sched + checkBlock + `<div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>`;
+  }
+
+  el.innerHTML = head + meterHTML(c) + stats
+    + (venueFirst ? supplyBlock + genBlock : genBlock + supplyBlock)
+    + notes.join("") + connBlock + plan + ctaHTML(c)
+    + `<div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="kit">Change my equipment</button></div>` + DISCLAIMER;
+  const u = $("#unlock"); if(u) u.onclick = openSheet;
+  const p = $("#print"); if(p) p.onclick = () => window.print();
+  bindGo(el);
+}
+
+/* ---------- Lead sheet ---------- */
+function openSheet(){ $("#overlay").classList.add("on"); $("#sheet").classList.add("on"); setTimeout(() => $("#f-name").focus(), 250); }
+function closeSheet(){ $("#overlay").classList.remove("on"); $("#sheet").classList.remove("on"); }
+$("#overlay").onclick = closeSheet;
+$("#sheet-close").onclick = closeSheet;
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+$("#lead-form").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("#f-email").value.trim(), err = $("#f-email-err");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Enter a valid email address, like name@venue.co.uk."; err.hidden = false; $("#f-email").focus(); return; }
+  err.hidden = true;
+  const c = calc();
+  const lead = { tool:"power-planner", name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
+    marketing_opt_in:$("#f-mkt").checked, event:state.name, site:state.site, hours_per_day:state.hours, days:state.days,
+    running_kw:+(c.runW/1000).toFixed(2), peak_kva:+(c.peakVA/1000).toFixed(2), generator_kva:c.gen, three_phase:c.threePhase,
+    supply_amps:c.supply.amps, items:c.items.map(i => ({name:i.name, qty:i.qty, watts:i.w})), submitted_at:new Date().toISOString() };
+  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  state.unlocked = true; save(); closeSheet(); renderPower(); window.scrollTo(0,0);
+};
+
+/* ---------- Navigation ---------- */
+const TABS = ["start","event","kit","power"];
+function go(tab){
+  if(tab !== "start" && !state.agreed) tab = "start";
+  TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  ({start:renderStart, event:renderEvent, kit:() => renderKit(), power:renderPower})[tab]();
+  if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+  window.scrollTo(0,0);
+}
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go)); }
+function updateBadge(){
+  const n = Object.values(state.qty).reduce((a,b) => a + b, 0), b = $("#badge");
+  if(n){ b.textContent = n > 99 ? "99+" : n; b.hidden = false; } else b.hidden = true;
+}
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(TABS.includes(h)) go(h); });
+
+updateBadge();
+go(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "start");
+</script>
+</body>
+</html>

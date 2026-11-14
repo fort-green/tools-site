@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Equipment check-out | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;
+  --err:#b42318;--err-soft:#fbe4e1;--warn:#7a5a00;--warn-soft:#fff4cc;--ok:#1d6b3a;--ok-soft:#e3f3e8;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#100f10;--surface:#1a191a;--ink:#fff;--body:#e2e2e2;--muted:#a9a9a9;--line:#3b3a3b;--soft:#232223;
+  --err:#ff7b6e;--err-soft:#2d1513;--warn:#ffd666;--warn-soft:#2e2507;--ok:#7fd69b;--ok-soft:#12271a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Manrope,Arial,sans-serif}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.display{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;text-transform:uppercase;line-height:.95;letter-spacing:.005em}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.hero{padding-top:48px;padding-bottom:28px;display:flex;flex-wrap:wrap;gap:16px 40px;align-items:flex-end;justify-content:space-between}
+.hero .kicker{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--muted)}
+.hero h1{margin:0;font-size:clamp(56px,10vw,120px)}
+.who{font-size:15px;color:var(--muted)} .who strong{color:var(--ink)}
+.tabs{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--ink);margin-bottom:28px}
+.tabs a{padding:14px 18px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid transparent;border-bottom:0;margin-bottom:-1px}
+.tabs a[aria-current=page]{color:var(--ink);border-color:var(--ink);background:var(--bg)}
+.tabs .count{display:inline-block;min-width:22px;margin-left:6px;padding:0 6px;background:var(--ink);color:var(--bg);font-size:12px;text-align:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:0;font:700 14px Manrope,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.sm{min-height:38px;padding:0 14px;font-size:12px}
+.btn.danger{background:transparent;color:var(--err);border-color:var(--err)}
+.btn[disabled]{opacity:.55;cursor:wait}
+.linkbtn{background:none;border:0;padding:0;font:600 15px Manrope,Arial,sans-serif;color:var(--ink);text-decoration:underline;cursor:pointer}
+.sechead{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:20px}
+.sechead h2{margin:0;font-size:40px}
+.sechead .actions{display:flex;flex-wrap:wrap;gap:10px}
+.hint{margin:0;font-size:15px;color:var(--muted)}
+.err{margin:0;padding:12px 14px;background:var(--err-soft);color:var(--err);font-weight:600;font-size:15px}
+.okmsg{margin:0;padding:12px 14px;background:var(--ok-soft);color:var(--ok);font-weight:600;font-size:15px}
+.empty{border:1px dashed var(--line);padding:40px 24px;text-align:center;color:var(--muted)}
+.list{display:flex;flex-direction:column;border-top:1px solid var(--ink)}
+.row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.6fr) minmax(0,1fr) auto;gap:8px 20px;align-items:center;padding:16px 4px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.row:hover{background:var(--soft)}
+.row .t{font-weight:700;font-size:17px}
+.row .s{font-size:14px;color:var(--muted)}
+@media (max-width:760px){.row{grid-template-columns:1fr auto}.row .hide-sm{display:none}}
+.pill{display:inline-block;padding:4px 10px;border:1px solid currentColor;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.pill.issued{color:var(--warn);background:var(--warn-soft)}
+.pill.acknowledged{color:var(--ink)}
+.pill.partial{color:var(--warn);background:var(--warn-soft)}
+.pill.returned{color:var(--ok);background:var(--ok-soft)}
+.pill.cancelled{color:var(--muted)}
+.pill.overdue{color:var(--err);background:var(--err-soft)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.card{display:flex;flex-direction:column;gap:12px;padding:24px;border:1px solid var(--ink);background:var(--surface);text-decoration:none;color:var(--ink);min-height:200px}
+.card h3{margin:auto 0 0;font-size:34px}
+.card p{margin:0;color:var(--body)}
+.card .foot{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px;font-size:14px;color:var(--muted)}
+.panel{border:1px solid var(--ink);background:var(--surface);padding:28px;margin-bottom:24px}
+.panel h3{margin:0 0 16px;font-size:28px}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px 24px;margin:0}
+.meta dt{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.meta dd{margin:4px 0 0;font-weight:600;overflow-wrap:anywhere}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:10px 8px;border-bottom:1px solid var(--ink)}
+td{padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px}
+input[type=email],input[type=text],input[type=number],input[type=date],select,textarea{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 16px Manrope,Arial,sans-serif}
+textarea{min-height:80px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none}
+input.qty{width:84px;text-align:right}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.check{display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.45;color:var(--body)}
+.check input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--ink);flex:none}
+.lines td{padding:8px 6px}
+.lines input,.lines select{min-height:42px;font-size:15px}
+.x{background:none;border:1px solid var(--line);color:var(--muted);width:42px;height:42px;cursor:pointer;font-size:20px;line-height:1}
+.x:hover{border-color:var(--err);color:var(--err)}
+.stack{display:flex;flex-direction:column;gap:18px}
+.btnrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.log{list-style:none;margin:0;padding:0}
+.log li{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.log time{color:var(--muted)}
+.share{background:var(--soft);border-color:var(--line)}
+.bad{color:var(--err);font-weight:700}
+.back{display:inline-block;margin-bottom:18px;font-weight:600}
+.loading{padding:60px 0;color:var(--muted)}
+footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-size:14px;color:var(--muted)}
+[hidden]{display:none!important}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;line-height:26px}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .hero{padding-top:24px;padding-bottom:16px;gap:8px}
+  .hero .kicker{font-size:13px;margin-bottom:4px}
+  .hero h1{font-size:clamp(40px,13vw,56px)}
+  .who{font-size:13px}
+  .sechead h2{font-size:32px}
+  .panel{padding:18px}
+  .panel h3{font-size:24px}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:20px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs a{padding:12px 12px;font-size:13px;white-space:nowrap;flex:none}
+  input[type=email],input[type=text],input[type=number],input[type=date],select,textarea,.lines input,.lines select{font-size:16px}
+  .btnrow .btn{flex:1 1 auto}
+  .lines thead,.ci thead{display:none}
+  .lines tr{display:grid;grid-template-columns:84px 1fr 42px;gap:8px;padding:12px 0;border-bottom:1px solid var(--line);align-items:end}
+  .lines td{padding:0;border:0}
+  .lines td:first-child{grid-column:1/-1}
+  .lines td[data-l]::before{content:attr(data-l);display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .ci tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .ci td{padding:0;border:0;text-align:left!important}
+  .ci td:first-child{grid-column:1/-1;font-weight:700;font-size:17px}
+  .ci td[data-l]::before{content:attr(data-l);display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .ci td.wide{grid-column:1/-1}
+  .ci input.qty{width:100%}
+  .log li{grid-template-columns:1fr}
+}
+@media print{
+  .tabs,.btnrow,.noprint,.back,footer,body>div:first-child{display:none!important}
+  .panel{border:1px solid #000;break-inside:avoid}
+  body{background:#fff;color:#000}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <p class="kicker">Fort Green toolkit</p>
+      <h1 class="display">Equipment.</h1>
+    </div>
+    <p class="who" id="who"></p>
+  </section>
+  <nav class="tabs" id="tabs" aria-label="Equipment sections"></nav>
+  <div id="app" class="loading">Loading…</div>
+</main>
+<footer><div class="wrap">Kit issued through this tool is logged with the time and the person who issued, received and returned it. Questions: <a href="mailto:info@fortgreen.co.uk">info@fortgreen.co.uk</a></div></footer>
+
+<script>
+(function () {
+  "use strict";
+  var c = window.FG_CONFIG || {};
+  var app = document.getElementById("app");
+  if (!c.SUPABASE_URL || !c.SUPABASE_ANON_KEY || !window.supabase) {
+    app.innerHTML = '<p class="err">This tool needs sign-in. Add the Supabase details to config.js.</p>'; return;
+  }
+  var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
+  var me = { email: "", staff: false };
+  var STATUS = { issued: "Awaiting receipt", acknowledged: "Out", partial: "Part returned", returned: "Returned", cancelled: "Cancelled" };
+  var OPEN = ["issued", "acknowledged", "partial"];
+
+  /* ---------- helpers ---------- */
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]; }); }
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function fmtDate(d) { if (!d) return "—"; var x = new Date(d.length === 10 ? d + "T12:00:00" : d); return x.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
+  function fmtTime(d) { return d ? new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"; }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function overdue(co) { return OPEN.indexOf(co.status) > -1 && co.due_back && co.due_back < today(); }
+  function pill(co) { return overdue(co) ? '<span class="pill overdue">Overdue</span>' : '<span class="pill ' + co.status + '">' + STATUS[co.status] + "</span>"; }
+  function errBox(msg) { return '<p class="err" role="alert">' + esc(msg) + "</p>"; }
+  function niceErr(e) { var m = (e && (e.message || e.error_description)) || "Something went wrong."; return /JWT|session/i.test(m) ? "Your sign-in has expired. Refresh the page and sign in again." : m; }
+  function linkFor(id) { return location.origin + location.pathname + "#c=" + id; }
+  function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = label; }
+  function go(hash) { if (location.hash === hash) render(); else location.hash = hash; }
+
+  /* ---------- nav ---------- */
+  var counts = { mine: 0, out: 0 };
+  function drawTabs(active) {
+    var t = [];
+    if (me.staff) {
+      t.push(["#out", "Out now", counts.out]);
+      t.push(["#lists", "Kit lists"]);
+      t.push(["#history", "History"]);
+    }
+    t.push(["#mine", "My kit", counts.mine]);
+    $("#tabs").innerHTML = t.map(function (x) {
+      return '<a href="' + x[0] + '"' + (x[0] === active ? ' aria-current="page"' : "") + ">" + x[1] + (x[2] ? '<span class="count">' + x[2] + "</span>" : "") + "</a>";
+    }).join("");
+  }
+
+  async function refreshCounts() {
+    var a = await sb.from("eq_checkouts").select("id", { count: "exact", head: true }).eq("assignee_email", me.email).eq("status", "issued");
+    counts.mine = a.count || 0;
+    if (me.staff) {
+      var b = await sb.from("eq_checkouts").select("id", { count: "exact", head: true }).in("status", OPEN);
+      counts.out = b.count || 0;
+    }
+  }
+
+  /* ---------- router ---------- */
+  async function render() {
+    var h = location.hash || (me.staff ? "#out" : "#mine");
+    var m;
+    app.className = "loading"; app.innerHTML = "Loading…";
+    try {
+      await refreshCounts();
+      if ((m = h.match(/^#c=([0-9a-f-]{36})$/))) { drawTabs(""); return await viewCheckout(m[1]); }
+      if (h === "#mine") { drawTabs(h); return await viewList("mine"); }
+      if (!me.staff) { drawTabs("#mine"); return await viewList("mine"); }
+      if (h === "#out" || h === "#history") { drawTabs(h); return await viewList(h.slice(1)); }
+      if (h === "#lists") { drawTabs(h); return await viewKitLists(); }
+      if ((m = h.match(/^#k=(new|\d+)$/))) { drawTabs("#lists"); return await viewKitEditor(m[1]); }
+      if ((m = h.match(/^#issue(?:=(\d+))?$/))) { drawTabs("#out"); return await viewIssue(m[1] ? Number(m[1]) : null); }
+      drawTabs(""); app.className = ""; app.innerHTML = errBox("Page not found.") + '<p><a href="#">Back to start</a></p>';
+    } catch (e) {
+      app.className = ""; app.innerHTML = errBox(niceErr(e));
+    }
+  }
+
+  /* ---------- lists of check-outs ---------- */
+  async function viewList(kind) {
+    var q = sb.from("eq_checkouts").select("id,ref,kit_name,assignee_email,assignee_name,event,due_back,status,issued_at,ack_at,closed_at");
+    if (kind === "mine") q = q.eq("assignee_email", me.email).order("issued_at", { ascending: false });
+    else if (kind === "out") q = q.in("status", OPEN).order("due_back", { ascending: true, nullsFirst: false });
+    else q = q.in("status", ["returned", "cancelled"]).order("closed_at", { ascending: false }).limit(200);
+    var r = await q; if (r.error) throw r.error;
+    var rows = r.data;
+    var title = { mine: "My kit", out: "Out now", history: "History" }[kind];
+    var hint = {
+      mine: "Kit issued to " + esc(me.email) + ". Open anything marked Awaiting receipt to confirm you have it.",
+      out: "Everything issued and not yet fully returned. Open one to check it back in.",
+      history: "Returned and cancelled kit, newest first."
+    }[kind];
+    var html = '<div class="sechead"><h2 class="display">' + title + '</h2><div class="actions">' +
+      (me.staff && kind !== "mine" ? '<a class="btn" href="#issue">Issue kit</a>' : "") + "</div></div>" +
+      '<p class="hint" style="margin-bottom:20px">' + hint + "</p>";
+    if (!rows.length) {
+      html += '<div class="empty">' + (kind === "mine" ? "Nothing has been issued to you." : kind === "out" ? "No kit is out right now." : "Nothing here yet.") + "</div>";
+    } else {
+      html += '<div class="list">' + rows.map(function (co) {
+        var who = kind === "mine" ? (co.event || "—") : (co.assignee_name || co.assignee_email);
+        var when = co.status === "returned" || co.status === "cancelled" ? "Closed " + fmtDate(co.closed_at) : "Due back " + fmtDate(co.due_back);
+        return '<a class="row" href="#c=' + co.id + '"><div><div class="t">' + esc(co.kit_name) + '</div><div class="s">' + esc(co.ref) + " · issued " + fmtDate(co.issued_at) + '</div></div>' +
+          '<div class="hide-sm"><div>' + esc(who) + '</div><div class="s">' + esc(kind === "mine" ? "" : co.event) + "</div></div>" +
+          '<div class="s hide-sm">' + when + "</div><div>" + pill(co) + "</div></a>";
+      }).join("") + "</div>";
+    }
+    app.className = ""; app.innerHTML = html;
+  }
+
+  /* ---------- kit lists ---------- */
+  async function viewKitLists() {
+    var r = await sb.from("eq_kit_lists").select("id,name,description,archived,eq_kit_items(qty)").order("archived").order("name");
+    if (r.error) throw r.error;
+    var html = '<div class="sechead"><h2 class="display">Kit lists</h2><div class="actions"><a class="btn" href="#k=new">New kit list</a></div></div>' +
+      '<p class="hint" style="margin-bottom:20px">Reusable lists of equipment. Build one once, then issue it to anyone.</p>';
+    if (!r.data.length) html += '<div class="empty">No kit lists yet. Create one, for example “Door team” with radios, earpieces and hi-vis.</div>';
+    else html += '<div class="grid">' + r.data.map(function (k) {
+      var n = k.eq_kit_items.length, units = k.eq_kit_items.reduce(function (a, b) { return a + b.qty; }, 0);
+      return '<a class="card" href="#k=' + k.id + '"' + (k.archived ? ' style="opacity:.55"' : "") + ">" +
+        (k.archived ? '<span class="pill cancelled" style="align-self:flex-start">Archived</span>' : "") +
+        '<h3 class="display">' + esc(k.name) + "</h3><p>" + esc(k.description || "") + '</p><div class="foot"><span>' + n + " line" + (n === 1 ? "" : "s") + ", " + units + " item" + (units === 1 ? "" : "s") + "</span><span>Edit</span></div></a>";
+    }).join("") + "</div>";
+    app.className = ""; app.innerHTML = html;
+  }
+
+  function lineRow(kind, it) {
+    it = it || {};
+    if (kind === "kit") {
+      return '<tr><td data-l="Item"><input type="text" class="ln-name" aria-label="Item" placeholder="e.g. Motorola radio" value="' + esc(it.name || "") + '"></td>' +
+        '<td data-l="Qty"><input type="number" inputmode="numeric" class="ln-qty qty" aria-label="Quantity" min="1" value="' + (it.qty || 1) + '"></td>' +
+        '<td data-l="Notes"><input type="text" class="ln-notes" aria-label="Notes" placeholder="Optional" value="' + esc(it.notes || "") + '"></td>' +
+        '<td><button type="button" class="x" aria-label="Remove line">×</button></td></tr>';
+    }
+    return '<tr><td data-l="Item"><input type="text" class="ln-name" aria-label="Item" placeholder="e.g. Motorola radio" value="' + esc(it.name || "") + '"></td>' +
+      '<td data-l="Qty"><input type="number" inputmode="numeric" class="ln-qty qty" aria-label="Quantity" min="1" value="' + (it.qty || 1) + '"></td>' +
+      '<td data-l="Serial / asset no."><input type="text" class="ln-serial" aria-label="Serial or asset numbers" placeholder="Optional, e.g. R04, R07" value="' + esc(it.serial || "") + '"></td>' +
+      '<td><button type="button" class="x" aria-label="Remove line">×</button></td></tr>';
+  }
+  function wireLines(form, kind) {
+    var body = $(".lines tbody", form);
+    $(".add-line", form).addEventListener("click", function () { body.insertAdjacentHTML("beforeend", lineRow(kind)); $("tr:last-child .ln-name", body).focus(); });
+    body.addEventListener("click", function (e) { if (e.target.classList.contains("x")) { e.target.closest("tr").remove(); if (!body.children.length) body.insertAdjacentHTML("beforeend", lineRow(kind)); } });
+  }
+  function readLines(form, kind) {
+    return $$(".lines tbody tr", form).map(function (tr) {
+      var o = { name: $(".ln-name", tr).value.trim(), qty: parseInt($(".ln-qty", tr).value, 10) || 0 };
+      if (kind === "kit") o.notes = $(".ln-notes", tr).value.trim(); else o.serial = $(".ln-serial", tr).value.trim();
+      return o;
+    }).filter(function (o) { return o.name; });
+  }
+  function linesTable(kind, items) {
+    var third = kind === "kit" ? "Notes" : "Serial / asset no.";
+    return '<div class="tablewrap"><table class="lines"><thead><tr><th>Item</th><th>Qty</th><th>' + third + '</th><th></th></tr></thead><tbody>' +
+      (items.length ? items : [{}]).map(function (it) { return lineRow(kind, it); }).join("") + '</tbody></table></div>' +
+      '<div><button type="button" class="btn ghost sm add-line">+ Add item</button></div>';
+  }
+
+  async function viewKitEditor(id) {
+    var kit = { name: "", description: "", archived: false }, items = [];
+    if (id !== "new") {
+      var r = await sb.from("eq_kit_lists").select("*").eq("id", id).maybeSingle(); if (r.error) throw r.error;
+      if (!r.data) { app.className = ""; app.innerHTML = errBox("Kit list not found."); return; }
+      kit = r.data;
+      var ri = await sb.from("eq_kit_items").select("*").eq("kit_list_id", id).order("sort"); if (ri.error) throw ri.error;
+      items = ri.data;
+    }
+    app.className = "";
+    app.innerHTML = '<a class="back" href="#lists">← Kit lists</a>' +
+      '<form class="panel stack" id="kitform" novalidate><h3 class="display">' + (id === "new" ? "New kit list" : "Edit kit list") + "</h3>" +
+      '<div class="fields"><label class="f">Name<input type="text" id="k-name" required placeholder="e.g. Door team" value="' + esc(kit.name) + '"></label>' +
+      '<label class="f">Description<input type="text" id="k-desc" placeholder="Optional, e.g. Standard kit for a 4-person door" value="' + esc(kit.description) + '"></label></div>' +
+      linesTable("kit", items) + '<div id="k-msg"></div><div class="btnrow"><button class="btn" type="submit" id="k-save">Save kit list</button>' +
+      (id !== "new" ? '<a class="btn ghost" href="#issue=' + id + '">Issue this kit</a><button type="button" class="linkbtn" id="k-arch">' + (kit.archived ? "Restore" : "Archive") + "</button>" : "") +
+      "</div></form>";
+    var form = $("#kitform"); wireLines(form, "kit");
+    if (id === "new") $("#k-name").focus();
+    if (sessionStorage.getItem("eq_saved") === String(id)) { sessionStorage.removeItem("eq_saved"); $("#k-msg").innerHTML = '<p class="okmsg">Saved.</p>'; }
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var msg = $("#k-msg"), btn = $("#k-save"); msg.innerHTML = "";
+      var name = $("#k-name").value.trim(), lines = readLines(form, "kit");
+      if (!name) { msg.innerHTML = errBox("Give the kit list a name."); return; }
+      if (!lines.length) { msg.innerHTML = errBox("Add at least one item."); return; }
+      if (lines.some(function (l) { return l.qty < 1; })) { msg.innerHTML = errBox("Quantities must be 1 or more."); return; }
+      busy(btn, true, "Saving…");
+      try {
+        var kid = id;
+        if (id === "new") {
+          var ins = await sb.from("eq_kit_lists").insert({ name: name, description: $("#k-desc").value.trim() }).select("id").single();
+          if (ins.error) throw ins.error; kid = ins.data.id;
+        } else {
+          var up = await sb.from("eq_kit_lists").update({ name: name, description: $("#k-desc").value.trim(), updated_at: new Date().toISOString() }).eq("id", id);
+          if (up.error) throw up.error;
+          var del = await sb.from("eq_kit_items").delete().eq("kit_list_id", id); if (del.error) throw del.error;
+        }
+        var ii = await sb.from("eq_kit_items").insert(lines.map(function (l, i) { return { kit_list_id: kid, name: l.name, qty: l.qty, notes: l.notes, sort: i }; }));
+        if (ii.error) throw ii.error;
+        sessionStorage.setItem("eq_saved", String(kid));
+        go("#k=" + kid);
+      } catch (x) { msg.innerHTML = errBox(niceErr(x)); busy(btn, false, "Save kit list"); }
+    });
+    var arch = $("#k-arch");
+    if (arch) arch.addEventListener("click", async function () {
+      var r2 = await sb.from("eq_kit_lists").update({ archived: !kit.archived }).eq("id", id);
+      if (r2.error) { $("#k-msg").innerHTML = errBox(niceErr(r2.error)); return; }
+      go("#lists");
+    });
+  }
+
+  /* ---------- issue ---------- */
+  async function viewIssue(kitId) {
+    var r = await sb.from("eq_kit_lists").select("id,name").eq("archived", false).order("name"); if (r.error) throw r.error;
+    var kits = r.data, items = [];
+    if (kitId) { var ri = await sb.from("eq_kit_items").select("name,qty,notes").eq("kit_list_id", kitId).order("sort"); if (ri.error) throw ri.error; items = ri.data; }
+    var dd = new Date(); dd.setDate(dd.getDate() + 1);
+    var dueStr = dd.getFullYear() + "-" + String(dd.getMonth() + 1).padStart(2, "0") + "-" + String(dd.getDate()).padStart(2, "0");
+    app.className = "";
+    app.innerHTML = '<a class="back" href="#out">← Out now</a>' +
+      '<form class="panel stack" id="issueform" novalidate><h3 class="display">Issue kit</h3>' +
+      '<div class="fields"><label class="f">Kit list<select id="i-kit"><option value="">One-off (no kit list)</option>' +
+      kits.map(function (k) { return '<option value="' + k.id + '"' + (k.id === kitId ? " selected" : "") + ">" + esc(k.name) + "</option>"; }).join("") +
+      '</select></label><label class="f">Kit name<input type="text" id="i-name" placeholder="e.g. Door team" value="' + esc((kits.find(function (k) { return k.id === kitId; }) || {}).name || "") + '"></label></div>' +
+      '<p class="hint">Change quantities or add serial numbers below. This only affects this issue, not the kit list.</p>' +
+      '<div id="i-lines">' + linesTable("issue", items) + "</div>" +
+      '<h3 class="display" style="margin-top:12px">Issued to</h3>' +
+      '<div class="fields"><label class="f">Email<input type="email" id="i-email" autocomplete="off" placeholder="They sign in with this to confirm receipt"></label>' +
+      '<label class="f">Name<input type="text" id="i-person" placeholder="Full name"></label>' +
+      '<label class="f">Event or site<input type="text" id="i-event" placeholder="Optional"></label>' +
+      '<label class="f">Due back<input type="date" id="i-due" value="' + dueStr + '"></label></div>' +
+      '<label class="f">Notes<textarea id="i-notes" placeholder="Optional, shown to the person receiving the kit"></textarea></label>' +
+      '<div id="i-msg"></div><div class="btnrow"><button class="btn" type="submit" id="i-go">Issue kit</button></div></form>';
+    var form = $("#issueform"); wireLines(form, "issue");
+    $("#i-kit").addEventListener("change", async function () {
+      var sel = this, v = sel.value, its = [];
+      if (v) { var rr = await sb.from("eq_kit_items").select("name,qty,notes").eq("kit_list_id", Number(v)).order("sort"); if (!rr.error) its = rr.data; }
+      $("#i-name").value = v ? sel.selectedOptions[0].text : "";
+      $("#i-lines").innerHTML = linesTable("issue", its);
+      wireLines(form, "issue");
+      history.replaceState(null, "", v ? "#issue=" + v : "#issue");
+    });
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var msg = $("#i-msg"), btn = $("#i-go"); msg.innerHTML = "";
+      var lines = readLines(form, "issue"), email = $("#i-email").value.trim().toLowerCase();
+      var name = $("#i-name").value.trim() || ($("#i-kit").selectedOptions[0] || {}).text || "";
+      if (!$("#i-kit").value && !$("#i-name").value.trim()) { msg.innerHTML = errBox("Give this kit a name."); return; }
+      if (!lines.length) { msg.innerHTML = errBox("Add at least one item."); return; }
+      if (lines.some(function (l) { return l.qty < 1; })) { msg.innerHTML = errBox("Quantities must be 1 or more."); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.innerHTML = errBox("Enter the email address of the person receiving the kit."); return; }
+      busy(btn, true, "Issuing…");
+      var res = await sb.rpc("eq_issue", {
+        p_kit_list_id: $("#i-kit").value ? Number($("#i-kit").value) : null, p_kit_name: name,
+        p_assignee_email: email, p_assignee_name: $("#i-person").value.trim(), p_event: $("#i-event").value.trim(),
+        p_due_back: $("#i-due").value || null, p_notes: $("#i-notes").value.trim(), p_items: lines
+      });
+      if (res.error) { msg.innerHTML = errBox(niceErr(res.error)); busy(btn, false, "Issue kit"); return; }
+      sessionStorage.setItem("eq_just_issued", res.data);
+      go("#c=" + res.data);
+    });
+  }
+
+  /* ---------- one check-out ---------- */
+  async function viewCheckout(id) {
+    var r = await sb.from("eq_checkouts").select("*").eq("id", id).maybeSingle(); if (r.error) throw r.error;
+    var co = r.data;
+    if (!co) {
+      app.className = "";
+      app.innerHTML = errBox("We couldn’t find this kit for " + me.email + ".") + '<p class="hint" style="margin-top:12px">If it was issued to a different email, sign out and sign in with that one. <a href="#">Back</a></p>';
+      return;
+    }
+    var ri = await sb.from("eq_checkout_items").select("*").eq("checkout_id", id).order("sort");
+    var rl = await sb.from("eq_log").select("*").eq("checkout_id", id).order("at");
+    if (ri.error) throw ri.error; if (rl.error) throw rl.error;
+    var items = ri.data, log = rl.data;
+    var mine = co.assignee_email === me.email, open = OPEN.indexOf(co.status) > -1;
+    var justIssued = sessionStorage.getItem("eq_just_issued") === id; sessionStorage.removeItem("eq_just_issued");
+
+    var html = (me.staff ? '<a class="back" href="#out">← Out now</a>' : '<a class="back" href="#mine">← My kit</a>') +
+      '<div class="sechead"><h2 class="display">' + esc(co.kit_name) + '</h2><div class="actions">' + pill(co) + "</div></div>" +
+      '<div class="panel"><dl class="meta">' +
+      "<div><dt>Reference</dt><dd>" + esc(co.ref) + "</dd></div>" +
+      "<div><dt>Issued to</dt><dd>" + esc(co.assignee_name || "—") + '<br><span class="hint">' + esc(co.assignee_email) + "</span></dd></div>" +
+      "<div><dt>Event or site</dt><dd>" + esc(co.event || "—") + "</dd></div>" +
+      "<div><dt>Due back</dt><dd" + (overdue(co) ? ' class="bad"' : "") + ">" + fmtDate(co.due_back) + "</dd></div>" +
+      "<div><dt>Issued</dt><dd>" + fmtTime(co.issued_at) + '<br><span class="hint">by ' + esc(co.issued_by) + "</span></dd></div>" +
+      "<div><dt>Receipt confirmed</dt><dd>" + (co.ack_at ? fmtTime(co.ack_at) + '<br><span class="hint">signed ' + esc(co.ack_name) + "</span>" : "Not yet") + "</dd></div>" +
+      "</dl>" + (co.notes ? '<p style="margin:20px 0 0"><strong>Notes:</strong> ' + esc(co.notes) + "</p>" : "") +
+      (co.ack_note ? '<p style="margin:12px 0 0"><strong>Note from ' + esc(co.ack_name) + ":</strong> " + esc(co.ack_note) + "</p>" : "") + "</div>";
+
+    // share panel for staff while awaiting receipt
+    if (me.staff && co.status === "issued") {
+      var link = linkFor(id);
+      var text = "Hi" + (co.assignee_name ? " " + co.assignee_name.split(" ")[0] : "") + ", Fort Green has issued you kit (" + co.kit_name + ", ref " + co.ref + ")" +
+        (co.due_back ? ", due back " + fmtDate(co.due_back) : "") + ". Please confirm you've received it: " + link + " (sign in with " + co.assignee_email + ")";
+      html += '<div class="panel share noprint"><h3 class="display">' + (justIssued ? "Kit issued. Now send the link" : "Waiting for them to confirm") + "</h3>" +
+        '<p class="hint" style="margin-bottom:16px">' + esc(co.assignee_name || co.assignee_email) + " signs in with " + esc(co.assignee_email) + " and confirms what they’ve received.</p>" +
+        '<div class="btnrow"><a class="btn" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(text) + '">Send on WhatsApp</a>' +
+        '<a class="btn ghost" href="mailto:' + encodeURIComponent(co.assignee_email) + "?subject=" + encodeURIComponent("Kit issued: " + co.kit_name + " (" + co.ref + ")") + "&body=" + encodeURIComponent(text) + '">Email</a>' +
+        '<button type="button" class="btn ghost" id="copy">Copy link</button><button type="button" class="linkbtn" id="cancel">Cancel this issue</button></div><div id="share-msg" style="margin-top:12px"></div></div>';
+    }
+
+    // acknowledgement form for assignee
+    if (mine && co.status === "issued") {
+      html += '<form class="panel stack" id="ackform" novalidate><h3 class="display">Confirm you’ve received this kit</h3>' +
+        '<p class="hint">Untick anything you didn’t receive.</p><div class="tablewrap"><table><thead><tr><th style="width:56px">Got it</th><th>Item</th><th class="num">Qty</th></tr></thead><tbody>' +
+        items.map(function (it) { return '<tr><td><input type="checkbox" class="rcv" data-id="' + it.id + '" checked aria-label="Received ' + esc(it.name) + '" style="width:26px;height:26px;accent-color:var(--ink)"></td><td><strong>' + esc(it.name) + "</strong>" + (it.serial ? '<div class="hint">' + esc(it.serial) + "</div>" : "") + '</td><td class="num">' + it.qty + "</td></tr>"; }).join("") +
+        '</tbody></table></div><div class="fields"><label class="f">Your full name<input type="text" id="a-name" autocomplete="name" value="' + esc(co.assignee_name || "") + '"></label>' +
+        '<label class="f">Anything to report?<input type="text" id="a-note" placeholder="Optional, e.g. one earpiece is cracked"></label></div>' +
+        '<label class="check"><input type="checkbox" id="a-decl"><span>I confirm I have received the items ticked above and will return them to Fort Green' + (co.due_back ? " by " + fmtDate(co.due_back) : "") + ".</span></label>" +
+        '<div id="a-msg"></div><div class="btnrow"><button class="btn" type="submit" id="a-go">Confirm receipt</button></div></form>';
+    } else {
+      // items table (read-only, or check-in for staff)
+      var canCheckIn = me.staff && open;
+      html += '<form class="panel stack" id="inform" novalidate><h3 class="display">' + (canCheckIn ? "Check kit in" : "Items") + "</h3>" +
+        (canCheckIn ? '<p class="hint">Enter what has come back. Mark anything that won’t come back as Missing so the kit can be closed.</p>' : "") +
+        '<div class="tablewrap"><table class="ci"><thead><tr><th>Item</th><th class="num">Issued</th><th>Serial / asset no.</th><th>Received</th><th class="num">Returned</th><th>Condition</th>' + (canCheckIn ? "<th>Note</th>" : "") + "</tr></thead><tbody>" +
+        items.map(function (it) {
+          var rcv = it.received === null ? "—" : it.received ? "Yes" : '<span class="bad">No</span>';
+          var common = "<td>" + esc(it.name) + '</td><td class="num" data-l="Issued">' + it.qty + '</td><td data-l="Serial / asset no.">' + esc(it.serial || "—") + '</td><td data-l="Received">' + rcv + "</td>";
+          if (!canCheckIn) {
+            return "<tr>" + common + '<td class="num" data-l="Returned">' + it.returned_qty + '</td><td data-l="Condition">' +
+              (it.condition ? (it.condition === "ok" ? "OK" : '<span class="bad">' + (it.condition === "damaged" ? "Damaged" : "Missing") + "</span>") : "—") +
+              (it.return_note ? '<div class="hint">' + esc(it.return_note) + "</div>" : "") + "</td></tr>";
+          }
+          return '<tr data-id="' + it.id + '" data-qty="' + it.qty + '">' + common +
+            '<td class="num" data-l="Returned"><input type="number" class="ret qty" min="0" max="' + it.qty + '" value="' + it.returned_qty + '" aria-label="Returned ' + esc(it.name) + '"></td>' +
+            '<td data-l="Condition"><select class="cond" aria-label="Condition of ' + esc(it.name) + '"><option value="">—</option><option value="ok"' + (it.condition === "ok" ? " selected" : "") + ">OK</option><option value=\"damaged\"" + (it.condition === "damaged" ? " selected" : "") + ">Damaged</option><option value=\"missing\"" + (it.condition === "missing" ? " selected" : "") + ">Missing</option></select></td>" +
+            '<td class="wide" data-l="Note"><input type="text" class="rnote" value="' + esc(it.return_note) + '" aria-label="Note for ' + esc(it.name) + '"></td></tr>';
+        }).join("") + "</tbody></table></div>" +
+        (canCheckIn ? '<label class="f">Check-in note<input type="text" id="in-note" placeholder="Optional"></label><div id="in-msg"></div>' +
+          '<div class="btnrow"><button type="button" class="btn ghost" id="all-back">Mark everything returned OK</button><button class="btn" type="submit" id="in-go">Save check-in</button></div>' : "") +
+        "</form>";
+    }
+
+    html += '<div class="panel"><h3 class="display">History</h3><ul class="log">' + log.map(function (l) {
+      return '<li><time>' + fmtTime(l.at) + "</time><div><strong>" + esc(l.action.charAt(0).toUpperCase() + l.action.slice(1)) + "</strong> by " + esc(l.by) + (l.detail ? '<div class="hint">' + esc(l.detail) + "</div>" : "") + "</div></li>";
+    }).join("") + '</ul></div><div class="btnrow noprint"><button type="button" class="btn ghost sm" onclick="window.print()">Print</button></div>';
+
+    app.className = ""; app.innerHTML = html;
+
+    // wire share
+    var copyBtn = $("#copy");
+    if (copyBtn) copyBtn.addEventListener("click", async function () {
+      try { await navigator.clipboard.writeText(linkFor(id)); $("#share-msg").innerHTML = '<p class="okmsg">Link copied.</p>'; }
+      catch (x) { $("#share-msg").innerHTML = '<p class="hint">Copy this link: ' + esc(linkFor(id)) + "</p>"; }
+    });
+    var cancelBtn = $("#cancel");
+    if (cancelBtn) cancelBtn.addEventListener("click", async function () {
+      var reason = prompt("Cancel this issue? Add a reason (optional):", "");
+      if (reason === null) return;
+      var rc = await sb.rpc("eq_cancel", { p_checkout_id: id, p_reason: reason });
+      if (rc.error) { $("#share-msg").innerHTML = errBox(niceErr(rc.error)); return; }
+      render();
+    });
+
+    // wire ack
+    var ack = $("#ackform");
+    if (ack) ack.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var msg = $("#a-msg"), btn = $("#a-go"); msg.innerHTML = "";
+      var name = $("#a-name").value.trim();
+      if (!name) { msg.innerHTML = errBox("Type your full name."); return; }
+      if (!$("#a-decl").checked) { msg.innerHTML = errBox("Tick the box to confirm."); return; }
+      var missing = $$(".rcv", ack).filter(function (b) { return !b.checked; }).map(function (b) { return Number(b.dataset.id); });
+      busy(btn, true, "Confirming…");
+      var ra = await sb.rpc("eq_acknowledge", { p_checkout_id: id, p_name: name, p_note: $("#a-note").value.trim(), p_missing: missing });
+      if (ra.error) { msg.innerHTML = errBox(niceErr(ra.error)); busy(btn, false, "Confirm receipt"); return; }
+      await render();
+      app.insertAdjacentHTML("afterbegin", '<p class="okmsg" style="margin-bottom:20px">Thanks, receipt confirmed.' + (missing.length ? " We’ve let the team know what was missing." : "") + "</p>");
+    });
+
+    // wire check-in
+    var inf = $("#inform");
+    var allBack = $("#all-back");
+    if (allBack) allBack.addEventListener("click", function () {
+      $$("tr[data-id]", inf).forEach(function (tr) { $(".ret", tr).value = tr.dataset.qty; $(".cond", tr).value = "ok"; });
+    });
+    if (inf && $("#in-go")) inf.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var msg = $("#in-msg"), btn = $("#in-go"); msg.innerHTML = "";
+      var rows = $$("tr[data-id]", inf).map(function (tr) {
+        return { id: Number(tr.dataset.id), returned_qty: Math.max(0, Math.min(Number(tr.dataset.qty), parseInt($(".ret", tr).value, 10) || 0)), condition: $(".cond", tr).value, note: $(".rnote", tr).value.trim() };
+      });
+      busy(btn, true, "Saving…");
+      var rc = await sb.rpc("eq_check_in", { p_checkout_id: id, p_items: rows, p_note: $("#in-note").value.trim() });
+      if (rc.error) { msg.innerHTML = errBox(niceErr(rc.error)); busy(btn, false, "Save check-in"); return; }
+      await render();
+      app.insertAdjacentHTML("afterbegin", '<p class="okmsg" style="margin-bottom:20px">' + (rc.data === "returned" ? "Checked in. This kit is now closed." : "Saved. Some items are still out.") + "</p>");
+    });
+  }
+
+  /* ---------- start ---------- */
+  sb.auth.getSession().then(function (r) {
+    var s = r.data && r.data.session; if (!s) return; // auth-guard redirects
+    me.email = (s.user.email || "").toLowerCase();
+    var d = (c.STAFF_DOMAIN || "").toLowerCase();
+    me.staff = !!d && me.email.endsWith("@" + d);
+    document.getElementById("who").innerHTML = "Signed in as <strong>" + esc(me.email) + "</strong>" + (me.staff ? " · staff" : "");
+    window.addEventListener("hashchange", render);
+    render();
+  });
+})();
+</script>
+</body>
+</html>
