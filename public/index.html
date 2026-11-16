@@ -63,8 +63,8 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:32px 64px;align-items:flex-end;just
 footer .big{margin:0;font-size:clamp(56px,8vw,112px)}
 footer nav{display:flex;flex-direction:column;gap:12px;font-weight:600}
 /* Login */
-.login{min-height:calc(100vh - 80px);display:grid;align-items:center;padding:48px 0}
-.login .wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:48px;align-items:end}
+.login{min-height:calc(100vh - 80px);display:grid;grid-template-columns:minmax(0,1fr);align-items:center;padding:48px 0}
+.login .wrap{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:48px;align-items:end}
 .login h1{margin:0;font-size:clamp(80px,13vw,180px)}
 .login .intro{margin:20px 0 0;max-width:480px;font-size:20px;line-height:1.4}
 form{max-width:460px;border:1px solid var(--ink);background:var(--surface);padding:30px;display:flex;flex-direction:column;gap:18px}
@@ -80,7 +80,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
 .linkbtn{background:none;border:0;padding:0;font:600 15px Manrope,Arial,sans-serif;color:var(--ink);text-decoration:underline;cursor:pointer;align-self:flex-start;min-height:32px}
 .notice{background:#fff4cc;color:#3d2e00;padding:12px 24px;font-size:15px;font-weight:600}
 [hidden]{display:none!important}
-@media (max-width:600px){.card{min-height:340px;padding:24px}.card h3{font-size:40px}.staff .card h3{font-size:34px}form{padding:22px}}
+@media (max-width:600px){.login{min-height:0;align-items:start;padding:32px 0 56px}.login .wrap{gap:32px}.login .intro{font-size:18px}form{max-width:none}.card{min-height:340px;padding:24px}.card h3{font-size:40px}.staff .card h3{font-size:34px}form{padding:22px}}
 </style>
 </head>
 <body>
