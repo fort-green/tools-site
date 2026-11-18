@@ -47,6 +47,7 @@ header .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-con
 .card p{position:relative;margin:0;font-size:18px;line-height:1.45;color:var(--body)}
 .foot{position:relative;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:16px;font-size:14px;color:var(--muted)}
 .go{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.card.portal{background:var(--ink);color:var(--bg);border-color:var(--ink)}.card.portal p,.card.portal .go{color:var(--bg)}.card.portal .foot{border-color:rgba(127,127,127,.5);color:var(--bg)}
 .card.ask{background:var(--soft);border-color:var(--line)}
 .staff{background:var(--staff-bg);color:var(--staff-ink);padding:72px 0 88px;margin-top:88px}
 .staff .sechead span{color:var(--staff-muted)}
@@ -143,6 +144,12 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
   <section class="wrap" aria-labelledby="h-public">
     <div class="sechead"><h2 class="display" id="h-public">Available to you</h2><span>4 tools</span></div>
     <div class="grid">
+      <a class="card portal" href="/portal/" id="card-portal" hidden>
+        <span class="tag">Your account</span>
+        <h3 class="display">Client portal</h3>
+        <p>Your bookings, documents and invoices, extra staff requests and invoicing details.</p>
+        <div class="foot"><span id="portal-sub">Your venue</span><span class="go">Open portal</span></div>
+      </a>
       <a class="card" href="/martyns-law/">
         <span class="num display" aria-hidden="true">01</span>
         <span class="tag">Compliance</span>
@@ -262,15 +269,22 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     $("view-login").hidden = true; $("view-hub").hidden = false;
     $("who").hidden = !email; $("who-email").textContent = email || "";
     $("staff").hidden = !isStaff(email);
-    $("card-users").hidden = true;
+    $("card-users").hidden = true; $("card-portal").hidden = true;
+    lastEmail = email;
     if (sb && email) checkAccess();
   }
+  var lastEmail = "";
   var REMOVED_MSG = "Your access to Fort Green tools has been removed. If you think this is a mistake, email info@fortgreen.co.uk.";
   async function checkAccess() {
     var b = await sb.rpc("hub_is_blocked");
     if (b && b.data === true) { await sb.auth.signOut(); signedIn = false; showLogin("email"); err("email-err", REMOVED_MSG); return; }
     var a = await sb.rpc("hub_is_admin");
     $("card-users").hidden = !(a && a.data === true);
+    if (isStaff(lastEmail)) { $("card-portal").hidden = false; $("portal-sub").textContent = "Staff view: all venues"; }
+    else {
+      var v = await sb.from("cp_venue_access").select("venue_id", { count: "exact", head: true });
+      if (v && v.count) { $("card-portal").hidden = false; $("portal-sub").textContent = v.count > 1 ? v.count + " venues" : "Your venue"; }
+    }
   }
   function isBanned(e) { return e && /banned/i.test(e.message || ""); }
   function showLogin(step) {

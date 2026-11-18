@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Client portal | Fort Green</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;
+  --err:#b42318;--err-soft:#fbe4e1;--ok:#1d6b3a;--ok-soft:#e3f3e8;--warn:#7a5a00;--warn-soft:#fff4cc;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#100f10;--surface:#1a191a;--ink:#fff;--body:#e2e2e2;--muted:#a9a9a9;--line:#3b3a3b;--soft:#232223;
+  --err:#ff7b6e;--err-soft:#2d1513;--ok:#7fd69b;--ok-soft:#12271a;--warn:#ffd666;--warn-soft:#2e2507;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Manrope,Arial,sans-serif}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.display{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;text-transform:uppercase;line-height:.95;letter-spacing:.005em}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.hero{padding-top:48px;padding-bottom:24px;display:flex;flex-wrap:wrap;gap:16px 40px;align-items:flex-end;justify-content:space-between}
+.hero .kicker{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--muted)}
+.hero h1{margin:0;font-size:clamp(56px,10vw,120px)}
+.venuepick{display:flex;flex-direction:column;gap:6px;min-width:260px;font-weight:600;font-size:14px;color:var(--muted)}
+.tabs{display:flex;border-bottom:1px solid var(--ink);margin-bottom:28px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{flex:none;padding:14px 18px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid transparent;border-bottom:0;margin-bottom:-1px;white-space:nowrap}
+.tabs a[aria-current=page]{color:var(--ink);border-color:var(--ink);background:var(--bg)}
+.tabs .count{display:inline-block;min-width:20px;margin-left:6px;padding:0 6px;background:var(--ink);color:var(--bg);font-size:12px;text-align:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:0;font:700 13px Manrope,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.sm{min-height:38px;padding:0 14px;font-size:12px}
+.btn.danger{background:transparent;color:var(--err);border-color:var(--err)}
+.btn[disabled]{opacity:.55;cursor:wait}
+.linkbtn{background:none;border:0;padding:0;font:600 15px Manrope,Arial,sans-serif;color:var(--ink);text-decoration:underline;cursor:pointer}
+.sechead{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.sechead h2{margin:0;font-size:40px}
+h3.sub{margin:36px 0 12px;font-size:28px}
+.hint{margin:0;font-size:15px;color:var(--muted)}
+.err{margin:0 0 16px;padding:12px 14px;background:var(--err-soft);color:var(--err);font-weight:600;font-size:15px}
+.okmsg{margin:0 0 16px;padding:12px 14px;background:var(--ok-soft);color:var(--ok);font-weight:600;font-size:15px}
+.empty{border:1px dashed var(--line);padding:32px 24px;text-align:center;color:var(--muted)}
+.loading{padding:48px 0;color:var(--muted)}
+.panel{border:1px solid var(--ink);background:var(--surface);padding:24px;margin-bottom:24px}
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px}
+input[type=email],input[type=text],input[type=date],input[type=number],input[type=file],select,textarea{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 16px Manrope,Arial,sans-serif}
+input[type=file]{padding:10px}
+textarea{min-height:90px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:18px}
+.stack{display:flex;flex-direction:column;gap:18px}
+.btnrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.pill{display:inline-block;padding:3px 9px;border:1px solid currentColor;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.pill.ok{color:var(--ok);background:var(--ok-soft)} .pill.warn{color:var(--warn);background:var(--warn-soft)}
+.pill.bad{color:var(--err);background:var(--err-soft)} .pill.mute{color:var(--muted)}
+/* calendar */
+.calbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.calbar h3{margin:0;font-size:32px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--ink);border-left:1px solid var(--ink)}
+.cal .dow{padding:8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);background:var(--soft)}
+.cal .day{min-height:112px;padding:6px;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);background:var(--surface);display:flex;flex-direction:column;gap:4px}
+.cal .day.out{background:var(--soft)} .cal .day.out .n{color:var(--muted)}
+.cal .day.today .n{background:var(--ink);color:var(--bg)}
+.cal .n{align-self:flex-start;font-weight:700;font-size:13px;padding:0 5px}
+.chip{display:block;width:100%;text-align:left;border:1px solid var(--ink);background:var(--bg);color:var(--ink);padding:4px 6px;font:600 12px/1.3 Manrope,Arial,sans-serif;cursor:pointer}
+.chip.short{border-color:var(--err);color:var(--err)}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.agenda{display:none;border-top:1px solid var(--ink)}
+.agenda .ad{padding:12px 0;border-bottom:1px solid var(--line)}
+.agenda .ad h4{margin:0 0 8px;font-size:15px}
+.agenda .chip{margin-bottom:6px;padding:10px;font-size:14px}
+.detail{margin-top:20px}
+.detail h3{margin:0 0 6px;font-size:30px}
+.people{list-style:none;margin:16px 0;padding:0;border-top:1px solid var(--line)}
+.people li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+/* lists */
+.list{border-top:1px solid var(--ink)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 20px;align-items:center;padding:14px 4px;border-bottom:1px solid var(--line)}
+.row .t{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+.row .s{font-size:14px;color:var(--muted)}
+.row .acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:20px}
+.tool{display:flex;flex-direction:column;gap:12px;min-height:220px;padding:24px;border:1px solid var(--ink);background:var(--surface);text-decoration:none;color:var(--ink)}
+.tool .tag{align-self:flex-start;padding:5px 10px;border:1px solid currentColor;font-size:12px;font-weight:700}
+.tool h4{margin:auto 0 0;font-size:32px}
+.tool p{margin:0;color:var(--body)}
+.tool .go{border-top:1px solid var(--line);padding-top:12px;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.stepper{display:flex;align-items:stretch;max-width:200px}
+.stepper button{width:48px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:22px;cursor:pointer}
+.stepper input{text-align:center;border-left:0;border-right:0}
+.log{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.log li{padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-size:14px;color:var(--muted)}
+[hidden]{display:none!important}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;line-height:26px}
+@media (max-width:760px){
+  .wrap{padding:0 16px}
+  .hero{padding-top:24px;padding-bottom:16px}
+  .hero h1{font-size:clamp(44px,14vw,64px)}
+  .venuepick{min-width:0;width:100%}
+  .sechead h2{font-size:32px}
+  .tabs a{padding:12px 12px;font-size:13px}
+  .cal{display:none} .agenda{display:block}
+  .panel{padding:18px}
+  .row{grid-template-columns:1fr}
+  .row .acts{justify-content:flex-start}
+  input,select,textarea{font-size:16px}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <p class="kicker">Fort Green</p>
+      <h1 class="display">Client portal.</h1>
+      <p class="hint" id="venuename" style="margin-top:12px;font-size:18px;font-weight:700;color:var(--ink)" hidden></p>
+    </div>
+    <label class="venuepick" id="venuepick" hidden>Venue
+      <select id="venue"></select>
+    </label>
+  </section>
+
+  <div id="loading" class="loading">Loading your portal…</div>
+
+  <div id="novenue" hidden>
+    <div class="panel">
+      <h2 class="display" style="margin:0 0 12px;font-size:36px">Your account isn’t linked to a venue yet</h2>
+      <p style="margin:0 0 16px">Once Fort Green links your email to your venue, you’ll see your bookings, documents and invoices here. Ask your Fort Green contact, email <a href="mailto:info@fortgreen.co.uk">info@fortgreen.co.uk</a> or <a href="https://wa.me/447399232855" target="_blank" rel="noopener">WhatsApp us</a>.</p>
+      <p class="hint">Signed in as <strong id="novenue-email"></strong></p>
+    </div>
+    <h3 class="display sub">Free tools you can use now</h3>
+    <div class="tools" id="tools-novenue"></div>
+  </div>
+
+  <div id="app" hidden>
+    <nav class="tabs" aria-label="Portal sections">
+      <a href="#bookings" data-tab="bookings">Bookings</a>
+      <a href="#documents" data-tab="documents">Documents</a>
+      <a href="#extra" data-tab="extra">Extra staff <span class="count" id="pending-count" hidden></span></a>
+      <a href="#invoicing" data-tab="invoicing">Invoicing details</a>
+      <a href="#toolkit" data-tab="toolkit">Toolkit</a>
+      <a href="#access" data-tab="access" id="tab-access" hidden>Client access</a>
+    </nav>
+    <p class="okmsg" id="ok" role="status" hidden></p>
+    <p class="err" id="fail" role="alert" hidden></p>
+
+    <!-- BOOKINGS -->
+    <section id="t-bookings" data-panel="bookings">
+      <div class="calbar">
+        <h3 class="display" id="cal-title"></h3>
+        <div class="btnrow">
+          <button class="btn ghost sm" type="button" id="cal-prev" aria-label="Previous month">‹ Prev</button>
+          <button class="btn ghost sm" type="button" id="cal-today">Today</button>
+          <button class="btn ghost sm" type="button" id="cal-next" aria-label="Next month">Next ›</button>
+        </div>
+      </div>
+      <p class="hint" id="cal-status" style="margin-bottom:12px"></p>
+      <div class="cal" id="cal" aria-label="Bookings calendar"></div>
+      <div class="agenda" id="agenda"></div>
+      <div class="detail panel" id="detail" hidden></div>
+    </section>
+
+    <!-- DOCUMENTS -->
+    <section id="t-documents" data-panel="documents" hidden>
+      <div class="sechead"><h2 class="display">Documents</h2></div>
+      <div class="panel">
+        <form id="upload" class="stack">
+          <h3 class="display" style="margin:0;font-size:26px">Upload a document</h3>
+          <div class="fields">
+            <label class="f">Type
+              <select id="up-kind">
+                <option value="licence">Licence (premises, TEN, etc.)</option>
+                <option value="other">Other document</option>
+                <option value="invoice" id="opt-invoice" hidden disabled>Invoice (Fort Green)</option>
+              </select>
+            </label>
+            <label class="f">Title
+              <input type="text" id="up-title" maxlength="200" required placeholder="e.g. Premises licence 2026">
+            </label>
+            <label class="f" id="up-exp-wrap">Expiry date (optional)
+              <input type="date" id="up-exp">
+            </label>
+          </div>
+          <label class="f">File (PDF, image, Word or Excel, up to 20 MB)
+            <input type="file" id="up-file" required accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,.doc,.docx,.xls,.xlsx">
+          </label>
+          <div class="btnrow"><button class="btn" type="submit" id="up-go">Upload</button></div>
+        </form>
+      </div>
+      <h3 class="display sub">Invoices from Fort Green</h3>
+      <div class="list" id="docs-invoice"></div>
+      <h3 class="display sub">Licences and documents</h3>
+      <div class="list" id="docs-other"></div>
+    </section>
+
+    <!-- EXTRA STAFF -->
+    <section id="t-extra" data-panel="extra" hidden>
+      <div class="sechead"><h2 class="display">Extra staff</h2></div>
+      <div class="panel">
+        <form id="req" class="stack">
+          <p style="margin:0">Need more staff on a booked shift? Send a request and we’ll confirm it. Shifts up to two months ahead can be changed here; for anything sooner than 24 hours, also <a href="https://wa.me/447399232855" target="_blank" rel="noopener">WhatsApp us</a>.</p>
+          <label class="f">Shift
+            <select id="req-job" required></select>
+          </label>
+          <div class="fields">
+            <div class="f" style="display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px">
+              <span id="req-n-label">Extra staff needed</span>
+              <div class="stepper" role="group" aria-labelledby="req-n-label">
+                <button type="button" id="req-minus" aria-label="One fewer">−</button>
+                <input type="number" id="req-n" min="1" max="50" value="1" inputmode="numeric" aria-labelledby="req-n-label">
+                <button type="button" id="req-plus" aria-label="One more">+</button>
+              </div>
+            </div>
+          </div>
+          <label class="f">Note (optional)
+            <textarea id="req-note" maxlength="1000" placeholder="e.g. Expecting a bigger crowd, need one on the back door from 11pm"></textarea>
+          </label>
+          <div class="btnrow"><button class="btn" type="submit" id="req-go">Send request</button></div>
+        </form>
+      </div>
+      <h3 class="display sub">Requests</h3>
+      <div class="list" id="reqs"></div>
+    </section>
+
+    <!-- INVOICING -->
+    <section id="t-invoicing" data-panel="invoicing" hidden>
+      <div class="sechead"><h2 class="display">Invoicing details</h2></div>
+      <form id="bill" class="panel stack">
+        <p style="margin:0">These details go on your invoices. When you save, Fort Green’s accounts team is told so they can update our records.</p>
+        <div class="fields">
+          <label class="f">Company name <input type="text" id="b-company" maxlength="200" autocomplete="organization"></label>
+          <label class="f">Accounts email <input type="email" id="b-email" maxlength="200" autocomplete="email"></label>
+          <label class="f">PO number <input type="text" id="b-po" maxlength="100"></label>
+          <label class="f">VAT number <input type="text" id="b-vat" maxlength="50"></label>
+        </div>
+        <label class="f">Billing address <textarea id="b-address" maxlength="1000" autocomplete="street-address"></textarea></label>
+        <label class="f">Anything else we should know (optional) <textarea id="b-notes" maxlength="1000"></textarea></label>
+        <p class="hint" id="b-updated"></p>
+        <div class="btnrow"><button class="btn" type="submit" id="b-go">Save details</button></div>
+      </form>
+      <div id="bill-history" hidden>
+        <h3 class="display sub">Change history (staff only)</h3>
+        <ul class="log" id="bill-log"></ul>
+      </div>
+    </section>
+
+    <!-- TOOLKIT -->
+    <section id="t-toolkit" data-panel="toolkit" hidden>
+      <div class="sechead"><h2 class="display">Your toolkit</h2></div>
+      <p class="hint" style="margin-bottom:20px">Free tools from Fort Green, included with your account.</p>
+      <div class="tools" id="tools"></div>
+    </section>
+
+    <!-- ACCESS (staff) -->
+    <section id="t-access" data-panel="access" hidden>
+      <div class="sechead"><h2 class="display">Client access</h2></div>
+      <div class="panel">
+        <form id="acc" class="stack">
+          <p style="margin:0">Anyone you add here can sign in at tools.fortgreen.co.uk with that email and see this venue’s bookings, documents and invoices, and request extra staff.</p>
+          <div class="fields">
+            <label class="f">Client email <input type="email" id="acc-email" required placeholder="manager@venue.co.uk"></label>
+          </div>
+          <div class="btnrow"><button class="btn" type="submit" id="acc-go">Give access</button></div>
+        </form>
+      </div>
+      <div class="list" id="acc-list"></div>
+    </section>
+  </div>
+</main>
+<footer><div class="wrap">Fort Green Limited · <a href="mailto:info@fortgreen.co.uk">info@fortgreen.co.uk</a> · <a href="https://wa.me/447399232855" target="_blank" rel="noopener">24/7 WhatsApp</a> · <a href="/">All tools</a></div></footer>
+
+<script>
+(function () {
+  var c = window.FG_CONFIG || {};
+  var $ = function (id) { return document.getElementById(id); };
+  if (!c.SUPABASE_URL || !window.supabase) { $("loading").textContent = "Sign-in isn’t set up."; return; }
+  var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
+  var S = { staff: false, email: "", venues: [], venue: null, month: null, shifts: [], selected: null, tab: "bookings" };
+  var TOOLS = [
+    { href: "/martyns-law/", tag: "Compliance", name: "Martyn’s Law Readiness Checker", text: "See where your venue stands on Martyn’s Law and what to put in place next." },
+    { href: "/risk-assessment/", tag: "Health and safety", name: "Risk Assessment Generator", text: "Build a risk assessment for your venue or event, with a PDF or Word download." },
+    { href: "/licensing/", tag: "Guidance", name: "Licensing", text: "Licensing and Temporary Event Notice guidance for your event location." },
+    { href: "/power-planner/", tag: "Event power", name: "Power Planner", text: "Work out your power draw and the generator or outlets you need." }
+  ];
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]; }); }
+  function msg(kind, text) { $("ok").hidden = $("fail").hidden = true; if (text) { var el = $(kind === "ok" ? "ok" : "fail"); el.textContent = text; el.hidden = false; el.scrollIntoView({ block: "nearest" }); } }
+  function hm(d) { return new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); }
+  function dayLong(d) { return new Date(d).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }); }
+  function dayShort(d) { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
+  function ymd(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function busy(b, on, label) { b.disabled = on; if (label) b.textContent = label; }
+
+  async function api(body) {
+    var r = await sb.functions.invoke("client-portal", { body: body });
+    if (r.error) {
+      var m = r.error.message;
+      try { var j = await r.error.context.json(); if (j && j.error) m = j.error; } catch (x) {}
+      throw new Error(m);
+    }
+    return r.data;
+  }
+
+  function renderTools(el) {
+    $(el).innerHTML = TOOLS.map(function (t) {
+      return '<a class="tool" href="' + t.href + '"><span class="tag">' + esc(t.tag) + '</span><h4 class="display">' + esc(t.name) + "</h4><p>" + esc(t.text) + '</p><span class="go">Open tool</span></a>';
+    }).join("");
+  }
+
+  /* ---------- tabs ---------- */
+  function setTab(t) {
+    if (t === "access" && !S.staff) t = "bookings";
+    if (!document.querySelector('[data-panel="' + t + '"]')) t = "bookings";
+    S.tab = t;
+    document.querySelectorAll("[data-panel]").forEach(function (p) { p.hidden = p.dataset.panel !== t; });
+    document.querySelectorAll(".tabs a").forEach(function (a) { if (a.dataset.tab === t) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    msg();
+    loadTab();
+  }
+  function loadTab() {
+    if (!S.venue) return;
+    if (S.tab === "bookings") loadMonth();
+    else if (S.tab === "documents") loadDocs();
+    else if (S.tab === "extra") loadExtra();
+    else if (S.tab === "invoicing") loadBilling();
+    else if (S.tab === "access") loadAccess();
+  }
+  document.querySelector(".tabs").addEventListener("click", function (e) {
+    var a = e.target.closest("a[data-tab]"); if (!a) return;
+    e.preventDefault(); history.replaceState(null, "", "#" + a.dataset.tab + (S.venue ? "&v=" + S.venue : "")); setTab(a.dataset.tab);
+  });
+
+  /* ---------- bookings ---------- */
+  function monthStart(d) { return new Date(d.getFullYear(), d.getMonth(), 1); }
+  async function loadMonth() {
+    var m = S.month; var first = monthStart(m);
+    var gridStart = new Date(first); gridStart.setDate(1 - ((first.getDay() + 6) % 7));
+    var gridEnd = new Date(gridStart); gridEnd.setDate(gridStart.getDate() + 42);
+    $("cal-title").textContent = first.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    $("cal-status").textContent = "Loading bookings…";
+    $("detail").hidden = true; S.selected = null;
+    try {
+      var r = await api({ action: "schedule", venue_id: S.venue, from: gridStart.toISOString(), to: gridEnd.toISOString() });
+      S.shifts = r.shifts || [];
+      $("cal-status").textContent = S.shifts.length ? "" : "No shifts booked this month.";
+    } catch (e) { S.shifts = []; $("cal-status").textContent = ""; msg("fail", "Couldn’t load bookings: " + e.message); }
+    drawCal(gridStart, first);
+  }
+  function chip(s) {
+    var booked = s.staff.length, short = booked < s.staff_needed;
+    return '<button type="button" class="chip' + (short ? " short" : "") + '" data-shift="' + esc(s.id) + '" aria-pressed="' + (S.selected === s.id) + '">' +
+      esc(hm(s.starts_at)) + "–" + esc(hm(s.ends_at)) + " · " + booked + "/" + s.staff_needed + " staff" + (short ? " (to fill)" : "") + "</button>";
+  }
+  function drawCal(gridStart, first) {
+    var byDay = {};
+    S.shifts.forEach(function (s) { var k = ymd(new Date(s.starts_at)); (byDay[k] = byDay[k] || []).push(s); });
+    var today = ymd(new Date()), html = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(function (d) { return '<div class="dow">' + d + "</div>"; }).join("");
+    for (var i = 0; i < 42; i++) {
+      var d = new Date(gridStart); d.setDate(gridStart.getDate() + i); var k = ymd(d);
+      html += '<div class="day' + (d.getMonth() !== first.getMonth() ? " out" : "") + (k === today ? " today" : "") + '"><span class="n">' + d.getDate() + "</span>" + (byDay[k] || []).map(chip).join("") + "</div>";
+    }
+    $("cal").innerHTML = html;
+    var days = Object.keys(byDay).sort().filter(function (k) { return k.slice(0, 7) === ymd(first).slice(0, 7); });
+    $("agenda").innerHTML = days.length ? days.map(function (k) { return '<div class="ad"><h4>' + esc(dayLong(k + "T12:00:00")) + "</h4>" + byDay[k].map(chip).join("") + "</div>"; }).join("") : "";
+  }
+  function showShift(id) {
+    var s = S.shifts.find(function (x) { return x.id === id; }); if (!s) return;
+    S.selected = id;
+    document.querySelectorAll(".chip").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.shift === id ? "true" : "false"); });
+    var booked = s.staff.length, toFill = Math.max(0, s.staff_needed - booked);
+    var future = new Date(s.ends_at) > new Date(), soon = new Date(s.starts_at) - new Date() < 62 * 864e5;
+    var people = s.staff.length ? s.staff.map(function (p) {
+      var st = p.checked_out ? '<span class="pill mute">Finished</span>' : p.checked_in ? '<span class="pill ok">On site</span>' : '<span class="pill warn">Booked</span>';
+      return "<li><span>" + esc(p.first_name) + "</span>" + st + "</li>";
+    }).join("") : '<li><span class="hint">No one booked yet.</span></li>';
+    $("detail").innerHTML = '<h3 class="display">' + esc(s.title || "Shift") + "</h3>" +
+      '<p class="hint">' + esc(dayLong(s.starts_at)) + ", " + esc(hm(s.starts_at)) + " to " + esc(hm(s.ends_at)) + " · " + s.staff_needed + " needed, " + booked + " booked" + (toFill ? ", " + toFill + " still to fill" : "") + "</p>" +
+      '<ul class="people">' + people + "</ul>" +
+      (future && soon ? '<button class="btn" type="button" id="detail-more">Request extra staff</button>' : "");
+    $("detail").hidden = false;
+    $("detail").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    var b = $("detail-more"); if (b) b.addEventListener("click", function () { S.preselect = id; history.replaceState(null, "", "#extra&v=" + S.venue); setTab("extra"); });
+  }
+  ["cal", "agenda"].forEach(function (id) { $(id).addEventListener("click", function (e) { var b = e.target.closest("[data-shift]"); if (b) showShift(b.dataset.shift); }); });
+  $("cal-prev").addEventListener("click", function () { S.month = new Date(S.month.getFullYear(), S.month.getMonth() - 1, 1); loadMonth(); });
+  $("cal-next").addEventListener("click", function () { S.month = new Date(S.month.getFullYear(), S.month.getMonth() + 1, 1); loadMonth(); });
+  $("cal-today").addEventListener("click", function () { S.month = monthStart(new Date()); loadMonth(); });
+
+  /* ---------- documents ---------- */
+  async function loadDocs() {
+    $("docs-invoice").innerHTML = $("docs-other").innerHTML = '<div class="loading">Loading…</div>';
+    var r = await sb.from("cp_documents").select("*").eq("venue_id", S.venue).order("created_at", { ascending: false });
+    if (r.error) { msg("fail", "Couldn’t load documents: " + r.error.message); return; }
+    var row = function (d) {
+      var exp = d.expires_on ? new Date(d.expires_on + "T12:00:00") : null, days = exp ? Math.ceil((exp - new Date()) / 864e5) : null;
+      var pill = exp ? (days < 0 ? '<span class="pill bad">Expired</span>' : days <= 60 ? '<span class="pill warn">Expires in ' + days + " days</span>" : "") : "";
+      var canDel = S.staff || (d.uploaded_by === S.email && d.kind !== "invoice");
+      return '<div class="row"><div><div class="t">' + esc(d.title) + " " + pill + '</div><div class="s">' + esc(d.file_name) + " · added " + esc(dayShort(d.created_at)) +
+        (d.uploaded_role === "client" ? " by " + esc(d.uploaded_by) : " by Fort Green") + (exp ? " · expires " + esc(dayShort(exp)) : "") + '</div></div><div class="acts">' +
+        '<button class="btn ghost sm" type="button" data-open="' + esc(d.file_path) + '">Open</button>' +
+        (canDel ? '<button class="btn danger sm" type="button" data-del="' + esc(d.id) + '" data-path="' + esc(d.file_path) + '">Delete</button>' : "") + "</div></div>";
+    };
+    var inv = r.data.filter(function (d) { return d.kind === "invoice"; }), other = r.data.filter(function (d) { return d.kind !== "invoice"; });
+    $("docs-invoice").innerHTML = inv.length ? inv.map(row).join("") : '<div class="empty">No invoices yet. They’ll appear here when Fort Green adds them.</div>';
+    $("docs-other").innerHTML = other.length ? other.map(row).join("") : '<div class="empty">No documents yet. Upload your premises licence and any TENs so we always have the current copy.</div>';
+  }
+  $("up-kind").addEventListener("change", function () { $("up-exp-wrap").hidden = $("up-kind").value === "invoice"; });
+  $("upload").addEventListener("submit", async function (e) {
+    e.preventDefault(); msg();
+    var f = $("up-file").files[0], kind = $("up-kind").value, title = $("up-title").value.trim();
+    if (!f || !title) { msg("fail", "Add a title and choose a file."); return; }
+    if (f.size > 20 * 1024 * 1024) { msg("fail", "That file is over 20 MB. Please upload a smaller copy."); return; }
+    var safe = f.name.replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
+    var path = S.venue + "/" + kind + "/" + crypto.randomUUID() + "-" + safe;
+    busy($("up-go"), true, "Uploading…");
+    var u = await sb.storage.from("client-docs").upload(path, f, { contentType: f.type || undefined, upsert: false });
+    if (u.error) { busy($("up-go"), false, "Upload"); msg("fail", "Upload failed: " + (/mime/i.test(u.error.message) ? "that file type isn’t allowed." : u.error.message)); return; }
+    var ins = await sb.from("cp_documents").insert({ venue_id: S.venue, kind: kind, title: title, file_path: path, file_name: f.name, mime: f.type || null, size_bytes: f.size,
+      expires_on: kind !== "invoice" && $("up-exp").value ? $("up-exp").value : null, uploaded_by: S.email, uploaded_role: S.staff ? "staff" : "client" });
+    busy($("up-go"), false, "Upload");
+    if (ins.error) { await sb.storage.from("client-docs").remove([path]); msg("fail", "Upload failed: " + ins.error.message); return; }
+    $("upload").reset(); $("up-exp-wrap").hidden = false;
+    msg("ok", kind === "invoice" ? "Invoice added. The venue’s contacts have been emailed." : "Uploaded. Fort Green has been told.");
+    loadDocs();
+  });
+  $("t-documents").addEventListener("click", async function (e) {
+    var o = e.target.closest("[data-open]"), d = e.target.closest("[data-del]");
+    if (o) {
+      var r = await sb.storage.from("client-docs").createSignedUrl(o.dataset.open, 120);
+      if (r.error) { msg("fail", "Couldn’t open the file: " + r.error.message); return; }
+      window.open(r.data.signedUrl, "_blank", "noopener");
+    } else if (d) {
+      if (d.dataset.confirm !== "1") { d.dataset.confirm = "1"; d.textContent = "Tap again to delete"; setTimeout(function () { d.dataset.confirm = ""; d.textContent = "Delete"; }, 4000); return; }
+      busy(d, true, "Deleting…");
+      var x = await sb.from("cp_documents").delete().eq("id", d.dataset.del);
+      if (x.error) { msg("fail", "Couldn’t delete: " + x.error.message); busy(d, false, "Delete"); return; }
+      await sb.storage.from("client-docs").remove([d.dataset.path]);
+      msg("ok", "Document deleted."); loadDocs();
+    }
+  });
+
+  /* ---------- extra staff ---------- */
+  async function loadExtra() {
+    $("req-job").innerHTML = '<option value="">Loading shifts…</option>';
+    $("reqs").innerHTML = '<div class="loading">Loading…</div>';
+    var now = new Date(), to = new Date(now.getTime() + 62 * 864e5);
+    try {
+      var r = await api({ action: "schedule", venue_id: S.venue, from: now.toISOString(), to: to.toISOString() });
+      var up = (r.shifts || []).filter(function (s) { return new Date(s.ends_at) > now; });
+      $("req-job").innerHTML = up.length ? '<option value="">Choose a shift</option>' + up.map(function (s) {
+        return '<option value="' + esc(s.id) + '"' + (S.preselect === s.id ? " selected" : "") + ">" + esc(dayLong(s.starts_at)) + ", " + esc(hm(s.starts_at)) + "–" + esc(hm(s.ends_at)) + " · " + esc(s.title || "Shift") + " (" + s.staff_needed + " staff)</option>";
+      }).join("") : '<option value="">No upcoming shifts in the next two months</option>';
+      S.preselect = null;
+    } catch (e) { $("req-job").innerHTML = '<option value="">Couldn’t load shifts</option>'; msg("fail", e.message); }
+    loadRequests();
+  }
+  async function loadRequests() {
+    var r = await sb.from("cp_staff_requests").select("*").eq("venue_id", S.venue).order("created_at", { ascending: false }).limit(50);
+    if (r.error) { $("reqs").innerHTML = ""; msg("fail", r.error.message); return; }
+    var pend = r.data.filter(function (x) { return x.status === "pending"; }).length;
+    $("pending-count").textContent = pend; $("pending-count").hidden = !pend;
+    var pills = { pending: '<span class="pill warn">Waiting for Fort Green</span>', approved: '<span class="pill ok">Approved</span>', declined: '<span class="pill bad">Declined</span>', cancelled: '<span class="pill mute">Cancelled</span>' };
+    $("reqs").innerHTML = r.data.length ? r.data.map(function (q) {
+      var acts = "";
+      if (q.status === "pending" && S.staff) acts = '<button class="btn sm" type="button" data-approve="' + q.id + '">Approve</button><button class="btn danger sm" type="button" data-decline="' + q.id + '">Decline</button>';
+      else if (q.status === "pending") acts = '<button class="btn ghost sm" type="button" data-cancel="' + q.id + '">Cancel request</button>';
+      return '<div class="row"><div><div class="t">+' + q.extra_staff + " staff · " + esc(dayLong(q.job_starts_at)) + ", " + esc(hm(q.job_starts_at)) + "–" + esc(hm(q.job_ends_at)) + " " + pills[q.status] + '</div><div class="s">' +
+        esc(q.job_title || "Shift") + " · asked by " + esc(q.requested_by) + " on " + esc(dayShort(q.created_at)) + (q.note ? " · “" + esc(q.note) + "”" : "") +
+        (q.decided_at && q.status !== "cancelled" ? " · " + esc(q.status) + " " + esc(dayShort(q.decided_at)) + (q.new_staff_needed ? ", now " + q.new_staff_needed + " staff" : "") + (q.decision_note ? " — " + esc(q.decision_note) : "") : "") +
+        '</div></div><div class="acts">' + acts + "</div></div>";
+    }).join("") : '<div class="empty">No requests yet.</div>';
+  }
+  function setN(n) { $("req-n").value = Math.max(1, Math.min(50, n || 1)); }
+  $("req-minus").addEventListener("click", function () { setN(+$("req-n").value - 1); });
+  $("req-plus").addEventListener("click", function () { setN(+$("req-n").value + 1); });
+  $("req").addEventListener("submit", async function (e) {
+    e.preventDefault(); msg();
+    if (!$("req-job").value) { msg("fail", "Choose the shift you need extra staff for."); return; }
+    busy($("req-go"), true, "Sending…");
+    try {
+      await api({ action: "request_staff", venue_id: S.venue, job_id: $("req-job").value, extra: +$("req-n").value, note: $("req-note").value });
+      $("req-note").value = ""; setN(1);
+      msg("ok", "Request sent. We’ll email you when it’s confirmed.");
+      loadRequests();
+    } catch (x) { msg("fail", "Couldn’t send the request: " + x.message); }
+    busy($("req-go"), false, "Send request");
+  });
+  $("reqs").addEventListener("click", async function (e) {
+    var a = e.target.closest("[data-approve]"), d = e.target.closest("[data-decline]"), cn = e.target.closest("[data-cancel]");
+    var b = a || d || cn; if (!b) return; msg();
+    if (cn) {
+      busy(b, true, "Cancelling…");
+      var r = await sb.rpc("cp_cancel_request", { p_id: cn.dataset.cancel });
+      if (r.error) { msg("fail", r.error.message); busy(b, false, "Cancel request"); return; }
+      msg("ok", "Request cancelled."); return loadRequests();
+    }
+    var note = d ? prompt("Reason for declining (sent to the client, optional):", "") : "";
+    if (note === null) return;
+    busy(b, true, a ? "Approving…" : "Declining…");
+    try {
+      var out = await api({ action: "decide", request_id: (a || d).dataset[a ? "approve" : "decline"], approve: !!a, note: note });
+      msg("ok", a ? "Approved. The shift now needs " + out.request.new_staff_needed + " staff in Staff Check-In, and the client has been emailed." : "Declined. The client has been emailed.");
+    } catch (x) { msg("fail", x.message); }
+    loadRequests();
+  });
+
+  /* ---------- invoicing ---------- */
+  var BF = { company_name: "b-company", accounts_email: "b-email", po_number: "b-po", vat_number: "b-vat", billing_address: "b-address", notes: "b-notes" };
+  async function loadBilling() {
+    var r = await sb.from("cp_billing").select("*").eq("venue_id", S.venue).maybeSingle();
+    if (r.error) { msg("fail", r.error.message); return; }
+    var b = r.data || {};
+    Object.keys(BF).forEach(function (k) { $(BF[k]).value = b[k] || ""; });
+    $("b-updated").textContent = b.updated_at ? "Last updated " + dayShort(b.updated_at) + " by " + b.updated_by : "No details saved yet.";
+    $("bill-history").hidden = !S.staff;
+    if (S.staff) {
+      var l = await sb.from("cp_billing_log").select("*").eq("venue_id", S.venue).order("changed_at", { ascending: false }).limit(20);
+      $("bill-log").innerHTML = (l.data || []).length ? l.data.map(function (x) {
+        var changed = Object.keys(BF).filter(function (k) { return ((x.before || {})[k] || "") !== ((x.after || {})[k] || ""); });
+        return "<li><strong>" + esc(dayShort(x.changed_at)) + "</strong> · " + esc(x.changed_by) + " changed " + esc(changed.map(function (k) { return k.replace(/_/g, " "); }).join(", ") || "nothing") + "</li>";
+      }).join("") : '<li class="hint">No changes yet.</li>';
+    }
+  }
+  $("bill").addEventListener("submit", async function (e) {
+    e.preventDefault(); msg();
+    var em = $("b-email").value.trim();
+    if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { msg("fail", "Check the accounts email address."); return; }
+    var row = { venue_id: S.venue, updated_by: S.email };
+    Object.keys(BF).forEach(function (k) { row[k] = $(BF[k]).value.trim() || null; });
+    busy($("b-go"), true, "Saving…");
+    var r = await sb.from("cp_billing").upsert(row, { onConflict: "venue_id" });
+    busy($("b-go"), false, "Save details");
+    if (r.error) { msg("fail", "Couldn’t save: " + r.error.message); return; }
+    msg("ok", "Saved. Fort Green’s accounts team has been told.");
+    loadBilling();
+  });
+
+  /* ---------- client access (staff) ---------- */
+  async function loadAccess() {
+    var r = await sb.from("cp_venue_access").select("*").eq("venue_id", S.venue).order("added_at");
+    if (r.error) { msg("fail", r.error.message); return; }
+    $("acc-list").innerHTML = r.data.length ? r.data.map(function (a) {
+      return '<div class="row"><div><div class="t">' + esc(a.email) + '</div><div class="s">Added ' + esc(dayShort(a.added_at)) + " by " + esc(a.added_by) + '</div></div><div class="acts"><button class="btn danger sm" type="button" data-unlink="' + esc(a.email) + '">Remove from venue</button></div></div>';
+    }).join("") : '<div class="empty">No client emails linked to this venue yet.</div>';
+  }
+  $("acc").addEventListener("submit", async function (e) {
+    e.preventDefault(); msg();
+    var em = $("acc-email").value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { msg("fail", "Enter a valid email address."); return; }
+    busy($("acc-go"), true, "Adding…");
+    var r = await sb.from("cp_venue_access").insert({ venue_id: S.venue, email: em, added_by: S.email });
+    busy($("acc-go"), false, "Give access");
+    if (r.error) { msg("fail", /duplicate/i.test(r.error.message) ? em + " already has access." : r.error.message); return; }
+    $("acc-email").value = ""; msg("ok", em + " can now sign in and see " + venueName() + ". Send them to tools.fortgreen.co.uk/portal/");
+    loadAccess();
+  });
+  $("acc-list").addEventListener("click", async function (e) {
+    var b = e.target.closest("[data-unlink]"); if (!b) return;
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Tap again to remove"; setTimeout(function () { b.dataset.confirm = ""; b.textContent = "Remove from venue"; }, 4000); return; }
+    var r = await sb.from("cp_venue_access").delete().eq("venue_id", S.venue).eq("email", b.dataset.unlink);
+    if (r.error) { msg("fail", r.error.message); return; }
+    msg("ok", b.dataset.unlink + " no longer has access to " + venueName() + "."); loadAccess();
+  });
+
+  /* ---------- start ---------- */
+  function venueName() { var v = S.venues.find(function (x) { return x.venue_id === S.venue; }); return v ? v.name : "this venue"; }
+  function readHash() {
+    var h = location.hash.replace(/^#/, ""), out = { tab: "bookings", v: null };
+    h.split("&").forEach(function (p) { if (p.indexOf("v=") === 0) out.v = p.slice(2); else if (p) out.tab = p; });
+    return out;
+  }
+  $("venue").addEventListener("change", function () {
+    S.venue = $("venue").value; S.month = monthStart(new Date());
+    try { localStorage.setItem("fg_portal_venue", S.venue); } catch (x) {}
+    history.replaceState(null, "", "#" + S.tab + "&v=" + S.venue); msg(); loadTab();
+    if (S.tab !== "extra") loadRequests();
+  });
+
+  sb.auth.getSession().then(async function (s) {
+    if (!s.data || !s.data.session) return;
+    try {
+      var r = await api({ action: "venues" });
+      S.staff = r.staff; S.email = r.email; S.venues = r.venues || [];
+    } catch (e) { $("loading").textContent = "Couldn’t load the portal: " + e.message; return; }
+    $("loading").hidden = true;
+    if (!S.venues.length) {
+      $("novenue-email").textContent = S.email; renderTools("tools-novenue"); $("novenue").hidden = false; return;
+    }
+    renderTools("tools");
+    $("tab-access").hidden = !S.staff;
+    $("opt-invoice").hidden = $("opt-invoice").disabled = !S.staff;
+    var h = readHash(), saved = null;
+    try { saved = localStorage.getItem("fg_portal_venue"); } catch (x) {}
+    var ids = S.venues.map(function (v) { return v.venue_id; });
+    S.venue = ids.indexOf(h.v) !== -1 ? h.v : ids.indexOf(saved) !== -1 ? saved : ids[0];
+    $("venue").innerHTML = S.venues.map(function (v) { return '<option value="' + esc(v.venue_id) + '">' + esc(v.name) + "</option>"; }).join("");
+    $("venue").value = S.venue;
+    $("venuepick").hidden = S.venues.length < 2 && !S.staff;
+    if ($("venuepick").hidden) { $("venuename").textContent = S.venues[0].name; $("venuename").hidden = false; }
+    S.month = monthStart(new Date());
+    $("app").hidden = false;
+    setTab(h.tab);
+    if (h.tab !== "extra") loadRequests();
+  });
+})();
+</script>
+</body>
+</html>

@@ -19,6 +19,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/licensing/` | Licensing and TEN guidance |
 | `public/power-planner/` | Event power planner |
 | `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in (staff) |
+| `public/portal/` | Client portal: bookings calendar, documents, extra staff requests, invoicing details, toolkit; staff manage client access |
+| `supabase/functions/client-portal/` | Source of the client-portal edge function (deployed to Supabase, not served by Netlify) |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
 | `public/staff-guard.js` | Like auth-guard, but also sends non-staff back to the hub |
 
@@ -57,3 +59,11 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Admins** are the emails in the Supabase table `hub_admins` (currently Niall). Only they see the Users card and page.
 - **Removing access** (`hub_remove_access`) records the person in `hub_blocks`, bans their sign-in and ends their sessions on every device. The staff checks (`eq_is_staff`, `ra_is_staff`, `lf_is_staff`) also refuse removed people, and every page using `auth-guard.js` or `staff-guard.js` signs them out. `hub_restore_access` undoes it. Every change is logged in `hub_access_log`.
 - This covers every tool on this Supabase project. Staff Check-In (checkin.fortgreen.co.uk) runs on its own Supabase project, so removing access here doesn't affect it.
+
+## Client portal
+
+- **Who sees what:** staff (@fortgreen.co.uk) see every venue. Clients see only the venues their email is linked to, which staff set in the portal's Client access tab (table `cp_venue_access`). Venue names are copied from Staff Check-In into `cp_venues` whenever staff open the portal.
+- **Bookings and extra staff:** shifts are read live from the Staff Check-In Supabase project through the `client-portal` edge function, which calls `portal_schedule`, `portal_list_venues` and `portal_add_staff` there with a shared key (vault secret `cp_checkin_key` here, hash in `portal_keys` there). Only shifts with a venue set in Staff Check-In appear. Clients only see staff first names. Requests are stored in `cp_staff_requests`; approving one raises `staff_needed` on the job in Staff Check-In.
+- **Documents:** private storage bucket `client-docs`, files at `<venue_id>/<kind>/...`, listed in `cp_documents`. Clients upload licences and other files; only staff can upload invoices.
+- **Invoicing details:** `cp_billing`, with every change kept in `cp_billing_log`.
+- **Emails:** n8n workflow "FG Client portal – email notifications" (sierra-six), sent through Gmail. Fort Green alerts go to info@fortgreen.co.uk (set as OPS in its Build email node); clients get emails when requests are decided and invoices are added.
