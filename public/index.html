@@ -205,6 +205,13 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
           <p>Find and track new sales leads.</p>
           <div class="foot"><span></span><span class="go">Open</span></div>
         </a>
+        <a class="card" href="/users/" id="card-users" hidden>
+          <span class="num display" aria-hidden="true">09</span>
+          <span class="tag">Admin</span>
+          <h3 class="display">Users</h3>
+          <p>See who uses the tools and remove or restore their access.</p>
+          <div class="foot"><span>Admins only</span><span class="go">Open</span></div>
+        </a>
         <a class="card" href="/equipment/">
           <span class="num display" aria-hidden="true">08</span>
           <span class="tag">Logistics</span>
@@ -255,7 +262,17 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     $("view-login").hidden = true; $("view-hub").hidden = false;
     $("who").hidden = !email; $("who-email").textContent = email || "";
     $("staff").hidden = !isStaff(email);
+    $("card-users").hidden = true;
+    if (sb && email) checkAccess();
   }
+  var REMOVED_MSG = "Your access to Fort Green tools has been removed. If you think this is a mistake, email info@fortgreen.co.uk.";
+  async function checkAccess() {
+    var b = await sb.rpc("hub_is_blocked");
+    if (b && b.data === true) { await sb.auth.signOut(); signedIn = false; showLogin("email"); err("email-err", REMOVED_MSG); return; }
+    var a = await sb.rpc("hub_is_admin");
+    $("card-users").hidden = !(a && a.data === true);
+  }
+  function isBanned(e) { return e && /banned/i.test(e.message || ""); }
   function showLogin(step) {
     $("view-hub").hidden = true; $("view-login").hidden = false; $("who").hidden = true;
     $("form-email").hidden = step === "code"; $("form-code").hidden = step !== "code";
@@ -279,6 +296,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
   }
 
   if (!configured) { $("setup").hidden = false; showHub(""); return; }
+  var wasRemoved = new URLSearchParams(location.search).get("removed") === "1";
 
   $("form-email").addEventListener("submit", async function (e) {
     e.preventDefault(); err("email-err");
@@ -287,6 +305,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     busy($("send"), true, "Sending code…");
     var r = await sendCode(email);
     busy($("send"), false, "Email me a code");
+    if (isBanned(r.error)) { err("email-err", REMOVED_MSG); return; }
     if (r.error) { err("email-err", r.error.status === 429 ? "Too many codes requested. Wait a minute, then try again." : "We couldn’t send a code: " + r.error.message); return; }
     pendingEmail = email; pendingConsent = $("consent").checked;
     try { if (pendingConsent) localStorage.setItem("fg_consent", email.toLowerCase()); else localStorage.removeItem("fg_consent"); } catch (x) {}
@@ -301,6 +320,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     busy($("verify"), true, "Checking code…");
     var r = await sb.auth.verifyOtp({ email: pendingEmail, token: token, type: "email" });
     busy($("verify"), false, "Sign in");
+    if (isBanned(r.error)) { showLogin("email"); err("email-err", REMOVED_MSG); return; }
     if (r.error) { err("code-err", "That code didn’t work. Check it, or send a new code."); return; }
     await recordLead(r.data.user);
     signedIn = true;
@@ -322,7 +342,8 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
   });
   sb.auth.getSession().then(function (r) {
     var s = r.data && r.data.session;
-    if (s) { if (!signedIn) { signedIn = true; recordLead(s.user); } showHub(s.user.email); } else if (!signedIn) showLogin("email");
+    if (s) { if (!signedIn) { signedIn = true; recordLead(s.user); } showHub(s.user.email); }
+    else if (!signedIn) { showLogin("email"); if (wasRemoved) err("email-err", REMOVED_MSG); }
   });
 })();
 </script>

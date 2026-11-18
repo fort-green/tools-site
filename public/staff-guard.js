@@ -20,7 +20,10 @@
     var s = r.data && r.data.session;
     if (!s) { location.replace("/?next=" + encodeURIComponent(location.pathname + location.hash)); return; }
     if (!isStaff(s.user.email)) { location.replace("/"); return; }
-    reveal();
-    if (document.body) addBar(); else document.addEventListener("DOMContentLoaded", addBar);
+    return sb.rpc("hub_is_blocked").then(function (b) {
+      if (b && b.data === true) { return sb.auth.signOut().finally(function () { location.replace("/?removed=1"); }); }
+      reveal();
+      if (document.body) addBar(); else document.addEventListener("DOMContentLoaded", addBar);
+    });
   }).catch(function () { location.replace("/"); });
 })();

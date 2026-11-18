@@ -19,6 +19,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/licensing/` | Licensing and TEN guidance |
 | `public/power-planner/` | Event power planner |
 | `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in (staff) |
+| `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
+| `public/staff-guard.js` | Like auth-guard, but also sends non-staff back to the hub |
 
 ## Adding a tool
 
@@ -49,3 +51,9 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Database:** Supabase project FORT GREEN PROJECT1, table `ra_assessments` (one row per assessment, full job in `data`). Row-level security allows only signed-in @fortgreen.co.uk accounts, via `ra_is_staff()`. A trigger stamps `created_by`, `updated_by` and `updated_at`.
 - **Hazard library:** read at page load from `public/risk-assessment/index.html` (the `HAZARDS` and `GAP` constants). Keep those two lines in the same format, or the full version can't load them.
 - **Word export:** uses the `docx` library (8.5.0) from jsDelivr.
+
+## Users and removing access
+
+- **Admins** are the emails in the Supabase table `hub_admins` (currently Niall). Only they see the Users card and page.
+- **Removing access** (`hub_remove_access`) records the person in `hub_blocks`, bans their sign-in and ends their sessions on every device. The staff checks (`eq_is_staff`, `ra_is_staff`, `lf_is_staff`) also refuse removed people, and every page using `auth-guard.js` or `staff-guard.js` signs them out. `hub_restore_access` undoes it. Every change is logged in `hub_access_log`.
+- This covers every tool on this Supabase project. Staff Check-In (checkin.fortgreen.co.uk) runs on its own Supabase project, so removing access here doesn't affect it.

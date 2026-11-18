@@ -14,8 +14,11 @@
   var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
   sb.auth.getSession().then(function (r) {
     if (r.data && r.data.session) {
-      reveal();
-      if (document.body) addBar(); else document.addEventListener("DOMContentLoaded", addBar);
+      return sb.rpc("hub_is_blocked").then(function (b) {
+        if (b && b.data === true) { return sb.auth.signOut().finally(function () { location.replace("/?removed=1"); }); }
+        reveal();
+        if (document.body) addBar(); else document.addEventListener("DOMContentLoaded", addBar);
+      });
     } else {
       location.replace("/?next=" + encodeURIComponent(location.pathname + location.hash));
     }
