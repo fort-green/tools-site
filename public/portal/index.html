@@ -27,6 +27,9 @@ a{color:inherit}
 .hero .kicker{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--muted)}
 .hero h1{margin:0;font-size:clamp(56px,10vw,120px)}
 .venuepick{display:flex;flex-direction:column;gap:6px;min-width:260px;font-weight:600;font-size:14px;color:var(--muted)}
+.staffbar{display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.previewbar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin:0 0 20px;padding:14px 18px;background:var(--warn-soft);color:var(--warn);border:1px solid currentColor;font-weight:700}
+.previewbar .btn{border-color:currentColor;color:var(--warn);background:transparent}
 .tabs{display:flex;border-bottom:1px solid var(--ink);margin-bottom:28px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tabs a{flex:none;padding:14px 18px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid transparent;border-bottom:0;margin-bottom:-1px;white-space:nowrap}
@@ -121,9 +124,12 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       <h1 class="display">Client portal.</h1>
       <p class="hint" id="venuename" style="margin-top:12px;font-size:18px;font-weight:700;color:var(--ink)" hidden></p>
     </div>
-    <label class="venuepick" id="venuepick" hidden>Venue
-      <select id="venue"></select>
-    </label>
+    <div class="staffbar">
+      <label class="venuepick" id="venuepick" hidden>Venue
+        <select id="venue"></select>
+      </label>
+      <button class="btn ghost" type="button" id="preview-on" hidden>View as client</button>
+    </div>
   </section>
 
   <div id="loading" class="loading">Loading your portal…</div>
@@ -139,6 +145,10 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   </div>
 
   <div id="app" hidden>
+    <div class="previewbar" id="previewbar" role="status" hidden>
+      <span id="preview-text">Previewing as a client. Changes are switched off.</span>
+      <button class="btn sm" type="button" id="preview-off">Exit preview</button>
+    </div>
     <nav class="tabs" aria-label="Portal sections">
       <a href="#bookings" data-tab="bookings">Bookings</a>
       <a href="#documents" data-tab="documents">Documents</a>
@@ -281,7 +291,9 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   var $ = function (id) { return document.getElementById(id); };
   if (!c.SUPABASE_URL || !window.supabase) { $("loading").textContent = "Sign-in isn’t set up."; return; }
   var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
-  var S = { staff: false, email: "", venues: [], venue: null, month: null, shifts: [], selected: null, tab: "bookings" };
+  function staffView() { return S.staff && !S.preview; }
+  function blocked() { if (!S.preview) return false; msg("fail", "This is a client preview, so changes are switched off. Exit preview to make changes."); return true; }
+  var S = { preview: false, staff: false, email: "", venues: [], venue: null, month: null, shifts: [], selected: null, tab: "bookings" };
   var TOOLS = [
     { href: "/martyns-law/", tag: "Compliance", name: "Martyn’s Law Readiness Checker", text: "See where your venue stands on Martyn’s Law and what to put in place next." },
     { href: "/risk-assessment/", tag: "Health and safety", name: "Risk Assessment Generator", text: "Build a risk assessment for your venue or event, with a PDF or Word download." },
@@ -315,7 +327,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
 
   /* ---------- tabs ---------- */
   function setTab(t) {
-    if (t === "access" && !S.staff) t = "bookings";
+    if (t === "access" && !staffView()) t = "bookings";
     if (!document.querySelector('[data-panel="' + t + '"]')) t = "bookings";
     S.tab = t;
     document.querySelectorAll("[data-panel]").forEach(function (p) { p.hidden = p.dataset.panel !== t; });
@@ -333,7 +345,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   }
   document.querySelector(".tabs").addEventListener("click", function (e) {
     var a = e.target.closest("a[data-tab]"); if (!a) return;
-    e.preventDefault(); history.replaceState(null, "", "#" + a.dataset.tab + (S.venue ? "&v=" + S.venue : "")); setTab(a.dataset.tab);
+    e.preventDefault(); S.tab = a.dataset.tab; setHash(); setTab(a.dataset.tab);
   });
 
   /* ---------- bookings ---------- */
@@ -385,7 +397,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       (future && soon ? '<button class="btn" type="button" id="detail-more">Request extra staff</button>' : "");
     $("detail").hidden = false;
     $("detail").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    var b = $("detail-more"); if (b) b.addEventListener("click", function () { S.preselect = id; history.replaceState(null, "", "#extra&v=" + S.venue); setTab("extra"); });
+    var b = $("detail-more"); if (b) b.addEventListener("click", function () { S.preselect = id; S.tab = "extra"; setHash(); setTab("extra"); });
   }
   ["cal", "agenda"].forEach(function (id) { $(id).addEventListener("click", function (e) { var b = e.target.closest("[data-shift]"); if (b) showShift(b.dataset.shift); }); });
   $("cal-prev").addEventListener("click", function () { S.month = new Date(S.month.getFullYear(), S.month.getMonth() - 1, 1); loadMonth(); });
@@ -400,7 +412,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     var row = function (d) {
       var exp = d.expires_on ? new Date(d.expires_on + "T12:00:00") : null, days = exp ? Math.ceil((exp - new Date()) / 864e5) : null;
       var pill = exp ? (days < 0 ? '<span class="pill bad">Expired</span>' : days <= 60 ? '<span class="pill warn">Expires in ' + days + " days</span>" : "") : "";
-      var canDel = S.staff || (d.uploaded_by === S.email && d.kind !== "invoice");
+      var canDel = staffView() || (!S.preview && d.uploaded_by === S.email && d.kind !== "invoice") || (S.preview && d.uploaded_role === "client");
       return '<div class="row"><div><div class="t">' + esc(d.title) + " " + pill + '</div><div class="s">' + esc(d.file_name) + " · added " + esc(dayShort(d.created_at)) +
         (d.uploaded_role === "client" ? " by " + esc(d.uploaded_by) : " by Fort Green") + (exp ? " · expires " + esc(dayShort(exp)) : "") + '</div></div><div class="acts">' +
         '<button class="btn ghost sm" type="button" data-open="' + esc(d.file_path) + '">Open</button>' +
@@ -412,7 +424,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   }
   $("up-kind").addEventListener("change", function () { $("up-exp-wrap").hidden = $("up-kind").value === "invoice"; });
   $("upload").addEventListener("submit", async function (e) {
-    e.preventDefault(); msg();
+    e.preventDefault(); msg(); if (blocked()) return;
     var f = $("up-file").files[0], kind = $("up-kind").value, title = $("up-title").value.trim();
     if (!f || !title) { msg("fail", "Add a title and choose a file."); return; }
     if (f.size > 20 * 1024 * 1024) { msg("fail", "That file is over 20 MB. Please upload a smaller copy."); return; }
@@ -436,6 +448,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       if (r.error) { msg("fail", "Couldn’t open the file: " + r.error.message); return; }
       window.open(r.data.signedUrl, "_blank", "noopener");
     } else if (d) {
+      if (blocked()) return;
       if (d.dataset.confirm !== "1") { d.dataset.confirm = "1"; d.textContent = "Tap again to delete"; setTimeout(function () { d.dataset.confirm = ""; d.textContent = "Delete"; }, 4000); return; }
       busy(d, true, "Deleting…");
       var x = await sb.from("cp_documents").delete().eq("id", d.dataset.del);
@@ -468,7 +481,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     var pills = { pending: '<span class="pill warn">Waiting for Fort Green</span>', approved: '<span class="pill ok">Approved</span>', declined: '<span class="pill bad">Declined</span>', cancelled: '<span class="pill mute">Cancelled</span>' };
     $("reqs").innerHTML = r.data.length ? r.data.map(function (q) {
       var acts = "";
-      if (q.status === "pending" && S.staff) acts = '<button class="btn sm" type="button" data-approve="' + q.id + '">Approve</button><button class="btn danger sm" type="button" data-decline="' + q.id + '">Decline</button>';
+      if (q.status === "pending" && staffView()) acts = '<button class="btn sm" type="button" data-approve="' + q.id + '">Approve</button><button class="btn danger sm" type="button" data-decline="' + q.id + '">Decline</button>';
       else if (q.status === "pending") acts = '<button class="btn ghost sm" type="button" data-cancel="' + q.id + '">Cancel request</button>';
       return '<div class="row"><div><div class="t">+' + q.extra_staff + " staff · " + esc(dayLong(q.job_starts_at)) + ", " + esc(hm(q.job_starts_at)) + "–" + esc(hm(q.job_ends_at)) + " " + pills[q.status] + '</div><div class="s">' +
         esc(q.job_title || "Shift") + " · asked by " + esc(q.requested_by) + " on " + esc(dayShort(q.created_at)) + (q.note ? " · “" + esc(q.note) + "”" : "") +
@@ -480,7 +493,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   $("req-minus").addEventListener("click", function () { setN(+$("req-n").value - 1); });
   $("req-plus").addEventListener("click", function () { setN(+$("req-n").value + 1); });
   $("req").addEventListener("submit", async function (e) {
-    e.preventDefault(); msg();
+    e.preventDefault(); msg(); if (blocked()) return;
     if (!$("req-job").value) { msg("fail", "Choose the shift you need extra staff for."); return; }
     busy($("req-go"), true, "Sending…");
     try {
@@ -493,7 +506,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   });
   $("reqs").addEventListener("click", async function (e) {
     var a = e.target.closest("[data-approve]"), d = e.target.closest("[data-decline]"), cn = e.target.closest("[data-cancel]");
-    var b = a || d || cn; if (!b) return; msg();
+    var b = a || d || cn; if (!b) return; msg(); if (blocked()) return;
     if (cn) {
       busy(b, true, "Cancelling…");
       var r = await sb.rpc("cp_cancel_request", { p_id: cn.dataset.cancel });
@@ -518,8 +531,8 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     var b = r.data || {};
     Object.keys(BF).forEach(function (k) { $(BF[k]).value = b[k] || ""; });
     $("b-updated").textContent = b.updated_at ? "Last updated " + dayShort(b.updated_at) + " by " + b.updated_by : "No details saved yet.";
-    $("bill-history").hidden = !S.staff;
-    if (S.staff) {
+    $("bill-history").hidden = !staffView();
+    if (staffView()) {
       var l = await sb.from("cp_billing_log").select("*").eq("venue_id", S.venue).order("changed_at", { ascending: false }).limit(20);
       $("bill-log").innerHTML = (l.data || []).length ? l.data.map(function (x) {
         var changed = Object.keys(BF).filter(function (k) { return ((x.before || {})[k] || "") !== ((x.after || {})[k] || ""); });
@@ -528,7 +541,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     }
   }
   $("bill").addEventListener("submit", async function (e) {
-    e.preventDefault(); msg();
+    e.preventDefault(); msg(); if (blocked()) return;
     var em = $("b-email").value.trim();
     if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { msg("fail", "Check the accounts email address."); return; }
     var row = { venue_id: S.venue, updated_by: S.email };
@@ -571,14 +584,36 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   /* ---------- start ---------- */
   function venueName() { var v = S.venues.find(function (x) { return x.venue_id === S.venue; }); return v ? v.name : "this venue"; }
   function readHash() {
-    var h = location.hash.replace(/^#/, ""), out = { tab: "bookings", v: null };
-    h.split("&").forEach(function (p) { if (p.indexOf("v=") === 0) out.v = p.slice(2); else if (p) out.tab = p; });
+    var h = location.hash.replace(/^#/, ""), out = { tab: "bookings", v: null, preview: false };
+    h.split("&").forEach(function (p) { if (p.indexOf("v=") === 0) out.v = p.slice(2); else if (p === "preview") out.preview = true; else if (p) out.tab = p; });
     return out;
   }
+  function setHash() { history.replaceState(null, "", "#" + S.tab + "&v=" + S.venue + (S.preview ? "&preview" : "")); }
+  // Staff see everything; in client preview the page shows exactly what a client of the chosen venue sees.
+  function applyView() {
+    var sv = staffView();
+    $("tab-access").hidden = !sv;
+    $("opt-invoice").hidden = $("opt-invoice").disabled = !sv;
+    if (!sv && $("up-kind").value === "invoice") { $("up-kind").value = "licence"; $("up-exp-wrap").hidden = false; }
+    $("venuepick").hidden = !S.staff && S.venues.length < 2;
+    $("preview-on").hidden = !S.staff || S.preview;
+    $("previewbar").hidden = !S.preview;
+    $("venuename").textContent = venueName();
+    $("venuename").hidden = !$("venuepick").hidden && !S.preview;
+    $("preview-text").textContent = "Previewing as a client of " + venueName() + ". This is what their contacts see. Changes are switched off.";
+  }
+  function togglePreview(on) {
+    S.preview = on; if (on && S.tab === "access") S.tab = "bookings";
+    applyView(); setHash(); setTab(S.tab);
+    if (S.tab !== "extra") loadRequests();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  $("preview-on").addEventListener("click", function () { togglePreview(true); });
+  $("preview-off").addEventListener("click", function () { togglePreview(false); });
   $("venue").addEventListener("change", function () {
     S.venue = $("venue").value; S.month = monthStart(new Date());
     try { localStorage.setItem("fg_portal_venue", S.venue); } catch (x) {}
-    history.replaceState(null, "", "#" + S.tab + "&v=" + S.venue); msg(); loadTab();
+    setHash(); applyView(); msg(); loadTab();
     if (S.tab !== "extra") loadRequests();
   });
 
@@ -593,16 +628,14 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       $("novenue-email").textContent = S.email; renderTools("tools-novenue"); $("novenue").hidden = false; return;
     }
     renderTools("tools");
-    $("tab-access").hidden = !S.staff;
-    $("opt-invoice").hidden = $("opt-invoice").disabled = !S.staff;
     var h = readHash(), saved = null;
     try { saved = localStorage.getItem("fg_portal_venue"); } catch (x) {}
     var ids = S.venues.map(function (v) { return v.venue_id; });
     S.venue = ids.indexOf(h.v) !== -1 ? h.v : ids.indexOf(saved) !== -1 ? saved : ids[0];
     $("venue").innerHTML = S.venues.map(function (v) { return '<option value="' + esc(v.venue_id) + '">' + esc(v.name) + "</option>"; }).join("");
     $("venue").value = S.venue;
-    $("venuepick").hidden = S.venues.length < 2 && !S.staff;
-    if ($("venuepick").hidden) { $("venuename").textContent = S.venues[0].name; $("venuename").hidden = false; }
+    S.preview = S.staff && h.preview;
+    applyView();
     S.month = monthStart(new Date());
     $("app").hidden = false;
     setTab(h.tab);
