@@ -95,6 +95,7 @@ legend{padding:0;margin-bottom:10px;font-weight:700;font-size:16px}
 .bk-body dd{margin:2px 0 0;white-space:pre-line}
 .quote{margin:0 20px 18px;padding:18px;border:2px solid var(--ink)}
 .quote .amt{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;font-size:40px;line-height:1}
+.quote .btn{white-space:normal;overflow-wrap:anywhere;text-align:left;max-width:100%}
 .bk-acts{padding:0 20px 20px;display:flex;flex-direction:column;gap:12px}
 .bk-acts .sub-form{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px dashed var(--line)}
 input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;line-height:26px}
@@ -482,6 +483,14 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   $("cal-next").addEventListener("click", function () { S.month = new Date(S.month.getFullYear(), S.month.getMonth() + 1, 1); loadMonth(); });
   $("cal-today").addEventListener("click", function () { S.month = monthStart(new Date()); loadMonth(); });
 
+  // Open the tab straight away (in the tap) so phones don't block it as a pop-up, then load the file into it.
+  async function openFile(path) {
+    var w = window.open("", "_blank");
+    var r = await sb.storage.from("client-docs").createSignedUrl(path, 300);
+    if (r.error) { if (w) w.close(); msg("fail", "Couldn’t open the file: " + r.error.message); return; }
+    if (w) w.location.href = r.data.signedUrl; else location.href = r.data.signedUrl;
+  }
+
   /* ---------- new booking ---------- */
   var ROLES = [
     ["Security", ["Door supervisor (SIA)", "Event security (SIA)", "Steward", "Search and screening", "Close protection officer", "CCTV operator", "Response / mobile patrol"]],
@@ -498,6 +507,12 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     accepted: '<span class="pill ok">Confirmed</span>', client_declined: '<span class="pill mute">Quote declined</span>',
     declined: '<span class="pill bad">Declined by Fort Green</span>', cancelled: '<span class="pill mute">Cancelled</span>'
   };
+  function quoteDocTitle(name, i, n) {
+    var base = name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+    if (!base || /^[0-9a-f]{8}( ?[0-9a-f]{4}){3} ?[0-9a-f]{12}$/i.test(base) || /^(img|image|scan|photo|document|file)\s?\d*$/i.test(base) || base.length > 40)
+      return "Quote document" + (n > 1 ? " " + (i + 1) : "");
+    return "Quote: " + base;
+  }
   function money(n) { return "£" + Number(n).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function roleOptions(sel) {
     return ROLES.map(function (g) { return '<optgroup label="' + esc(g[0]) + '">' + g[1].map(function (r) { return "<option" + (r === sel ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("") + "</optgroup>"; }).join("") +
@@ -607,20 +622,19 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
           '<label class="f">Attach quote documents (optional: PDF, Word, Excel or images) <input type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx"></label>' +
           '<div class="btnrow"><button class="btn" type="submit">' + (b.status === "quoted" ? "Send updated quote" : "Send quote") + "</button></div></form>" +
           '<form class="sub-form" data-decline="' + b.id + '"><label class="f">Or decline this request, with a note to the client (optional) <input type="text" name="note" maxlength="1000"></label><div class="btnrow"><button class="btn danger sm" type="submit">Decline request</button></div></form>';
-      } else if (b.status === "quoted" && !sv) {
+      }
+      if (b.status === "quoted" && (!sv || b.requested_by === S.email)) {
         acts += '<form class="sub-form" data-respond="' + b.id + '"><strong>Happy with the quote?</strong><label class="f">Note for Fort Green (optional) <input type="text" name="note" maxlength="1000"></label>' +
           '<div class="btnrow"><button class="btn" type="submit" value="accept">Accept quote</button><button class="btn danger" type="submit" value="decline">Decline quote</button></div></form>';
       }
-      if (open && !sv) acts += '<div class="btnrow"><button class="linkbtn" type="button" data-cancel-bk="' + b.id + '">Cancel this booking request</button></div>';
+      if (open && (!sv || b.requested_by === S.email)) acts += '<div class="btnrow"><button class="linkbtn" type="button" data-cancel-bk="' + b.id + '">Cancel this booking request</button></div>';
       return html + (acts ? '<div class="bk-acts">' + acts + "</div>" : "") + "</article>";
     }).join("");
   }
   $("bk-list").addEventListener("click", async function (e) {
     var o = e.target.closest("[data-open-doc]"), c = e.target.closest("[data-cancel-bk]");
     if (o) {
-      var r = await sb.storage.from("client-docs").createSignedUrl(o.dataset.openDoc, 120);
-      if (r.error) { msg("fail", r.error.message); return; }
-      window.open(r.data.signedUrl, "_blank", "noopener"); return;
+      openFile(o.dataset.openDoc); return;
     }
     if (c) {
       msg(); if (blocked()) return;
@@ -644,7 +658,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
         var path = S.venue + "/quote/" + crypto.randomUUID() + "-" + fl.name.replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
         var u = await sb.storage.from("client-docs").upload(path, fl, { contentType: fl.type || undefined });
         if (u.error) { busy(btn, false, label); msg("fail", "Couldn’t upload " + fl.name + ": " + u.error.message); return; }
-        var ins = await sb.from("cp_documents").insert({ venue_id: S.venue, booking_id: f.dataset.quote, kind: "quote", title: "Quote: " + fl.name.replace(/\.[^.]+$/, ""),
+        var ins = await sb.from("cp_documents").insert({ venue_id: S.venue, booking_id: f.dataset.quote, kind: "quote", title: quoteDocTitle(fl.name, i, files.length),
           file_path: path, file_name: fl.name, mime: fl.type || null, size_bytes: fl.size, uploaded_by: S.email, uploaded_role: "staff" });
         if (ins.error) { await sb.storage.from("client-docs").remove([path]); busy(btn, false, label); msg("fail", ins.error.message); return; }
       }
@@ -711,9 +725,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   $("t-documents").addEventListener("click", async function (e) {
     var o = e.target.closest("[data-open]"), d = e.target.closest("[data-del]");
     if (o) {
-      var r = await sb.storage.from("client-docs").createSignedUrl(o.dataset.open, 120);
-      if (r.error) { msg("fail", "Couldn’t open the file: " + r.error.message); return; }
-      window.open(r.data.signedUrl, "_blank", "noopener");
+      openFile(o.dataset.open);
     } else if (d) {
       if (blocked()) return;
       if (d.dataset.confirm !== "1") { d.dataset.confirm = "1"; d.textContent = "Tap again to delete"; setTimeout(function () { d.dataset.confirm = ""; d.textContent = "Delete"; }, 4000); return; }
