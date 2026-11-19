@@ -72,6 +72,43 @@ input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none}
 .cal .n{align-self:flex-start;font-weight:700;font-size:13px;padding:0 5px}
 .chip{display:block;width:100%;text-align:left;border:1px solid var(--ink);background:var(--bg);color:var(--ink);padding:4px 6px;font:600 12px/1.3 Manrope,Arial,sans-serif;cursor:pointer}
 .chip.short{border-color:var(--err);color:var(--err)}
+/* new booking */
+details.bk-form{border:1px solid var(--ink);background:var(--surface);margin-bottom:28px}
+details.bk-form>summary{cursor:pointer;list-style:none;padding:18px 24px;font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;font-size:26px;text-transform:uppercase}
+details.bk-form>summary::-webkit-details-marker{display:none}
+details.bk-form>summary::after{content:"+";float:right}
+details.bk-form[open]>summary::after{content:"–"}
+details.bk-form .inner{padding:0 24px 24px}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{padding:0;margin-bottom:10px;font-weight:700;font-size:16px}
+.staffrow{display:grid;grid-template-columns:minmax(0,2fr) 150px minmax(0,2fr) 48px;gap:10px;align-items:end;padding:12px 0;border-bottom:1px solid var(--line)}
+.staffrow .rm{min-height:48px;border:1.5px solid var(--line);background:transparent;color:var(--muted);font-size:20px;cursor:pointer}
+.staffrow .other{grid-column:1/-1}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:4px 16px}
+.checks label{display:flex;gap:10px;align-items:center;min-height:44px;font-size:15px;cursor:pointer}
+.checks input{width:20px;height:20px;accent-color:var(--ink);flex:none}
+.bk{border:1px solid var(--ink);background:var(--surface);margin-bottom:18px}
+.bk-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+.bk-head h4{margin:0;font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;font-size:26px;text-transform:uppercase;line-height:1}
+.bk-body{padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px 28px;font-size:15px}
+.bk-body dt{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.bk-body dd{margin:2px 0 0;white-space:pre-line}
+.quote{margin:0 20px 18px;padding:18px;border:2px solid var(--ink)}
+.quote .amt{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;font-size:40px;line-height:1}
+.bk-acts{padding:0 20px 20px;display:flex;flex-direction:column;gap:12px}
+.bk-acts .sub-form{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px dashed var(--line)}
+input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;line-height:26px}
+@media (max-width:760px){
+  .staffrow{grid-template-columns:110px minmax(0,1fr) 48px}
+  .staffrow>label:first-child{grid-column:1/3;grid-row:1}
+  .staffrow .rm{grid-column:3;grid-row:1}
+  .staffrow>label:nth-child(2){grid-column:1;grid-row:2}
+  .staffrow .notes{grid-column:2/4;grid-row:2}
+  .staffrow .other{grid-row:3}
+  details.bk-form>summary{padding:16px 18px;font-size:22px} details.bk-form .inner{padding:0 18px 18px}
+  .bk-head{padding:16px} .bk-body{padding:14px 16px} .quote{margin:0 16px 16px} .bk-acts{padding:0 16px 16px}
+}
+
 .chip[aria-pressed=true]{background:var(--ink);color:var(--bg)}
 .agenda{display:none;border-top:1px solid var(--ink)}
 .agenda .ad{padding:12px 0;border-bottom:1px solid var(--line)}
@@ -151,6 +188,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     </div>
     <nav class="tabs" aria-label="Portal sections">
       <a href="#bookings" data-tab="bookings">Bookings</a>
+      <a href="#booking" data-tab="booking">New booking <span class="count" id="bk-count" hidden></span></a>
       <a href="#documents" data-tab="documents">Documents</a>
       <a href="#extra" data-tab="extra">Extra staff <span class="count" id="pending-count" hidden></span></a>
       <a href="#invoicing" data-tab="invoicing">Invoicing details</a>
@@ -174,6 +212,45 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       <div class="cal" id="cal" aria-label="Bookings calendar"></div>
       <div class="agenda" id="agenda"></div>
       <div class="detail panel" id="detail" hidden></div>
+    </section>
+
+    <!-- NEW BOOKING -->
+    <section id="t-booking" data-panel="booking" hidden>
+      <div class="sechead"><h2 class="display">New booking</h2></div>
+      <details class="bk-form" id="bk-details" open>
+        <summary>Request a booking</summary>
+        <div class="inner">
+          <form id="bk" class="stack" novalidate>
+            <p style="margin:0">Tell us about the event and the people and kit you need. We’ll send you a quote to accept here, and email you at each step.</p>
+            <label class="f">Event name <input type="text" id="bk-title" maxlength="150" required placeholder="e.g. Christmas party"></label>
+            <div class="fields">
+              <label class="f">Date <input type="date" id="bk-date" required></label>
+              <label class="f">Start time <input type="time" id="bk-start" required step="900"></label>
+              <label class="f">Finish time <input type="time" id="bk-end" required step="900"></label>
+              <label class="f">Expected guests (optional) <input type="number" id="bk-guests" min="0" max="200000" inputmode="numeric"></label>
+            </div>
+            <p class="hint" id="bk-when" style="margin-top:-8px"></p>
+            <label class="f">Description <textarea id="bk-desc" maxlength="4000" placeholder="What’s happening, layout, any known risks, access and arrival details"></textarea></label>
+            <fieldset>
+              <legend>Staff needed</legend>
+              <div id="bk-staff"></div>
+              <div class="btnrow" style="margin-top:12px"><button class="btn ghost sm" type="button" id="bk-addrole">+ Add another role</button></div>
+            </fieldset>
+            <fieldset>
+              <legend>Special requests</legend>
+              <div class="checks" id="bk-extras"></div>
+              <label class="f" style="margin-top:12px">Anything else you need (optional) <textarea id="bk-extras-notes" maxlength="2000" placeholder="e.g. Sound system with two radio mics, DJ booth by the bar"></textarea></label>
+            </fieldset>
+            <div class="fields">
+              <label class="f">On-site contact name (optional) <input type="text" id="bk-onsite-name" maxlength="120" autocomplete="name"></label>
+              <label class="f">On-site contact phone (optional) <input type="tel" id="bk-onsite-phone" maxlength="40" autocomplete="tel"></label>
+            </div>
+            <div class="btnrow"><button class="btn" type="submit" id="bk-go">Send booking request</button></div>
+          </form>
+        </div>
+      </details>
+      <h3 class="display sub" style="margin-top:8px">Booking requests</h3>
+      <div id="bk-list"></div>
     </section>
 
     <!-- DOCUMENTS -->
@@ -338,6 +415,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   function loadTab() {
     if (!S.venue) return;
     if (S.tab === "bookings") loadMonth();
+    else if (S.tab === "booking") loadBookings();
     else if (S.tab === "documents") loadDocs();
     else if (S.tab === "extra") loadExtra();
     else if (S.tab === "invoicing") loadBilling();
@@ -404,6 +482,195 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   $("cal-next").addEventListener("click", function () { S.month = new Date(S.month.getFullYear(), S.month.getMonth() + 1, 1); loadMonth(); });
   $("cal-today").addEventListener("click", function () { S.month = monthStart(new Date()); loadMonth(); });
 
+  /* ---------- new booking ---------- */
+  var ROLES = [
+    ["Security", ["Door supervisor (SIA)", "Event security (SIA)", "Steward", "Search and screening", "Close protection officer", "CCTV operator", "Response / mobile patrol"]],
+    ["Event team", ["Event manager / supervisor", "Production crew", "Runner", "Host / front of house", "Box office / ticketing", "Cloakroom attendant"]],
+    ["Hospitality", ["Bar staff", "Catering staff", "Waiting staff", "Cleaner"]],
+    ["Technical and power", ["Sound engineer", "Lighting technician", "Event electrician", "Generator / fuel technician"]],
+    ["Medical", ["First aider / medic"]]
+  ];
+  var EXTRAS = ["Sound system", "Lighting", "DJ equipment", "Staging", "Generator / event power", "Power distribution", "Two-way radios", "CCTV",
+    "Crowd barriers", "Search wands / metal detectors", "Marquee or gazebo", "Toilets", "Signage", "Branded uniforms", "Food truck"];
+  var VAT = { plus_vat: "+ VAT", inc_vat: "including VAT", no_vat: "no VAT" };
+  var BKS = {
+    "new": '<span class="pill warn">Waiting for a quote</span>', quoted: '<span class="pill warn">Quote to review</span>',
+    accepted: '<span class="pill ok">Confirmed</span>', client_declined: '<span class="pill mute">Quote declined</span>',
+    declined: '<span class="pill bad">Declined by Fort Green</span>', cancelled: '<span class="pill mute">Cancelled</span>'
+  };
+  function money(n) { return "£" + Number(n).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function roleOptions(sel) {
+    return ROLES.map(function (g) { return '<optgroup label="' + esc(g[0]) + '">' + g[1].map(function (r) { return "<option" + (r === sel ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("") + "</optgroup>"; }).join("") +
+      '<option value="__other">Other (describe)</option>';
+  }
+  function addRole(role) {
+    var d = document.createElement("div"); d.className = "staffrow";
+    d.innerHTML = '<label class="f">Role <select data-k="role">' + roleOptions(role || "Door supervisor (SIA)") + "</select></label>" +
+      '<label class="f">How many <input type="number" data-k="qty" min="1" max="500" value="1" inputmode="numeric"></label>' +
+      '<label class="f notes">Notes (optional) <input type="text" data-k="notes" maxlength="200" placeholder="e.g. 2 female, from 9pm"></label>' +
+      '<button type="button" class="rm" aria-label="Remove this role">×</button>' +
+      '<label class="f other" hidden>Describe the role <input type="text" data-k="other" maxlength="80" placeholder="e.g. Face painter"></label>';
+    $("bk-staff").appendChild(d);
+    var sel = d.querySelector("[data-k=role]"), other = d.querySelector(".other");
+    sel.addEventListener("change", function () { other.hidden = sel.value !== "__other"; if (!other.hidden) other.querySelector("input").focus(); });
+    d.querySelector(".rm").addEventListener("click", function () { if ($("bk-staff").children.length > 1) d.remove(); });
+  }
+  function resetBookingForm() {
+    $("bk").reset(); $("bk-staff").innerHTML = ""; addRole(); $("bk-when").textContent = "";
+    $("bk-extras").innerHTML = EXTRAS.map(function (x) { return '<label><input type="checkbox" value="' + esc(x) + '"> ' + esc(x) + "</label>"; }).join("");
+  }
+  function bookingTimes() {
+    var d = $("bk-date").value, a = $("bk-start").value, b = $("bk-end").value;
+    if (!d || !a || !b) return null;
+    var st = new Date(d + "T" + a), en = new Date(d + "T" + b);
+    if (en <= st) en.setDate(en.getDate() + 1);
+    return { st: st, en: en };
+  }
+  ["bk-date", "bk-start", "bk-end"].forEach(function (id) {
+    $(id).addEventListener("change", function () {
+      var t = bookingTimes();
+      $("bk-when").textContent = t ? dayLong(t.st) + ", " + hm(t.st) + " to " + (t.en.getDate() !== t.st.getDate() ? dayLong(t.en) + ", " : "") + hm(t.en) + " (" + Math.round((t.en - t.st) / 36e5 * 10) / 10 + " hours)" : "";
+    });
+  });
+  $("bk-addrole").addEventListener("click", function () { addRole(); });
+  $("bk").addEventListener("submit", async function (e) {
+    e.preventDefault(); msg(); if (blocked()) return;
+    var title = $("bk-title").value.trim(), t = bookingTimes();
+    if (!title) { msg("fail", "Give the event a name."); return; }
+    if (!t) { msg("fail", "Add the date, start time and finish time."); return; }
+    if (t.st <= new Date()) { msg("fail", "The start time is in the past."); return; }
+    var staff = [], bad = false;
+    $("bk-staff").querySelectorAll(".staffrow").forEach(function (r) {
+      var role = r.querySelector("[data-k=role]").value, q = parseInt(r.querySelector("[data-k=qty]").value, 10);
+      if (role === "__other") role = r.querySelector("[data-k=other]").value.trim();
+      if (!role || !(q >= 1)) { bad = true; return; }
+      var n = r.querySelector("[data-k=notes]").value.trim(), o = { role: role, qty: q }; if (n) o.notes = n; staff.push(o);
+    });
+    if (bad || !staff.length) { msg("fail", "Check each staff row has a role and how many you need."); return; }
+    var extras = [].map.call($("bk-extras").querySelectorAll("input:checked"), function (c) { return c.value; });
+    var g = $("bk-guests").value;
+    busy($("bk-go"), true, "Sending…");
+    var r = await sb.from("cp_bookings").insert({
+      venue_id: S.venue, title: title, description: $("bk-desc").value.trim() || null,
+      starts_at: t.st.toISOString(), ends_at: t.en.toISOString(), attendance: g === "" ? null : parseInt(g, 10), staff: staff, extras: extras,
+      extras_notes: $("bk-extras-notes").value.trim() || null, onsite_name: $("bk-onsite-name").value.trim() || null,
+      onsite_phone: $("bk-onsite-phone").value.trim() || null, requested_by: S.email
+    }).select("ref").single();
+    busy($("bk-go"), false, "Send booking request");
+    if (r.error) { msg("fail", "Couldn’t send the booking: " + r.error.message); return; }
+    resetBookingForm();
+    msg("ok", "Booking request " + r.data.ref + " sent. We’ve emailed you a copy and will send a quote to accept here.");
+    loadBookings();
+  });
+
+  async function loadBookingCount() {
+    if (!S.venue) return;
+    var r = await sb.from("cp_bookings").select("id", { count: "exact", head: true }).eq("venue_id", S.venue).eq("status", staffView() ? "new" : "quoted");
+    $("bk-count").textContent = r.count || ""; $("bk-count").hidden = !r.count;
+  }
+  async function loadBookings() {
+    $("bk-details").open = !staffView();
+    if (!$("bk-staff").children.length) resetBookingForm();
+    $("bk-list").innerHTML = '<div class="loading">Loading…</div>';
+    var r = await sb.from("cp_bookings").select("*").eq("venue_id", S.venue).order("starts_at", { ascending: false }).limit(60);
+    if (r.error) { $("bk-list").innerHTML = ""; msg("fail", r.error.message); return; }
+    var ids = r.data.map(function (b) { return b.id; });
+    var docs = ids.length ? ((await sb.from("cp_documents").select("id,booking_id,title,file_name,file_path").in("booking_id", ids).order("created_at")).data || []) : [];
+    loadBookingCount();
+    if (!r.data.length) { $("bk-list").innerHTML = '<div class="empty">No booking requests yet.</div>'; return; }
+    var sv = staffView();
+    $("bk-list").innerHTML = r.data.map(function (b) {
+      var bd = docs.filter(function (d) { return d.booking_id === b.id; });
+      var open = b.status === "new" || b.status === "quoted";
+      var dl = function (k, v) { return v ? "<div><dt>" + k + "</dt><dd>" + v + "</dd></div>" : ""; };
+      var staffTxt = (b.staff || []).map(function (x) { return esc(x.qty) + " × " + esc(x.role) + (x.notes ? " (" + esc(x.notes) + ")" : ""); }).join("\n");
+      var html = '<article class="bk"><div class="bk-head"><div><h4>' + esc(b.title) + '</h4><div class="hint" style="margin-top:6px">' + esc(b.ref) + " · " +
+        esc(dayLong(b.starts_at)) + ", " + esc(hm(b.starts_at)) + "–" + esc(hm(b.ends_at)) + "</div></div>" + BKS[b.status] + "</div>" +
+        '<dl class="bk-body" style="margin:0">' + dl("Staff requested", staffTxt) + dl("Special requests", esc((b.extras || []).join(", "))) + dl("Other requests", esc(b.extras_notes)) +
+        dl("Expected guests", b.attendance != null ? esc(b.attendance) : "") + dl("On-site contact", esc([b.onsite_name, b.onsite_phone].filter(Boolean).join(" · "))) +
+        dl("Description", esc(b.description)) + dl("Requested by", esc(b.requested_by) + " on " + esc(dayShort(b.created_at))) + "</dl>";
+      if (b.quote_amount != null) {
+        html += '<div class="quote"><div class="hint" style="font-weight:700;margin-bottom:6px">' + (b.quote_version > 1 ? "Updated quote" : "Quote") + " from Fort Green · " + esc(dayShort(b.quoted_at)) + '</div><div class="amt">' + esc(money(b.quote_amount)) +
+          ' <span style="font-size:20px">' + esc(VAT[b.quote_vat] || "") + "</span></div>" + (b.quote_notes ? '<p style="margin:10px 0 0;white-space:pre-line">' + esc(b.quote_notes) + "</p>" : "") +
+          (b.quote_valid_until ? '<p class="hint" style="margin-top:8px">Valid until ' + esc(dayShort(b.quote_valid_until + "T12:00:00")) + "</p>" : "") +
+          (bd.length ? '<div class="btnrow" style="margin-top:12px">' + bd.map(function (d) { return '<button class="btn ghost sm" type="button" data-open-doc="' + esc(d.file_path) + '">' + esc(d.title) + "</button>"; }).join("") + "</div>" : "") +
+          (b.responded_at ? '<p class="hint" style="margin-top:10px">' + (b.status === "accepted" ? "Accepted" : "Declined") + " by " + esc(b.responded_by) + " on " + esc(dayShort(b.responded_at)) + (b.response_note ? " — “" + esc(b.response_note) + "”" : "") + "</p>" : "") + "</div>";
+      }
+      if (b.status === "declined" && b.decision_note) html += '<p class="hint" style="margin:0 20px 18px">Fort Green’s note: ' + esc(b.decision_note) + "</p>";
+      var acts = "";
+      if (open && sv) {
+        acts += '<form class="sub-form" data-quote="' + b.id + '"><strong>' + (b.status === "quoted" ? "Send an updated quote" : "Add a cost and send the quote") + "</strong>" +
+          '<div class="fields"><label class="f">Cost (£) <input type="number" name="amount" min="0" step="0.01" inputmode="decimal" required value="' + (b.quote_amount != null ? esc(b.quote_amount) : "") + '"></label>' +
+          '<label class="f">VAT <select name="vat"><option value="plus_vat"' + (b.quote_vat !== "inc_vat" && b.quote_vat !== "no_vat" ? " selected" : "") + '>Plus VAT</option><option value="inc_vat"' + (b.quote_vat === "inc_vat" ? " selected" : "") + '>Including VAT</option><option value="no_vat"' + (b.quote_vat === "no_vat" ? " selected" : "") + ">No VAT</option></select></label>" +
+          '<label class="f">Valid until (optional) <input type="date" name="valid" value="' + esc(b.quote_valid_until || "") + '"></label></div>' +
+          '<label class="f">What’s included (optional) <textarea name="notes" maxlength="4000">' + esc(b.quote_notes || "") + "</textarea></label>" +
+          '<label class="f">Attach quote documents (optional: PDF, Word, Excel or images) <input type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx"></label>' +
+          '<div class="btnrow"><button class="btn" type="submit">' + (b.status === "quoted" ? "Send updated quote" : "Send quote") + "</button></div></form>" +
+          '<form class="sub-form" data-decline="' + b.id + '"><label class="f">Or decline this request, with a note to the client (optional) <input type="text" name="note" maxlength="1000"></label><div class="btnrow"><button class="btn danger sm" type="submit">Decline request</button></div></form>';
+      } else if (b.status === "quoted" && !sv) {
+        acts += '<form class="sub-form" data-respond="' + b.id + '"><strong>Happy with the quote?</strong><label class="f">Note for Fort Green (optional) <input type="text" name="note" maxlength="1000"></label>' +
+          '<div class="btnrow"><button class="btn" type="submit" value="accept">Accept quote</button><button class="btn danger" type="submit" value="decline">Decline quote</button></div></form>';
+      }
+      if (open && !sv) acts += '<div class="btnrow"><button class="linkbtn" type="button" data-cancel-bk="' + b.id + '">Cancel this booking request</button></div>';
+      return html + (acts ? '<div class="bk-acts">' + acts + "</div>" : "") + "</article>";
+    }).join("");
+  }
+  $("bk-list").addEventListener("click", async function (e) {
+    var o = e.target.closest("[data-open-doc]"), c = e.target.closest("[data-cancel-bk]");
+    if (o) {
+      var r = await sb.storage.from("client-docs").createSignedUrl(o.dataset.openDoc, 120);
+      if (r.error) { msg("fail", r.error.message); return; }
+      window.open(r.data.signedUrl, "_blank", "noopener"); return;
+    }
+    if (c) {
+      msg(); if (blocked()) return;
+      if (c.dataset.confirm !== "1") { c.dataset.confirm = "1"; c.textContent = "Tap again to cancel the request"; setTimeout(function () { c.dataset.confirm = ""; c.textContent = "Cancel this booking request"; }, 4000); return; }
+      var x = await sb.rpc("cp_cancel_booking", { p_id: c.dataset.cancelBk });
+      if (x.error) { msg("fail", x.error.message); return; }
+      msg("ok", "Booking request cancelled. We’ve emailed you and Fort Green."); loadBookings();
+    }
+  });
+  $("bk-list").addEventListener("submit", async function (e) {
+    var f = e.target; e.preventDefault(); msg(); if (blocked()) return;
+    var btn = e.submitter || f.querySelector("button[type=submit]"), label = btn.textContent;
+    if (f.dataset.quote) {
+      var amt = parseFloat(f.amount.value);
+      if (!(amt >= 0)) { msg("fail", "Enter the cost."); return; }
+      busy(btn, true, "Sending…");
+      var files = [].slice.call(f.files.files || []);
+      for (var i = 0; i < files.length; i++) {
+        var fl = files[i];
+        if (fl.size > 20 * 1024 * 1024) { busy(btn, false, label); msg("fail", fl.name + " is over 20 MB."); return; }
+        var path = S.venue + "/quote/" + crypto.randomUUID() + "-" + fl.name.replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
+        var u = await sb.storage.from("client-docs").upload(path, fl, { contentType: fl.type || undefined });
+        if (u.error) { busy(btn, false, label); msg("fail", "Couldn’t upload " + fl.name + ": " + u.error.message); return; }
+        var ins = await sb.from("cp_documents").insert({ venue_id: S.venue, booking_id: f.dataset.quote, kind: "quote", title: "Quote: " + fl.name.replace(/\.[^.]+$/, ""),
+          file_path: path, file_name: fl.name, mime: fl.type || null, size_bytes: fl.size, uploaded_by: S.email, uploaded_role: "staff" });
+        if (ins.error) { await sb.storage.from("client-docs").remove([path]); busy(btn, false, label); msg("fail", ins.error.message); return; }
+      }
+      var q = await sb.rpc("cp_quote_booking", { p_id: f.dataset.quote, p_amount: amt, p_vat: f.vat.value, p_notes: f.notes.value, p_valid_until: f.valid.value || null });
+      busy(btn, false, label);
+      if (q.error) { msg("fail", q.error.message); return; }
+      msg("ok", "Quote sent. The client and Fort Green have been emailed."); return loadBookings();
+    }
+    if (f.dataset.decline) {
+      busy(btn, true, "Declining…");
+      var d = await sb.rpc("cp_decline_booking", { p_id: f.dataset.decline, p_note: f.note.value });
+      busy(btn, false, label);
+      if (d.error) { msg("fail", d.error.message); return; }
+      msg("ok", "Request declined. The client and Fort Green have been emailed."); return loadBookings();
+    }
+    if (f.dataset.respond) {
+      var accept = btn.value === "accept";
+      busy(btn, true, accept ? "Accepting…" : "Declining…");
+      var rr = await sb.rpc("cp_respond_booking", { p_id: f.dataset.respond, p_accept: accept, p_note: f.note.value });
+      busy(btn, false, label);
+      if (rr.error) { msg("fail", rr.error.message); return; }
+      msg("ok", accept ? "Quote accepted, your booking is confirmed. We’ve emailed you and Fort Green." : "Quote declined. We’ve let Fort Green know.");
+      return loadBookings();
+    }
+  });
+
   /* ---------- documents ---------- */
   async function loadDocs() {
     $("docs-invoice").innerHTML = $("docs-other").innerHTML = '<div class="loading">Loading…</div>';
@@ -412,7 +679,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     var row = function (d) {
       var exp = d.expires_on ? new Date(d.expires_on + "T12:00:00") : null, days = exp ? Math.ceil((exp - new Date()) / 864e5) : null;
       var pill = exp ? (days < 0 ? '<span class="pill bad">Expired</span>' : days <= 60 ? '<span class="pill warn">Expires in ' + days + " days</span>" : "") : "";
-      var canDel = staffView() || (!S.preview && d.uploaded_by === S.email && d.kind !== "invoice") || (S.preview && d.uploaded_role === "client");
+      var canDel = staffView() || (!S.preview && d.uploaded_by === S.email && d.kind !== "invoice" && d.kind !== "quote") || (S.preview && d.uploaded_role === "client");
       return '<div class="row"><div><div class="t">' + esc(d.title) + " " + pill + '</div><div class="s">' + esc(d.file_name) + " · added " + esc(dayShort(d.created_at)) +
         (d.uploaded_role === "client" ? " by " + esc(d.uploaded_by) : " by Fort Green") + (exp ? " · expires " + esc(dayShort(exp)) : "") + '</div></div><div class="acts">' +
         '<button class="btn ghost sm" type="button" data-open="' + esc(d.file_path) + '">Open</button>' +
@@ -606,6 +873,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     S.preview = on; if (on && S.tab === "access") S.tab = "bookings";
     applyView(); setHash(); setTab(S.tab);
     if (S.tab !== "extra") loadRequests();
+    if (S.tab !== "booking") loadBookingCount();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   $("preview-on").addEventListener("click", function () { togglePreview(true); });
@@ -615,6 +883,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     try { localStorage.setItem("fg_portal_venue", S.venue); } catch (x) {}
     setHash(); applyView(); msg(); loadTab();
     if (S.tab !== "extra") loadRequests();
+    if (S.tab !== "booking") loadBookingCount();
   });
 
   sb.auth.getSession().then(async function (s) {
@@ -640,6 +909,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     $("app").hidden = false;
     setTab(h.tab);
     if (h.tab !== "extra") loadRequests();
+    if (h.tab !== "booking") loadBookingCount();
   });
 })();
 </script>
