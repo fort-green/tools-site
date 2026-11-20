@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Capacity calculator | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
+  --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-out:#ffffff; --zone-std:#cecece;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+  --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top, 0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.brand{display:flex;align-items:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.tool-name{font-size:14px;color:var(--muted);font-weight:500}
+
+main{max-width:560px;margin:0 auto;padding:20px 18px 120px}
+.screen{display:none}
+.screen.on{display:block}
+
+h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(46px,13vw,72px);line-height:.9;letter-spacing:-.01em;margin:8px 0 16px}
+h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:28px;line-height:1.1;margin:0 0 6px}
+h3{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:22px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}
+.lede{font-size:18px;color:var(--muted);max-width:34em}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:18px;margin:16px 0}
+.status{display:flex;gap:10px;align-items:flex-start;border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0;margin:18px 0}
+.status strong{display:block}
+.status.warn{border-left-color:var(--red)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:0;border:0;cursor:pointer;font-family:"Manrope",system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:grid;gap:10px;margin-top:18px}
+.link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Forms */
+.field{margin:0 0 18px}
+.field label,.field .label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-size:14px;color:var(--muted);margin-top:6px}
+input[type=text],input[type=email],input[type=number],input[type=search],select{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:0}
+.seg button{min-height:44px;border:0;border-radius:0;background:transparent;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);padding:4px 6px;line-height:1.2}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.check{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent);flex:none}
+
+/* Load meter: signature element */
+.meter{margin:40px 0 8px}
+.meter-track{position:relative;height:46px;background:var(--zone-out);box-shadow:inset 0 0 0 1px var(--line)}
+.meter-track .run{position:absolute;left:0;top:0;bottom:0;background:var(--accent);transition:width .4s ease}
+.meter-track .peak{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--zone-std) 0 6px,transparent 6px 11px);box-shadow:inset 0 0 0 1px var(--zone-std);transition:left .4s ease,width .4s ease}
+.meter-track .limit{position:absolute;top:-10px;bottom:-10px;width:0}
+.meter-track .limit::before{content:"";position:absolute;left:-1.5px;top:0;bottom:0;width:3px;background:var(--red)}
+.meter-track .limit::after{content:attr(data-label);position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:12px;font-weight:600;padding:1px 7px;white-space:nowrap}
+.meter-track .over{position:absolute;inset:0;background:var(--red-soft);box-shadow:inset 0 0 0 2px var(--red)}
+.meter-ticks{position:relative;height:22px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter-ticks span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
+.meter-ticks span:first-child{transform:none}
+.meter-ticks span:last-child{transform:translateX(-100%)}
+.legend{list-style:none;padding:0;margin:6px 0 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:14px;height:14px;flex:none;display:inline-block}
+.sw-run{background:var(--accent)}
+.sw-peak{background:repeating-linear-gradient(135deg,var(--zone-std) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1px var(--zone-std)}
+.sw-lim{background:var(--red);width:4px}
+
+/* Verdict */
+.verdict{border-radius:0;padding:18px;margin:18px 0;border:1.5px solid var(--line);background:var(--surface)}
+.verdict.v-main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.verdict.v-main .muted{color:inherit;opacity:.8}
+.verdict.v-alt{border-color:var(--accent)}
+.verdict.v-check{border-color:var(--ink);border-style:dashed}
+.big{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:56px;line-height:.95;text-transform:uppercase;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:16px 0}
+.stats div{background:var(--surface);padding:12px}
+.stats b{display:block;font-family:"Antonio","Arial Narrow",sans-serif;font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+
+/* Equipment */
+.sum{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 53px);z-index:5;background:var(--bg);padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+.sum-row strong{font-size:16px}
+.bar{height:6px;background:var(--surface-2);border-radius:0;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s ease}
+.q-group{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:24px 0 2px;padding-top:6px}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.item strong{display:block;font-weight:600;line-height:1.3}
+.item .muted{font-size:13px}
+.item.has{}
+.item.has strong::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);margin-right:8px;vertical-align:2px}
+.stepper{display:grid;grid-template-columns:44px 40px 44px;border:1.5px solid var(--line);background:var(--surface)}
+.stepper button{height:42px;border:0;background:none;cursor:pointer;font-size:22px;font-weight:600;line-height:1}
+.stepper button:disabled{opacity:.3;cursor:default}
+.stepper output{display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums}
+.rm{font-size:13px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.phase{display:grid;grid-template-columns:34px 1fr 70px;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.phase .bar{margin:0;height:14px}
+.phase b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:18px}
+.ticks{list-style:none;padding:0;margin:0}
+.ticks li{display:grid;grid-template-columns:20px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.ticks li:last-child{border-bottom:0}
+.ticks li::before{content:"";width:16px;height:16px;border:1.5px solid var(--ink);margin-top:3px}
+.ticks strong{display:block}
+.ticks span{color:var(--muted);font-size:14px}
+
+.locked{border:1.5px dashed var(--line);border-radius:0;padding:20px;margin:18px 0;text-align:left}
+.cta{background:var(--accent);color:var(--accent-ink);padding:20px;margin:18px 0}
+.cta .muted{color:inherit;opacity:.8}
+.cta .btn-primary{background:var(--accent-ink);color:var(--accent)}
+.cta .btn-ghost{border-color:currentColor;color:inherit}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+.empty{padding:40px 0;text-align:left}
+
+/* Bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent);border-radius:0}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;line-height:18px;text-align:center}
+
+/* Bottom sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--surface);border-radius:0;padding:10px 20px calc(20px + env(safe-area-inset-bottom, 0px));max-height:90vh;overflow-y:auto;transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.grabber{width:42px;height:5px;border-radius:0;background:var(--line);margin:4px auto 14px}
+.error{color:var(--red);font-size:14px;margin-top:6px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+@media print{
+  .topbar,.nav,.no-print,.overlay,.sheet{display:none!important}
+  :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc;--accent:#000;--accent-ink:#fff}
+  body{background:#fff}
+  main{padding:0;max-width:none}
+  .screen{display:none!important}
+  #screen-capacity{display:block!important}
+  .panel,.verdict,.stats,.meter,table{break-inside:avoid}
+  .verdict.v-main,.cta{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+/* Capacity calculator */
+textarea{font:inherit;color:inherit}
+.zone-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.zone-out{margin:0;font-variant-numeric:tabular-nums}
+.zone-out.ok{color:var(--ink);font-weight:600}
+.add-row{margin-top:4px}
+.limits{margin:20px 0 8px}
+.limits .row{margin:0 0 14px}
+.limits .top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:15px}
+.limits .top b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.limits .track{height:22px;background:var(--surface-2);margin-top:5px}
+.limits .track i{display:block;height:100%;background:var(--zone-std);transition:width .4s ease}
+.limits .row.min .track i{background:var(--accent)}
+.limits .sets{display:inline-block;font-size:12px;font-weight:600;background:var(--accent);color:var(--accent-ink);padding:1px 7px;margin-left:8px;vertical-align:2px}
+.tier{display:flex;gap:14px;align-items:flex-start}
+.tier .big{font-size:40px;margin:0}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="https://www.fortgreen.co.uk" target="_blank" rel="noopener">Fort Green</a>
+    <div class="tool-name">Capacity calculator</div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="screen" id="screen-start" aria-labelledby="h-start"></section>
+  <section class="screen" id="screen-space" aria-labelledby="h-space"></section>
+  <section class="screen" id="screen-exits" aria-labelledby="h-exits"></section>
+  <section class="screen" id="screen-capacity" aria-labelledby="h-capacity"></section>
+</main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="start"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="space"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17"/><path d="M3.5 12h8.5V3.5M12 12v8.5"/></svg>Space</button>
+    <button data-tab="exits"><svg viewBox="0 0 24 24"><path d="M14 3.5h5.5v17H14"/><path d="M4 12h10M10 8l4 4-4 4"/></svg>Exits</button>
+    <button data-tab="capacity"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 14.8c1.8.7 3 2.6 3 5.2"/></svg>Capacity</button>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="h-sheet">
+  <div class="grabber"></div>
+  <h2 id="h-sheet">Get your capacity report</h2>
+  <p class="muted">We’ll show your full report now and email you a copy.</p>
+  <form id="lead-form" novalidate>
+    <div class="field"><label for="f-name">Your name</label><input type="text" id="f-name" autocomplete="name"></div>
+    <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" autocomplete="email" inputmode="email"><div class="error" id="f-email-err" hidden></div></div>
+    <div class="field"><label for="f-org">Organisation</label><input type="text" id="f-org" autocomplete="organization"></div>
+    <label class="check"><input type="checkbox" id="f-mkt"><span>Send me event planning updates and occasional news from Fort Green. You can unsubscribe at any time.</span></label>
+    <p class="small muted">We use your details to send this report and follow up about it. See our privacy notice on fortgreen.co.uk.</p>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-block">Show my capacity report</button>
+      <button type="button" class="btn btn-ghost btn-block" id="sheet-close">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+/* ---------- Config ----------
+   LEAD_ENDPOINT: set to an n8n webhook URL to capture leads.
+   Left empty: the report unlocks on the device without sending anything. */
+const LEAD_ENDPOINT = "";
+const CONTACT_EMAIL = "info@fortgreen.co.uk";
+const WHATSAPP = "https://wa.me/447399232855";
+const STORE_KEY = "fg-capacity-v1";
+
+/* ---------- Reference figures ----------
+   Indoor: floor space factors (m² per person) from Approved Document B, Volume 2, Table D1,
+   and exit widths from Table 2.3 (60 people per 750 mm, 110 per 850 mm, 220 per 1,050 mm, then 5 mm per person).
+   Outdoor: crowd densities in people per m², and Green Guide rates of passage
+   (82 people per metre per minute on the level, 66 on steps; lower where alcohol is served). */
+const IN_USES = [
+  {id:"standing", label:"Standing area, or bar within 2 m of the serving point", f:0.3},
+  {id:"dance", label:"Dance floor, club, gig or bar area without seating", f:0.5},
+  {id:"queue", label:"Foyer, concourse or queuing area", f:0.7},
+  {id:"dining", label:"Restaurant, seated bar, lounge or conference room", f:1.0},
+  {id:"exhibit", label:"Exhibition hall or studio", f:1.5},
+  {id:"seats", label:"Fixed seating (count the seats)", f:null}
+];
+const OUT_USES = [
+  {id:"relaxed", label:"Relaxed: picnic, family area or seated on grass", d:1},
+  {id:"standard", label:"General standing: main arena or crowd", d:2},
+  {id:"dense", label:"Dense: front of stage, with a barrier and stewards", d:3},
+  {id:"seats", label:"Seating (count the seats)", d:null}
+];
+const RATES = {level:82, stepped:66, levelAlc:72, steppedAlc:56};
+
+/* ---------- State ---------- */
+const uid = () => Math.random().toString(36).slice(2, 9);
+const newZone = mode => ({id:uid(), name:"", use: mode === "outdoor" ? "standard" : "dance", l:"", w:"", a:"", seats:""});
+const newExit = () => ({id:uid(), name:"", width:"", stepped:false});
+const BLANK = () => ({agreed:false, name:"", mode:"indoor", staff:"", licence:"",
+  zonesIn:[newZone("indoor")], zonesOut:[newZone("outdoor")], exitsIn:[newExit()], exitsOut:[newExit()],
+  egress:"8", alcohol:true, discount:true, unlocked:false});
+let state = BLANK();
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { const x = parseFloat(String(v == null ? "" : v).replace(/,/g, "")); return isFinite(x) && x > 0 ? x : 0; };
+const n0 = x => Math.floor(x).toLocaleString("en-GB");
+const n1 = x => (Math.round(x * 10) / 10).toLocaleString("en-GB");
+const outdoor = () => state.mode === "outdoor";
+const zones = () => outdoor() ? state.zonesOut : state.zonesIn;
+const exits = () => outdoor() ? state.exitsOut : state.exitsIn;
+
+/* ---------- Calculations ---------- */
+function zoneArea(z){ return num(z.a) || num(z.l) * num(z.w); }
+function zoneCalc(z){
+  if(z.use === "seats") return {people: Math.floor(num(z.seats)), area:0, seats:true};
+  const area = zoneArea(z);
+  if(outdoor()){
+    const u = OUT_USES.find(x => x.id === z.use) || OUT_USES[1];
+    return {people: Math.floor(area * u.d), area, d:u.d};
+  }
+  const u = IN_USES.find(x => x.id === z.use) || IN_USES[1];
+  return {people: Math.floor(area / u.f + 1e-9), area, f:u.f};
+}
+function rate(e){ return e.stepped ? (state.alcohol ? RATES.steppedAlc : RATES.stepped) : (state.alcohol ? RATES.levelAlc : RATES.level); }
+function exitCalc(e){
+  if(outdoor()){
+    const w = num(e.width), r = rate(e), t = parseFloat(state.egress) || 8;
+    return {cap: Math.floor(w * r * t), w, r, t};
+  }
+  const w = num(e.width);
+  if(!w) return {cap:0, w};
+  if(w < 750) return {cap:0, w, narrow:true};
+  if(w < 850) return {cap:60, w};
+  if(w < 1050) return {cap:110, w};
+  return {cap: Math.max(220, Math.floor(w / 5)), w};
+}
+
+function calc(){
+  const zs = zones().map(z => Object.assign({}, z, zoneCalc(z)));
+  const floorCap = zs.reduce((a, z) => a + z.people, 0);
+  const es = exits().map(e => Object.assign({}, e, exitCalc(e)));
+  const valid = es.filter(e => e.cap > 0);
+  let discounted = null;
+  if(valid.length >= 2 && (!outdoor() || state.discount)){
+    discounted = valid.reduce((a, b) => b.cap > a.cap ? b : a);
+  }
+  const exitCap = valid.reduce((a, e) => a + e.cap, 0) - (discounted ? discounted.cap : 0);
+  let countLimit = Infinity;
+  if(!outdoor()){ countLimit = valid.length <= 1 ? 60 : valid.length === 2 ? 600 : Infinity; }
+
+  const limits = [
+    {key:"floor", label: outdoor() ? "Crowd space" : "Floor space", v:floorCap},
+    {key:"exit", label: discounted ? "Exit width, with the largest exit blocked" : "Exit width", v:exitCap}
+  ];
+  if(countLimit !== Infinity) limits.push({key:"count", label:`Number of exits (${valid.length})`, v:countLimit});
+  if(num(state.licence)) limits.push({key:"licence", label:"Your licence or fire risk assessment", v:Math.floor(num(state.licence))});
+  let min = limits[0];
+  limits.forEach(l => { if(l.v < min.v) min = l; });
+  const cap = min.v;
+  const staff = Math.floor(num(state.staff));
+  const ready = floorCap > 0 && valid.length > 0;
+  return {zs, floorCap, es, valid, discounted, exitCap, countLimit, limits, min, cap, staff, guests: Math.max(0, cap - staff), ready};
+}
+
+function tier(n){
+  if(n >= 800) return {name:"Enhanced tier", text:"800 or more people means the enhanced duty would apply: the standard duties plus documented security measures, a security plan and a designated senior individual."};
+  if(n >= 200) return {name:"Standard tier", text:"200 to 799 people means the standard duty would apply: register with the regulator, put public protection procedures in place and train staff."};
+  return {name:"Below the thresholds", text:"Under 200 people, Martyn’s Law wouldn’t apply on capacity alone, though good counter-terrorism awareness is still worth having."};
+}
+
+/* ---------- Screens ---------- */
+function renderStart(){
+  const started = state.name || zones().some(z => zoneArea(z) || num(z.seats)) || exits().some(e => num(e.width));
+  $("#screen-start").innerHTML = `
+    <h1 id="h-start">How many people can you safely hold?</h1>
+    <p class="lede">Measure your space and your exits, and get a safe capacity for your venue or event site, the figure that limits it and what it means for Martyn’s Law. It takes about five minutes.</p>
+    <div class="panel">
+      <h3>Before you start</h3>
+      <p class="muted small">This calculator gives general guidance only. It isn’t a fire risk assessment or professional advice, and Fort Green Limited accepts no responsibility for decisions made using it. Your fire risk assessment and any capacity on your premises licence take priority over these figures.</p>
+      <label class="check" style="margin-bottom:0"><input type="checkbox" id="agree" ${state.agreed ? "checked" : ""}><span>I understand this is general guidance, not a fire risk assessment.</span></label>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="go-start" ${state.agreed ? "" : "disabled"}>${started ? "Continue" : "Start calculating"}</button>
+      ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start again</button>` : ""}
+    </div>
+    <div class="panel">
+      <h3>What you’ll need</h3>
+      <ul class="ticks">
+        <li><div><strong>The size of each area people will use</strong><span>A tape measure or floor plan. Leave out toilets, stairs, bar servery, stages, stores and fixed furniture.</span></div></li>
+        <li><div><strong>The clear width of every exit</strong><span>Measured with the door fully open, at its narrowest point.</span></div></li>
+        <li><div><strong>Any capacity you’ve already been given</strong><span>From your premises licence, fire risk assessment or Safety Advisory Group.</span></div></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Smart people, on short notice, solving problems.</h3>
+      <p class="muted" style="margin:0">Festivals, venues and corporate events across London. Fort Green provides the door supervisors, stewards and crowd management to run your capacity safely.</p>
+    </div>`;
+  $("#agree").onchange = e => { state.agreed = e.target.checked; save(); $("#go-start").disabled = !state.agreed; };
+  $("#go-start").onclick = () => go("space");
+  const r = $("#reset");
+  if(r) r.onclick = () => { state = Object.assign(BLANK(), {agreed:state.agreed}); save(); go("space"); };
+}
+
+function zoneText(z){
+  const c = zoneCalc(z);
+  if(c.seats) return c.people ? {t:`${n0(c.people)} seats = ${n0(c.people)} people`, ok:true} : {t:"Enter the number of seats."};
+  if(!c.area) return {t:"Add the size to see how many people it holds."};
+  return outdoor()
+    ? {t:`${n1(c.area)} m² × ${c.d} per m² = ${n0(c.people)} people`, ok:true}
+    : {t:`${n1(c.area)} m² ÷ ${c.f} m² per person = ${n0(c.people)} people`, ok:true};
+}
+function zoneHTML(z, i){
+  const uses = outdoor() ? OUT_USES : IN_USES, id = z.id, zt = zoneText(z);
+  return `<div class="panel zone" data-z="${id}">
+    <div class="zone-head"><h3>Area ${i + 1}</h3>${zones().length > 1 ? `<button type="button" class="link-btn rm" data-zrm="${id}">Remove</button>` : ""}</div>
+    <div class="field"><label for="zn-${id}">Name</label><input type="text" id="zn-${id}" data-zf="name" value="${esc(z.name)}" placeholder="${outdoor() ? "e.g. Main arena" : "e.g. Main room"}"></div>
+    <div class="field"><label for="zu-${id}">How it’s used</label><select id="zu-${id}" data-zf="use">${uses.map(u => `<option value="${u.id}" ${u.id === z.use ? "selected" : ""}>${esc(u.label)}</option>`).join("")}</select>
+      ${z.use === "dense" ? `<div class="hint">Only plan for 3 people per m² where there’s a front-of-stage barrier, a pit team and stewards watching the crowd. Above 4 per m², crowds become unstable.</div>` : ""}</div>
+    ${z.use === "seats"
+      ? `<div class="field"><label for="zs-${id}">Number of seats</label><input type="number" id="zs-${id}" data-zf="seats" inputmode="numeric" min="0" step="1" value="${esc(z.seats)}" placeholder="e.g. 120"></div>`
+      : `<div class="two">
+          <div class="field"><label for="zl-${id}">Length (m)</label><input type="number" id="zl-${id}" data-zf="l" inputmode="decimal" min="0" step="0.1" value="${esc(z.l)}"></div>
+          <div class="field"><label for="zw-${id}">Width (m)</label><input type="number" id="zw-${id}" data-zf="w" inputmode="decimal" min="0" step="0.1" value="${esc(z.w)}"></div>
+        </div>
+        <div class="field"><label for="za-${id}">Or total area (m²)</label><input type="number" id="za-${id}" data-zf="a" inputmode="decimal" min="0" step="1" value="${esc(z.a)}"><div class="hint">For odd shapes, or straight from a floor plan. This overrides length × width.</div></div>`}
+    <p class="small zone-out ${zt.ok ? "ok" : "muted"}" data-zout="${id}">${esc(zt.t)}</p>
+  </div>`;
+}
+
+function sumHTML(){
+  const c = calc();
+  return `<div class="sum-row"><span><strong>${n0(c.floorCap)}</strong> people by ${outdoor() ? "crowd space" : "floor space"}</span><span class="muted">${c.valid.length ? `Exits allow ${n0(c.exitCap)}` : "No exits yet"}</span></div>`;
+}
+function refreshSum(){ document.querySelectorAll(".sum").forEach(s => s.innerHTML = sumHTML()); }
+
+function renderSpace(){
+  const modes = [["indoor","Indoor venue"],["outdoor","Outdoor site"]];
+  $("#screen-space").innerHTML = `
+    <h1 id="h-space">Your space</h1>
+    <div class="field">
+      <label for="i-name">Venue or event name</label>
+      <input type="text" id="i-name" value="${esc(state.name)}" placeholder="e.g. The Yard, Summer Party">
+    </div>
+    <div class="field">
+      <span class="label" id="l-mode">What kind of space is it?</span>
+      <div class="seg" role="group" aria-labelledby="l-mode">
+        ${modes.map(([v,l]) => `<button type="button" data-mode="${v}" aria-pressed="${state.mode === v}">${l}</button>`).join("")}
+      </div>
+      <div class="hint">${outdoor() ? "For fenced sites, parks and festival arenas. Uses crowd density and the time it takes to get everyone out." : "For buildings, rooms and marquees with doors. Uses the floor space and exit width figures in Approved Document B."}</div>
+    </div>
+    <div class="sum">${sumHTML()}</div>
+    <p class="muted" style="margin-top:16px">${outdoor()
+      ? "Add each area the audience can stand or sit in. Measure only the space they can actually use, leaving out stages, bars, toilets, tents and vehicle routes."
+      : "Add each room or part of a room separately if it’s used differently, such as a dance floor and a seated area. Leave out toilets, stairs, the bar servery, DJ booth, stores and fixed furniture."}</p>
+    <div id="zones">${zones().map(zoneHTML).join("")}</div>
+    <div class="add-row"><button type="button" class="btn btn-ghost btn-block" id="add-zone">Add another area</button></div>
+    <div class="panel" style="margin-top:24px">
+      <h3>Already have a figure?</h3>
+      <div class="field"><label for="i-lic">Capacity on your licence or fire risk assessment</label><input type="number" id="i-lic" inputmode="numeric" min="0" step="1" value="${esc(state.licence)}" placeholder="Leave blank if none"><div class="hint">If you have one, it applies even when this calculation comes out higher.</div></div>
+      <div class="field" style="margin-bottom:0"><label for="i-staff">Staff and performers on site at the busiest time</label><input type="number" id="i-staff" inputmode="numeric" min="0" step="1" value="${esc(state.staff)}" placeholder="e.g. 15"><div class="hint">They count towards the capacity, so we’ll show how many guests that leaves.</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="exits">Add your exits</button>
+    </div>`;
+  const el = $("#screen-space");
+  el.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { state.mode = b.dataset.mode; save(); renderSpace(); });
+  $("#i-name").oninput = e => { state.name = e.target.value; save(); };
+  $("#i-lic").oninput = e => { state.licence = e.target.value; save(); };
+  $("#i-staff").oninput = e => { state.staff = e.target.value; save(); };
+  $("#add-zone").onclick = () => { zones().push(newZone(state.mode)); save(); const y = scrollY; renderSpace(); scrollTo(0, y); };
+  el.querySelectorAll("[data-zrm]").forEach(b => b.onclick = () => {
+    const list = zones(), i = list.findIndex(z => z.id === b.dataset.zrm); if(i > -1) list.splice(i, 1);
+    save(); const y = scrollY; renderSpace(); scrollTo(0, y);
+  });
+  const onField = e => {
+    const f = e.target.dataset.zf; if(!f) return;
+    const box = e.target.closest("[data-z]"), z = zones().find(x => x.id === box.dataset.z); if(!z) return;
+    z[f] = e.target.value; save();
+    if(f === "use"){ const y = scrollY; renderSpace(); scrollTo(0, y); return; }
+    const zt = zoneText(z), out = box.querySelector("[data-zout]");
+    out.textContent = zt.t; out.className = "small zone-out " + (zt.ok ? "ok" : "muted");
+    refreshSum();
+  };
+  $("#zones").addEventListener("input", onField);
+  $("#zones").addEventListener("change", e => { if(e.target.dataset.zf === "use") onField(e); });
+  bindGo(el);
+}
+
+function exitText(e, c){
+  const x = exitCalc(e);
+  if(!x.w) return {t:"Enter the clear width."};
+  if(outdoor()) return {t:`${n1(x.w)} m × ${x.r} people per metre per minute × ${x.t} min = ${n0(x.cap)} people`, ok:true};
+  if(x.narrow) return {t:"Under 750 mm, so too narrow to count as a fire exit."};
+  const note = c && c.discounted && c.discounted.id === e.id ? ". Treated as blocked in a fire, as your largest exit" : "";
+  return {t:`${n0(x.w)} mm clear width: up to ${n0(x.cap)} people${note}`, ok:true};
+}
+function exitHTML(e, i, c){
+  const id = e.id, xt = exitText(e, c);
+  return `<div class="panel" data-e="${id}">
+    <div class="zone-head"><h3>Exit ${i + 1}</h3>${exits().length > 1 ? `<button type="button" class="link-btn rm" data-erm="${id}">Remove</button>` : ""}</div>
+    <div class="field"><label for="en-${id}">Name</label><input type="text" id="en-${id}" data-ef="name" value="${esc(e.name)}" placeholder="${outdoor() ? "e.g. Main gate" : "e.g. Front doors"}"></div>
+    <div class="field"><label for="ew-${id}">Clear width (${outdoor() ? "metres" : "millimetres"})</label><input type="number" id="ew-${id}" data-ef="width" inputmode="decimal" min="0" step="${outdoor() ? "0.1" : "10"}" value="${esc(e.width)}" placeholder="${outdoor() ? "e.g. 3" : "e.g. 1200"}"></div>
+    ${outdoor() ? `<label class="check"><input type="checkbox" data-ef="stepped" ${e.stepped ? "checked" : ""}><span>The route out has steps or a steep slope</span></label>` : ""}
+    <p class="small zone-out ${xt.ok ? "ok" : "muted"}" data-eout="${id}">${esc(xt.t)}</p>
+  </div>`;
+}
+
+function renderExits(){
+  const c = calc(), times = [["5","5 min"],["8","8 min"],["10","10 min"]];
+  $("#screen-exits").innerHTML = `
+    <h1 id="h-exits">Exits</h1>
+    <p class="muted">${outdoor()
+      ? "Add every gate or opening the audience could leave through in an emergency. Measure the narrowest point on the route out, not just the gate."
+      : "Add every exit the public can use to get outside in a fire. Measure the clear width with the door fully open, between the door and the frame or any handles. Leave out staff-only routes and exits through kitchens or stores."}</p>
+    ${outdoor() ? `<div class="panel">
+      <div class="field">
+        <span class="label" id="l-egress">How long should it take to clear the site?</span>
+        <div class="seg" role="group" aria-labelledby="l-egress">${times.map(([v,l]) => `<button type="button" data-egress="${v}" aria-pressed="${state.egress === v}">${l}</button>`).join("")}</div>
+        <div class="hint">Eight minutes is the usual planning figure for open sites. Use five where the risk is higher, such as fireworks, structures or a tight site, and ten only for low-risk open ground. Your Safety Advisory Group may set this.</div>
+      </div>
+      <label class="check"><input type="checkbox" id="i-alc" ${state.alcohol ? "checked" : ""}><span>Alcohol will be served (slows the crowd, so we use a lower flow rate)</span></label>
+      <label class="check" style="margin-bottom:0"><input type="checkbox" id="i-disc" ${state.discount ? "checked" : ""}><span>Assume the biggest exit could be blocked in an emergency (recommended)</span></label>
+    </div>` : `<div class="status"><div><strong>Your biggest exit is treated as blocked</strong><span class="small muted">With two or more exits, Approved Document B assumes a fire could block the largest one, so it isn’t counted. If two exits are close together, a fire could block both, so add them as one.</span></div></div>`}
+    <div class="sum">${sumHTML()}</div>
+    <div id="exits" style="margin-top:16px">${exits().map((e, i) => exitHTML(e, i, c)).join("")}</div>
+    <div class="add-row"><button type="button" class="btn btn-ghost btn-block" id="add-exit">Add another exit</button></div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" data-go="capacity">See my capacity</button>
+    </div>`;
+  const el = $("#screen-exits");
+  const rerender = () => { const y = scrollY; renderExits(); scrollTo(0, y); };
+  el.querySelectorAll("[data-egress]").forEach(b => b.onclick = () => { state.egress = b.dataset.egress; save(); rerender(); });
+  const alc = $("#i-alc"); if(alc) alc.onchange = e => { state.alcohol = e.target.checked; save(); rerender(); };
+  const dis = $("#i-disc"); if(dis) dis.onchange = e => { state.discount = e.target.checked; save(); rerender(); };
+  $("#add-exit").onclick = () => { exits().push(newExit()); save(); rerender(); };
+  el.querySelectorAll("[data-erm]").forEach(b => b.onclick = () => {
+    const list = exits(), i = list.findIndex(x => x.id === b.dataset.erm); if(i > -1) list.splice(i, 1); save(); rerender();
+  });
+  const onField = e => {
+    const f = e.target.dataset.ef; if(!f) return;
+    const box = e.target.closest("[data-e]"), x = exits().find(q => q.id === box.dataset.e); if(!x) return;
+    x[f] = e.target.type === "checkbox" ? e.target.checked : e.target.value; save();
+    const cc = calc();
+    exits().forEach(q => {
+      const out = el.querySelector(`[data-eout="${q.id}"]`); if(!out) return;
+      const t = exitText(q, cc); out.textContent = t.t; out.className = "small zone-out " + (t.ok ? "ok" : "muted");
+    });
+    refreshSum();
+  };
+  $("#exits").addEventListener("input", onField);
+  $("#exits").addEventListener("change", e => { if(e.target.type === "checkbox") onField(e); });
+  bindGo(el);
+}
+
+function limitsHTML(c){
+  const max = Math.max(...c.limits.map(l => l.v), 1);
+  return `<div class="limits">${c.limits.map(l => `
+    <div class="row ${l === c.min ? "min" : ""}">
+      <div class="top"><span>${esc(l.label)}${l === c.min ? `<span class="sets">Sets your capacity</span>` : ""}</span><b>${n0(l.v)}</b></div>
+      <div class="track"><i style="width:${Math.max(l.v / max * 100, l.v ? 1 : 0)}%"></i></div>
+    </div>`).join("")}</div>`;
+}
+
+function improveHTML(c){
+  const items = [];
+  if(c.min.key === "exit" && c.floorCap > c.exitCap){
+    const short = c.floorCap - c.exitCap;
+    if(outdoor()){
+      const r = state.alcohol ? RATES.levelAlc : RATES.level, t = parseFloat(state.egress) || 8;
+      items.push(["Widen your exits", `About ${n1(short / (r * t))} m more level exit width would let you use all of your crowd space (${n0(c.floorCap)} people). Opening extra gates or panels in the perimeter fence for an emergency counts, if they’re stewarded and kept clear.`]);
+    } else {
+      items.push(["Widen your exits", `Exit width is holding you back by ${n0(short)} people. Wide exits allow 5 mm per person, so another exit of about ${n0(Math.max(1050, Math.ceil(Math.min(short, c.floorCap) * 5 / 50) * 50))} mm, away from the others, or wider doors, would let you use more of your floor space. Any change to exits needs checking against your fire risk assessment.`]);
+    }
+  }
+  if(c.min.key === "count"){
+    items.push(["Add another exit", c.countLimit === 60
+      ? "With only one exit, a space shouldn’t hold more than 60 people. A second exit, in a different direction, raises that to 600."
+      : "With two exits, a space shouldn’t hold more than 600 people. A third exit, well apart from the others, removes that limit."]);
+  }
+  if(c.min.key === "floor") items.push(["Space is your limit", "Your exits could clear more people than the space holds, so the floor area sets your capacity. A different layout, such as removing tables or furniture, would change it."]);
+  if(c.min.key === "licence") items.push(["Your licence sets the limit", "The capacity on your licence or fire risk assessment is lower than this calculation. That figure still applies. To change it, you’d need a new fire risk assessment and possibly a licence variation."]);
+  return items;
+}
+
+function ctaHTML(c){
+  const body = `Venue or event: ${state.name || "Not named"}\nType: ${outdoor() ? "Outdoor site" : "Indoor venue"}\nSafe capacity: ${n0(c.cap)} (set by ${c.min.label.toLowerCase()})\nStaff on site: ${c.staff || "Not set"}\n\nI'd like a quote for security and crowd management.`;
+  return `<div class="cta no-print">
+    <h2>Need staff to run this capacity?</h2>
+    <p class="muted">Fort Green provides SIA-licensed door supervisors, stewards and crowd management, counts people in and out on the night and keeps your exits clear.</p>
+    <div class="btn-row">
+      <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Security quote: " + (state.name || "my event"))}&body=${encodeURIComponent(body)}">Get a security quote</a>
+      <a class="btn btn-ghost btn-block" href="${WHATSAPP}" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+    </div>
+  </div>`;
+}
+
+const DISCLAIMER = `<p class="disclaimer">This tool gives general information about occupant capacity to help you plan. It isn’t a fire risk assessment, a crowd management plan or professional advice, and doesn’t replace advice from a competent fire safety or crowd safety professional. Indoor figures use the floor space factors and exit widths in Approved Document B (Fire Safety) Volume 2. Outdoor figures use common planning densities and the rates of passage in the Guide to Safety at Sports Grounds. Real safe capacity also depends on travel distances, stairs, layout, lighting, alarms, the audience and how the event is managed. Under the Regulatory Reform (Fire Safety) Order 2005, the responsible person must carry out a fire risk assessment, and any capacity set by your premises licence, fire risk assessment, local authority or Safety Advisory Group applies over these results. Martyn’s Law tiers shown are indicative only. Fort Green Limited accepts no responsibility or liability for any injury, damage, enforcement action, cost or loss arising from the use of this tool or reliance on its results. Fort Green isn’t affiliated with or endorsed by the government, the Sports Grounds Safety Authority or the Events Industry Forum.</p>`;
+
+function renderCapacity(){
+  const c = calc(), el = $("#screen-capacity");
+  const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+  if(!c.ready){
+    const need = !c.floorCap ? ["Add the size of at least one area.", "space", "Add your space"] : ["Add at least one exit wide enough to count.", "exits", "Add your exits"];
+    el.innerHTML = `<div class="empty"><h1 id="h-capacity">Capacity</h1><p class="muted">${need[0]} Your results appear here once you have both.</p><button class="btn btn-primary btn-block" data-go="${need[1]}">${need[2]}</button></div>`;
+    bindGo(el); return;
+  }
+  const title = state.name ? esc(state.name) : (outdoor() ? "Your event site" : "Your venue");
+  const t = tier(c.cap);
+  const head = `<h1 id="h-capacity" style="margin-bottom:4px">${title}</h1><p class="small muted">${outdoor() ? "Outdoor site" : "Indoor venue"} capacity estimate, ${today}</p>`;
+  const verdict = `<div class="verdict v-main" role="status">
+      <h3>Safe capacity</h3>
+      <div class="big">${n0(c.cap)} people</div>
+      <p class="muted" style="margin:0">Including staff and performers. Set by ${esc(c.min.label.toLowerCase())}.</p>
+    </div>`;
+  const stats = `<div class="stats">
+      <div><b>${n0(c.cap)}</b><span>total on site</span></div>
+      <div><b>${c.staff ? n0(c.staff) : "–"}</b><span>staff${c.staff ? "" : " (add on Space)"}</span></div>
+      <div><b>${n0(c.guests)}</b><span>guests</span></div>
+    </div>`;
+  const limits = `<div class="panel"><h2>What limits it</h2><p class="small muted" style="margin:0">Your capacity is the lowest of these.</p>${limitsHTML(c)}</div>`;
+  const martyn = `<div class="panel">
+      <h2>Martyn’s Law</h2>
+      <div class="tier"><div><div class="big">${esc(t.name)}</div></div></div>
+      <p class="muted" style="margin:8px 0 12px">${t.text} The Act goes by how many people you reasonably expect at the same time, so check this against your real busiest night as well as your maximum.</p>
+      <a class="btn btn-ghost btn-block no-print" href="/martyns-law/">Check your Martyn’s Law readiness</a>
+    </div>`;
+  const notes = [];
+  if(c.cap < c.floorCap && c.min.key !== "licence") notes.push(`<div class="status warn"><div><strong>Your space holds more people than your exits can clear</strong><span class="small muted">${n0(c.floorCap - c.cap)} more people would fit, but they couldn’t get out safely. Don’t admit more than ${n0(c.cap)} without changing the exits.</span></div></div>`);
+  const narrow = c.es.filter(e => exitCalc(e).narrow);
+  if(narrow.length) notes.push(`<div class="status warn"><div><strong>${narrow.length} exit${narrow.length > 1 ? "s are" : " is"} too narrow to count</strong><span class="small muted">Exits under 750 mm clear width aren’t counted. Check whether the door can open further, or whether it should be a staff-only route.</span></div></div>`);
+
+  let plan;
+  if(!state.unlocked){
+    plan = `<div class="locked">
+      <h3>Your full capacity report</h3>
+      <p class="muted">See the workings for every area and exit, how to raise your capacity, a checklist for running it on the night and a PDF to keep with your fire risk assessment.</p>
+      <button class="btn btn-primary btn-block" id="unlock">Get my capacity report</button>
+    </div>`;
+  } else {
+    const zrows = c.zs.filter(z => z.people || z.area).map((z, i) => `<tr><td>${esc(z.name || "Area " + (i + 1))}</td><td>${z.seats ? n0(z.people) + " seats" : n1(z.area) + " m² " + (outdoor() ? "× " + z.d + "/m²" : "÷ " + z.f)}</td><td class="n">${n0(z.people)}</td></tr>`).join("");
+    const zoneBlock = `<div class="panel"><h2>Space</h2><div class="tbl-wrap"><table><thead><tr><th>Area</th><th>Working</th><th class="n">People</th></tr></thead><tbody>${zrows}<tr><td><strong>Total</strong></td><td></td><td class="n"><strong>${n0(c.floorCap)}</strong></td></tr></tbody></table></div></div>`;
+    const erows = c.es.filter(e => num(e.width)).map((e, i) => { const x = exitCalc(e); const blocked = c.discounted && c.discounted.id === e.id;
+      return `<tr><td>${esc(e.name || "Exit " + (i + 1))}${blocked ? `<br><span class="small muted">Treated as blocked</span>` : ""}</td><td>${outdoor() ? n1(x.w) + " m" + (e.stepped ? ", stepped" : "") : n0(x.w) + " mm"}</td><td class="n">${blocked ? `<s>${n0(x.cap)}</s>` : n0(x.cap)}</td></tr>`; }).join("");
+    const exitBlock = `<div class="panel"><h2>Exits</h2><div class="tbl-wrap"><table><thead><tr><th>Exit</th><th>Width</th><th class="n">People</th></tr></thead><tbody>${erows}<tr><td><strong>Total counted</strong></td><td></td><td class="n"><strong>${n0(c.exitCap)}</strong></td></tr></tbody></table></div>
+      <p class="small muted" style="margin:8px 0 0">${outdoor() ? `Based on clearing the site in ${state.egress} minutes at ${state.alcohol ? "72 (level) and 56 (stepped)" : "82 (level) and 66 (stepped)"} people per metre of width per minute.` : "Based on Approved Document B: 60 people for a 750 mm exit, 110 for 850 mm, 220 for 1,050 mm, and 5 mm per person above that."}</p></div>`;
+    const imp = improveHTML(c);
+    const impBlock = imp.length ? `<div class="panel"><h2>How to raise it</h2><ul class="ticks">${imp.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>` : "";
+    const checks = outdoor() ? [
+      ["Count people in and out", "Use clickers or scanners at every entrance, with one person keeping a running total and reporting it to the control point regularly."],
+      ["Set a holding point before capacity", "Agree a figure, such as 90%, where entry slows or stops, and who makes that call."],
+      ["Steward every exit", "Emergency gates staffed, unlocked from inside, signed and lit after dark, with nothing parked or stacked in front of them."],
+      ["Watch crowd density", "Stewards or CCTV watching front of stage and pinch points, with a way to stop the show if density climbs."],
+      ["Plan egress at the end", "Stagger the finish if you can, light the routes and manage queues for transport."],
+      ["Agree it with the Safety Advisory Group", "Put the capacity, the workings and your crowd management plan in your event management plan."]
+    ] : [
+      ["Count people in and out", "Use clickers or a door counter, with a running total the door supervisor and duty manager can both see."],
+      ["Set a holding point before capacity", "Agree a figure, such as 90%, where entry becomes one in, one out."],
+      ["Keep exits clear and usable", "Unlocked and openable from inside without a key, signed, lit and checked before doors open."],
+      ["Record the capacity", "Write the figure and how it was worked out into your fire risk assessment and tell all door staff."],
+      ["Recheck when the layout changes", "Extra tables, a stage or a temporary bar change the space, so work it out again."],
+      ["Check your licence conditions", "Some licences set a capacity or a number of door supervisors per number of guests."]
+    ];
+    const checkBlock = `<div class="panel"><h2>Running it on the night</h2><ul class="ticks">${checks.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>`;
+    plan = zoneBlock + exitBlock + impBlock + checkBlock + `<div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>`;
+  }
+
+  el.innerHTML = head + verdict + stats + notes.join("") + limits + martyn + plan + ctaHTML(c)
+    + `<div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="space">Change my space</button> &nbsp; <button class="link-btn" data-go="exits">Change my exits</button></div>` + DISCLAIMER;
+  const u = $("#unlock"); if(u) u.onclick = openSheet;
+  const p = $("#print"); if(p) p.onclick = () => window.print();
+  bindGo(el);
+}
+
+/* ---------- Lead sheet ---------- */
+function openSheet(){ $("#overlay").classList.add("on"); $("#sheet").classList.add("on"); setTimeout(() => $("#f-name").focus(), 250); }
+function closeSheet(){ $("#overlay").classList.remove("on"); $("#sheet").classList.remove("on"); }
+$("#overlay").onclick = closeSheet;
+$("#sheet-close").onclick = closeSheet;
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+$("#lead-form").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("#f-email").value.trim(), err = $("#f-email-err");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Enter a valid email address, like name@venue.co.uk."; err.hidden = false; $("#f-email").focus(); return; }
+  err.hidden = true;
+  const c = calc();
+  const lead = { tool:"capacity-calculator", name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
+    marketing_opt_in:$("#f-mkt").checked, venue:state.name, type:state.mode, capacity:c.cap, limited_by:c.min.key,
+    floor_capacity:c.floorCap, exit_capacity:c.exitCap, staff:c.staff, licence_capacity:Math.floor(num(state.licence)) || null,
+    martyns_law_tier:tier(c.cap).name, submitted_at:new Date().toISOString() };
+  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  state.unlocked = true; save(); closeSheet(); renderCapacity(); window.scrollTo(0,0);
+};
+
+/* ---------- Navigation ---------- */
+const TABS = ["start","space","exits","capacity"];
+function go(tab){
+  if(tab !== "start" && !state.agreed) tab = "start";
+  TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  ({start:renderStart, space:renderSpace, exits:renderExits, capacity:renderCapacity})[tab]();
+  if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+  window.scrollTo(0,0);
+}
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go)); }
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(TABS.includes(h)) go(h); });
+
+go(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "start");
+</script>
+</body>
+</html>
