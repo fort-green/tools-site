@@ -27,6 +27,7 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `supabase/functions/weather/` | Source of the `weather` edge function (deployed to Supabase, not served by Netlify) |
 | `public/run-sheet/` | Run sheet & call sheet builder: event details, contacts, timed cues, crew calls, crew link and PDFs. Saves to My Results (`hub_results`, tool `run-sheet`) |
 | `public/run-sheet/view/` | Public crew view of a published run sheet (`?t=<token>`, no sign-in). `sheet.js`/`sheet.css` render it for both pages |
+| `public/staffing/` | Security staffing calculator: door supervisors (1 per 100, or per entrance), stewards (1:250 / 1:100 by risk), response, supervisors, relief, with reasoning. Capacity Calculator links in with `?capacity=&mode=&name=` |
 | `public/results/` | My Results: everyone's saved results from the free tools, with open, duplicate and delete. Admins can switch to all clients' results |
 | `public/results.js` | Include on free tool pages (after auth-guard.js): autosaves the tool's work to `hub_results` and reopens it from `?result=<id>`. Tool settings (which localStorage key, title, summary) are in its `TOOLS` list |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
@@ -100,3 +101,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 
 - **Saved run sheets** are rows in `hub_results` with tool `run-sheet`, autosaved by `results.js` like the other tools.
 - **Crew links:** table `rs_shares` (one row per published run sheet, 64-character random token; owner-only via `rs_owns()`). Deleting the row turns the link off. The public view reads through `rs_view(token)`, the only part callable without signing in, which returns just that run sheet's content. The view refreshes every minute, so crew see edits without a new link.
+
+## Staffing calculator: what lives outside this repo
+
+- **Report form** posts to the n8n workflow "Staffing calculator: plan request (lead capture)" (webhook `staffing-lead`): emails the plan with the liability box at the top, logs to the "Staffing leads" tab, adds opted-in people to the Email list.
+- **Ratios:** door supervisors 1 per 100 people (licensing model conditions) or enough for every entrance; stewards 1:250 lower risk and 1:100 higher risk or with children (Green Guide / SGSA). Everything else (risk points, response team, 1 supervisor per 10, head of security at 20+, 10% relief over 6 hours) is a Fort Green planning assumption and is labelled as such on the page.

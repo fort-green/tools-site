@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<script src="/results.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Security staffing calculator | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
+  --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-out:#ffffff; --zone-std:#cecece;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+  --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top, 0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.brand{display:flex;align-items:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.tool-name{font-size:14px;color:var(--muted);font-weight:500}
+
+main{max-width:560px;margin:0 auto;padding:20px 18px 120px}
+.screen{display:none}
+.screen.on{display:block}
+
+h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(46px,13vw,72px);line-height:.9;letter-spacing:-.01em;margin:8px 0 16px}
+h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:28px;line-height:1.1;margin:0 0 6px}
+h3{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:22px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}
+.lede{font-size:18px;color:var(--muted);max-width:34em}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:18px;margin:16px 0}
+.status{display:flex;gap:10px;align-items:flex-start;border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0;margin:18px 0}
+.status strong{display:block}
+.status.warn{border-left-color:var(--red)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:0;border:0;cursor:pointer;font-family:"Manrope",system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:grid;gap:10px;margin-top:18px}
+.link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Forms */
+.field{margin:0 0 18px}
+.field label,.field .label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-size:14px;color:var(--muted);margin-top:6px}
+input[type=text],input[type=email],input[type=number],input[type=search],select{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:0}
+.seg button{min-height:44px;border:0;border-radius:0;background:transparent;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);padding:4px 6px;line-height:1.2}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.check{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent);flex:none}
+
+/* Load meter: signature element */
+.meter{margin:40px 0 8px}
+.meter-track{position:relative;height:46px;background:var(--zone-out);box-shadow:inset 0 0 0 1px var(--line)}
+.meter-track .run{position:absolute;left:0;top:0;bottom:0;background:var(--accent);transition:width .4s ease}
+.meter-track .peak{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--zone-std) 0 6px,transparent 6px 11px);box-shadow:inset 0 0 0 1px var(--zone-std);transition:left .4s ease,width .4s ease}
+.meter-track .limit{position:absolute;top:-10px;bottom:-10px;width:0}
+.meter-track .limit::before{content:"";position:absolute;left:-1.5px;top:0;bottom:0;width:3px;background:var(--red)}
+.meter-track .limit::after{content:attr(data-label);position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:12px;font-weight:600;padding:1px 7px;white-space:nowrap}
+.meter-track .over{position:absolute;inset:0;background:var(--red-soft);box-shadow:inset 0 0 0 2px var(--red)}
+.meter-ticks{position:relative;height:22px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter-ticks span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
+.meter-ticks span:first-child{transform:none}
+.meter-ticks span:last-child{transform:translateX(-100%)}
+.legend{list-style:none;padding:0;margin:6px 0 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:14px;height:14px;flex:none;display:inline-block}
+.sw-run{background:var(--accent)}
+.sw-peak{background:repeating-linear-gradient(135deg,var(--zone-std) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1px var(--zone-std)}
+.sw-lim{background:var(--red);width:4px}
+
+/* Verdict */
+.verdict{border-radius:0;padding:18px;margin:18px 0;border:1.5px solid var(--line);background:var(--surface)}
+.verdict.v-main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.verdict.v-main .muted{color:inherit;opacity:.8}
+.verdict.v-alt{border-color:var(--accent)}
+.verdict.v-check{border-color:var(--ink);border-style:dashed}
+.big{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:56px;line-height:.95;text-transform:uppercase;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:16px 0}
+.stats div{background:var(--surface);padding:12px}
+.stats b{display:block;font-family:"Antonio","Arial Narrow",sans-serif;font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+
+/* Equipment */
+.sum{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 53px);z-index:5;background:var(--bg);padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+.sum-row strong{font-size:16px}
+.bar{height:6px;background:var(--surface-2);border-radius:0;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s ease}
+.q-group{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:24px 0 2px;padding-top:6px}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.item strong{display:block;font-weight:600;line-height:1.3}
+.item .muted{font-size:13px}
+.item.has{}
+.item.has strong::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);margin-right:8px;vertical-align:2px}
+.stepper{display:grid;grid-template-columns:44px 40px 44px;border:1.5px solid var(--line);background:var(--surface)}
+.stepper button{height:42px;border:0;background:none;cursor:pointer;font-size:22px;font-weight:600;line-height:1}
+.stepper button:disabled{opacity:.3;cursor:default}
+.stepper output{display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums}
+.rm{font-size:13px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.phase{display:grid;grid-template-columns:34px 1fr 70px;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.phase .bar{margin:0;height:14px}
+.phase b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:18px}
+.ticks{list-style:none;padding:0;margin:0}
+.ticks li{display:grid;grid-template-columns:20px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.ticks li:last-child{border-bottom:0}
+.ticks li::before{content:"";width:16px;height:16px;border:1.5px solid var(--ink);margin-top:3px}
+.ticks strong{display:block}
+.ticks span{color:var(--muted);font-size:14px}
+
+.locked{border:1.5px dashed var(--line);border-radius:0;padding:20px;margin:18px 0;text-align:left}
+.cta{background:var(--accent);color:var(--accent-ink);padding:20px;margin:18px 0}
+.cta .muted{color:inherit;opacity:.8}
+.cta .btn-primary{background:var(--accent-ink);color:var(--accent)}
+.cta .btn-ghost{border-color:currentColor;color:inherit}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+.empty{padding:40px 0;text-align:left}
+
+/* Bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent);border-radius:0}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;line-height:18px;text-align:center}
+
+/* Bottom sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--surface);border-radius:0;padding:10px 20px calc(20px + env(safe-area-inset-bottom, 0px));max-height:90vh;overflow-y:auto;transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.grabber{width:42px;height:5px;border-radius:0;background:var(--line);margin:4px auto 14px}
+.error{color:var(--red);font-size:14px;margin-top:6px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+@media print{
+  .topbar,.nav,.no-print,.overlay,.sheet{display:none!important}
+  :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc;--accent:#000;--accent-ink:#fff}
+  body{background:#fff}
+  main{padding:0;max-width:none}
+  .screen{display:none!important}
+  #screen-power{display:block!important}
+  .panel,.verdict,.stats,.meter,table{break-inside:avoid}
+  .verdict.v-main,.cta{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+/* Staffing calculator */
+.seg{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.roles{border:1px solid var(--line);margin:16px 0}
+.role{display:grid;grid-template-columns:64px 1fr;gap:14px;align-items:start;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.role:last-child{border-bottom:0}
+.role b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:40px;line-height:.95;font-weight:700;font-variant-numeric:tabular-nums}
+.role strong{display:block;font-size:16px}
+.role span{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.risk{display:inline-block;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;border:1.5px solid currentColor;padding:2px 8px}
+.why{list-style:none;padding:0;margin:8px 0 0}
+.why li{padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.why li:last-child{border-bottom:0}
+.why .src{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="https://www.fortgreen.co.uk" target="_blank" rel="noopener">Fort Green</a>
+    <div class="tool-name">Security staffing</div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="screen" id="screen-start" aria-labelledby="h-start"></section>
+  <section class="screen" id="screen-event" aria-labelledby="h-event"></section>
+  <section class="screen" id="screen-entry" aria-labelledby="h-entry"></section>
+  <section class="screen" id="screen-staff" aria-labelledby="h-staff"></section>
+</main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="start"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="event"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Event</button>
+    <button data-tab="entry"><svg viewBox="0 0 24 24"><path d="M14 3.5h5.5v17H14"/><path d="M4 12h10M10 8l4 4-4 4"/></svg>Entry</button>
+    <button data-tab="staff"><svg viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6z"/></svg>Staffing</button>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="h-sheet">
+  <div class="grabber"></div>
+  <h2 id="h-sheet">Get your staffing plan</h2>
+  <p class="muted">We’ll show your full plan now and email you a copy.</p>
+  <form id="lead-form" novalidate>
+    <div class="field"><label for="f-name">Your name</label><input type="text" id="f-name" autocomplete="name"></div>
+    <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" autocomplete="email" inputmode="email"><div class="error" id="f-email-err" hidden></div></div>
+    <div class="field"><label for="f-org">Organisation</label><input type="text" id="f-org" autocomplete="organization"></div>
+    <label class="check"><input type="checkbox" id="f-mkt"><span>Send me event planning updates and occasional news from Fort Green. You can unsubscribe at any time.</span></label>
+    <p class="small muted">We use your details to send this plan and follow up about it. See our privacy notice on fortgreen.co.uk.</p>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary btn-block">Show my staffing plan</button>
+      <button type="button" class="btn btn-ghost btn-block" id="sheet-close">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const LEAD_ENDPOINT = "https://sierra-six.app.n8n.cloud/webhook/staffing-lead";
+const CONTACT_EMAIL = "info@fortgreen.co.uk";
+const WHATSAPP = "https://wa.me/447399232855";
+const STORE_KEY = "fg-staffing-v1";
+
+/* ---------- Types and scoring ----------
+   Risk points are a Fort Green planning assumption that decide which published ratio applies. */
+const TYPES = {
+  venue: [["seated","Restaurant or seated dining",-1],["bar","Pub or bar",1],["club","Nightclub or late bar with DJs",2],["live","Live music venue",1]],
+  event: [["corporate","Corporate or private party",0],["community","Community or family event",0],["concert","Concert or live music",1],["festival","Festival or multi-stage event",2]]
+};
+const ALCOHOL = [["none","No alcohol",0],["served","Served",1],["focus","A main part of the event",2]];
+const FINISH = [["early","By 11pm",0],["late","Up to 2am",1],["very","After 2am",2]];
+const SEARCH = [["none","No searching",0],["bag","Bag checks",1],["full","Full searches",2]];
+
+const BLANK = () => ({agreed:false, name:"", mode:"venue", type:"bar", capacity:"", alcohol:"served", finish:"late", hours:"6",
+  entrances:"1", exits:"0", search:"bag", id:true, children:false, licenceMin:"", unlocked:false});
+let state = BLANK();
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
+// Prefill from the Capacity Calculator link: /staffing/?capacity=220&mode=venue&name=...
+// It starts a fresh plan, so a plan that's already open (and saved in My Results) isn't overwritten.
+let PREFILLED = false;
+(function(){
+  const q = new URLSearchParams(location.search);
+  if(q.get("capacity")){
+    const cap = parseInt(q.get("capacity"), 10);
+    if(window.FGResults) FGResults.startNew();
+    state = Object.assign(BLANK(), {agreed: state.agreed});
+    PREFILLED = true;
+    if(cap > 0){ state.capacity = String(cap); }
+    if(q.get("mode") === "event" || q.get("mode") === "venue"){ state.mode = q.get("mode"); state.type = TYPES[state.mode][state.mode === "venue" ? 1 : 0][0]; }
+    if(q.get("name")) state.name = q.get("name").slice(0, 120);
+    save(); history.replaceState(null, "", location.pathname + location.hash);
+  }
+})();
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const int = v => { const x = parseInt(String(v).replace(/[^0-9]/g, ""), 10); return isFinite(x) && x > 0 ? x : 0; };
+const n0 = x => Math.round(x).toLocaleString("en-GB");
+const label = (list, v) => (list.find(x => x[0] === v) || ["", ""])[1];
+
+/* ---------- Calculation ---------- */
+function calc(){
+  const cap = int(state.capacity), venue = state.mode === "venue";
+  const types = TYPES[state.mode], type = types.find(t => t[0] === state.type) || types[0];
+  const why = [];
+  let pts = type[2] + (ALCOHOL.find(a => a[0] === state.alcohol) || ALCOHOL[0])[2] + (FINISH.find(f => f[0] === state.finish) || FINISH[0])[2];
+  if(cap >= 5000) pts += 2; else if(cap >= 1000) pts += 1;
+  const level = pts >= 4 ? "high" : pts >= 2 ? "medium" : "low";
+  const alcohol = state.alcohol !== "none";
+  const entrances = Math.max(1, int(state.entrances) || 1), exits = venue ? 0 : int(state.exits), hours = parseFloat(state.hours) || 0;
+
+  // Door supervisors: SIA-licensed, for controlling entry, searching and ejections.
+  const perEntrance = 1 + (state.search === "bag" ? 1 : state.search === "full" ? 2 : 0);
+  const entryPosts = entrances * perEntrance;
+  let ds = entryPosts, dsWhy = `${entrances} entrance${entrances > 1 ? "s" : ""} × ${perEntrance} on each (${state.search === "full" ? "door plus a search pair" : state.search === "bag" ? "door plus bag checks" : "door"}) = ${entryPosts}`;
+  if(alcohol || level !== "low"){
+    const byRatio = Math.ceil(cap / 100);
+    if(byRatio > ds){ ds = byRatio; dsWhy = `1 per 100 people (or part) for ${n0(cap)} people = ${byRatio}`; }
+    why.push({t:`Door supervisors at 1 per 100 people, or enough to cover every entrance, whichever is more.`, s:"Ratio used in licensing model conditions (e.g. Manchester City Council)."});
+  } else {
+    why.push({t:`Low risk with no alcohol, so door supervisors cover the entrances rather than a ratio.`, s:"Fort Green planning assumption."});
+  }
+  if(ds > 0 && ds < 2){ ds = 2; dsWhy += ", raised to 2 so no one works the door alone"; why.push({t:"At least 2 door supervisors, so no one works alone.", s:"Fort Green planning assumption."}); }
+  const licMin = int(state.licenceMin);
+  if(licMin > ds){ ds = licMin; dsWhy = `your licence requires at least ${licMin}`; why.push({t:`Raised to the ${licMin} door supervisors your licence requires.`, s:"Your premises licence or event conditions."}); }
+
+  // Stewards: events only. 1:250 lower risk, 1:100 higher risk, plus one per emergency exit.
+  let st = 0, stWhy = "";
+  if(!venue && cap){
+    const ratio = level === "low" && !state.children ? 250 : 100;
+    st = Math.ceil(cap / ratio) + exits;
+    stWhy = `1 per ${ratio} for ${n0(cap)} people = ${Math.ceil(cap / ratio)}${exits ? ` + ${exits} on emergency exits` : ""}`;
+    why.push({t: ratio === 250 ? "Stewards at 1 per 250 people for a lower-risk event." : `Stewards at 1 per 100 people, because the event is ${state.children ? "expecting children" : level + " risk"}.`, s:"Green Guide and SGSA stewarding guidance: 1:250 as a minimum, 1:100 or more where risk is higher."});
+    if(exits) why.push({t:`One steward on each of the ${exits} emergency exits or gates.`, s:"Fort Green planning assumption."});
+  }
+
+  // Response team: roaming team for incidents, larger or higher-risk events.
+  let resp = 0;
+  if(!venue && cap >= 1000) resp = 2 + 2 * Math.floor(cap / 5000);
+  else if(venue && level === "high" && cap >= 500) resp = 2;
+  if(resp) why.push({t:`A response team of ${resp} to move to incidents without leaving posts empty.`, s:"Fort Green planning assumption."});
+
+  const front = ds + st + resp;
+  const sup = front >= 10 ? Math.ceil(front / 10) : front >= 4 ? 1 : 0;
+  if(sup) why.push({t:`${sup} supervisor${sup > 1 ? "s" : ""} at about 1 per 10 staff.`, s:"Fort Green planning assumption, common industry practice."});
+  const head = front >= 20 ? 1 : 0;
+  if(head) why.push({t:"A head of security to run the team and work with the event manager.", s:"Fort Green planning assumption for teams of 20 or more."});
+  const relief = hours > 6 ? Math.ceil(front * 0.1) : 0;
+  if(relief) why.push({t:`${relief} extra to cover breaks, because the shift runs over 6 hours.`, s:"Fort Green planning assumption: about 10% extra."});
+
+  const total = front + sup + head + relief;
+  const female = (ds > 0 && state.search !== "none") ? Math.max(1, Math.ceil(entrances * (state.search === "full" ? 1 : 0.5))) : 0;
+  return {cap, level, pts, venue, type, ds, dsWhy, st, stWhy, resp, sup, head, relief, total, female, why, entrances, exits, hours, ready: cap > 0};
+}
+
+/* ---------- Screens ---------- */
+function seg(name, list, val){
+  return `<div class="seg" role="group" aria-label="${esc(name)}">${list.map(([v,l]) => `<button type="button" data-k="${name}" data-v="${v}" aria-pressed="${val === v}">${esc(l)}</button>`).join("")}</div>`;
+}
+function bindSeg(root, rerender){
+  root.querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
+    const k = b.dataset.k;
+    if(k === "mode"){ state.mode = b.dataset.v; state.type = TYPES[state.mode][state.mode === "venue" ? 1 : 0][0]; }
+    else state[k] = b.dataset.v;
+    save(); keep(rerender);
+  });
+}
+
+function renderStart(){
+  const started = state.capacity || state.name;
+  $("#screen-start").innerHTML = `
+    <h1 id="h-start">How many security staff do you need?</h1>
+    <p class="lede">Tell us about your venue or event and get a suggested number of door supervisors, stewards and supervisors, with the reasoning for each. It takes about two minutes.</p>
+    <div class="panel">
+      <h3>Before you start</h3>
+      <p class="muted small">This calculator gives a general starting point only. It isn’t a security risk assessment or professional advice, and Fort Green Limited accepts no responsibility for decisions made using it. Your premises licence, the police, your Safety Advisory Group and your own risk assessment may require more.</p>
+      <label class="check" style="margin-bottom:0"><input type="checkbox" id="agree" ${state.agreed ? "checked" : ""}><span>I understand this is a starting point, not a security risk assessment.</span></label>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="go-start" ${state.agreed ? "" : "disabled"}>${started ? "Continue" : "Start"}</button>
+      ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start again</button>` : ""}
+    </div>
+    <div class="panel">
+      <h3>Smart people, on short notice, solving problems.</h3>
+      <p class="muted" style="margin:0">Festivals, venues and corporate events across London. Fort Green supplies SIA-licensed door supervisors, stewards and response teams, briefed and supervised.</p>
+    </div>`;
+  $("#agree").onchange = e => { state.agreed = e.target.checked; save(); $("#go-start").disabled = !state.agreed; };
+  $("#go-start").onclick = () => go("event");
+  const r = $("#reset");
+  if(r) r.onclick = () => { if(window.FGResults) FGResults.startNew(); state = Object.assign(BLANK(), {agreed:state.agreed}); save(); go("event"); };
+}
+
+function renderEvent(){
+  $("#screen-event").innerHTML = `
+    <h1 id="h-event">Your event</h1>
+    <div class="field"><label for="i-name">Venue or event name</label><input type="text" id="i-name" value="${esc(state.name)}" placeholder="e.g. The Yard"></div>
+    <div class="field"><span class="label">Is it a venue or an event?</span>${seg("mode", [["venue","Licensed venue (regular trading)"],["event","One-off or outdoor event"]], state.mode)}</div>
+    <div class="field"><span class="label">What kind?</span>${seg("type", TYPES[state.mode].map(t => [t[0], t[1]]), state.type)}</div>
+    <div class="field"><label for="i-cap">People at the busiest time</label><input type="number" id="i-cap" inputmode="numeric" min="1" value="${esc(state.capacity)}" placeholder="e.g. 400">
+      <div class="hint">Use your licensed capacity or the most you expect at once. Not sure? <a href="/capacity/" style="color:var(--ink);font-weight:600">Work it out with the Capacity Calculator</a>.</div></div>
+    <div class="field"><span class="label">Alcohol</span>${seg("alcohol", ALCOHOL, state.alcohol)}</div>
+    <div class="field"><span class="label">Finishes</span>${seg("finish", FINISH, state.finish)}</div>
+    <div class="field"><label for="i-hours">Hours on duty</label><input type="number" id="i-hours" inputmode="decimal" min="1" max="24" step="0.5" value="${esc(state.hours)}"><div class="hint">From when staff start to when the last guest leaves.</div></div>
+    ${state.mode === "event" ? `<label class="check"><input type="checkbox" id="i-kids" ${state.children ? "checked" : ""}><span>Lots of children or young people expected</span></label>` : ""}
+    <div class="btn-row"><button class="btn btn-primary btn-block" data-go="entry">Next: entry</button></div>`;
+  const el = $("#screen-event");
+  bindSeg(el, renderEvent);
+  $("#i-name").oninput = e => { state.name = e.target.value; save(); };
+  $("#i-cap").oninput = e => { state.capacity = e.target.value; save(); };
+  $("#i-hours").oninput = e => { state.hours = e.target.value; save(); };
+  const k = $("#i-kids"); if(k) k.onchange = e => { state.children = e.target.checked; save(); };
+  bindGo(el);
+}
+
+function renderEntry(){
+  $("#screen-entry").innerHTML = `
+    <h1 id="h-entry">Entry</h1>
+    <div class="field"><label for="i-ent">Public entrances in use</label><input type="number" id="i-ent" inputmode="numeric" min="1" max="50" value="${esc(state.entrances)}"><div class="hint">Doors or gates where guests come in.</div></div>
+    ${state.mode === "event" ? `<div class="field"><label for="i-exits">Emergency exits or gates to staff</label><input type="number" id="i-exits" inputmode="numeric" min="0" max="100" value="${esc(state.exits)}"><div class="hint">Exits that need someone on them to keep them clear and open them in an emergency.</div></div>` : ""}
+    <div class="field"><span class="label">Searching on entry</span>${seg("search", SEARCH, state.search)}</div>
+    <label class="check"><input type="checkbox" id="i-id" ${state.id ? "checked" : ""}><span>ID checks (Challenge 25 or similar)</span></label>
+    <div class="field" style="margin-top:18px"><label for="i-lic">Door supervisors your licence requires (if any)</label><input type="number" id="i-lic" inputmode="numeric" min="0" value="${esc(state.licenceMin)}" placeholder="Leave blank if none"><div class="hint">If your premises licence or event conditions set a minimum, we’ll never suggest fewer.</div></div>
+    <div class="btn-row"><button class="btn btn-primary btn-block" data-go="staff">See my staffing</button></div>`;
+  const el = $("#screen-entry");
+  bindSeg(el, renderEntry);
+  $("#i-ent").oninput = e => { state.entrances = e.target.value; save(); };
+  const x = $("#i-exits"); if(x) x.oninput = e => { state.exits = e.target.value; save(); };
+  $("#i-id").onchange = e => { state.id = e.target.checked; save(); };
+  $("#i-lic").oninput = e => { state.licenceMin = e.target.value; save(); };
+  bindGo(el);
+}
+
+function deployment(c){
+  const posts = [];
+  for(let i = 1; i <= c.entrances; i++){
+    const n = 1 + (state.search === "bag" ? 1 : state.search === "full" ? 2 : 0);
+    posts.push([`Entrance ${c.entrances > 1 ? i : ""}`.trim(), `${n} door supervisor${n > 1 ? "s" : ""}: ${state.search === "full" ? "one on the door and a search pair, ideally one male and one female" : state.search === "bag" ? "one on the door and one on bag checks" : "controlling entry"}${state.id ? ", checking ID" : ""}`]);
+  }
+  const roaming = c.ds - c.entrances * (1 + (state.search === "bag" ? 1 : state.search === "full" ? 2 : 0));
+  if(roaming > 0) posts.push(["Inside", `${roaming} door supervisor${roaming > 1 ? "s" : ""} patrolling, at the bar${c.venue ? ", dance floor and toilets" : " areas and pinch points"}, and handling ejections`]);
+  if(c.st) posts.push(["Site", `${c.st} steward${c.st > 1 ? "s" : ""}: ${c.exits ? c.exits + " on emergency exits, the rest " : ""}on crowd areas, queues, front of stage and routes`]);
+  if(c.resp) posts.push(["Response", `${c.resp} roaming staff ready to go to incidents`]);
+  if(c.sup) posts.push(["Supervision", `${c.sup} supervisor${c.sup > 1 ? "s" : ""}${c.head ? " and a head of security" : ""}, linked by radio`]);
+  if(c.relief) posts.push(["Breaks", `${c.relief} relief staff rotating through posts`]);
+  return posts;
+}
+
+function ctaHTML(c){
+  const body = `Venue or event: ${state.name || "Not named"}\nPeople: ${c.cap}\nSuggested team: ${c.total} (${c.ds} door supervisors${c.st ? ", " + c.st + " stewards" : ""}${c.resp ? ", " + c.resp + " response" : ""}${c.sup ? ", " + c.sup + " supervisors" : ""}${c.head ? ", 1 head of security" : ""}${c.relief ? ", " + c.relief + " relief" : ""})\n\nI'd like a quote for security staff.`;
+  return `<div class="cta no-print">
+    <h2>Book this team</h2>
+    <p class="muted">Fort Green supplies SIA-licensed door supervisors, stewards, response teams and supervisors, briefed for your venue and on radio to the control point.</p>
+    <div class="btn-row">
+      <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Security quote: " + (state.name || "my event"))}&body=${encodeURIComponent(body)}">Get a security quote</a>
+      <a class="btn btn-ghost btn-block" href="${WHATSAPP}" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+    </div>
+  </div>`;
+}
+
+const DISCLAIMER = `<p class="disclaimer">This tool gives a general starting point for security staffing to help you plan. It isn’t a security risk assessment, a crowd management plan or professional advice. Door supervisor ratios follow those commonly used in licence conditions, and steward ratios follow the Guide to Safety at Sports Grounds and Sports Grounds Safety Authority guidance; other figures are Fort Green planning assumptions and are marked as such. The right number depends on your premises, layout, audience, history of incidents and the event itself. Your premises licence, the police, the local authority and your Safety Advisory Group may require more, and their requirements apply over these results. Anyone carrying out licensable security activity must hold the correct SIA licence. Fort Green Limited accepts no responsibility or liability for any injury, damage, disorder, enforcement action, cost or loss arising from use of this tool or reliance on its results. Fort Green isn’t affiliated with or endorsed by the SIA, the Sports Grounds Safety Authority or any licensing authority.</p>`;
+
+function renderStaff(){
+  const c = calc(), el = $("#screen-staff");
+  if(!c.ready){
+    el.innerHTML = `<div class="empty"><h1 id="h-staff">Staffing</h1><p class="muted">Add how many people you expect, and your suggested team appears here.</p><button class="btn btn-primary btn-block" data-go="event">Add your event</button></div>`;
+    bindGo(el); return;
+  }
+  const roles = [
+    [c.ds, "SIA door supervisors", c.dsWhy],
+    [c.st, "Stewards", c.stWhy],
+    [c.resp, "Response team", "Roaming, to deal with incidents"],
+    [c.sup, "Supervisors", "About 1 per 10 staff"],
+    [c.head, "Head of security", "Runs the team on the day"],
+    [c.relief, "Relief for breaks", "About 10% extra for shifts over 6 hours"]
+  ].filter(r => r[0]);
+  const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+  let plan;
+  if(!state.unlocked){
+    plan = `<div class="locked"><h3>Your full staffing plan</h3><p class="muted">See where each person goes, what to brief them on, and a PDF to keep with your risk assessment.</p><button class="btn btn-primary btn-block" id="unlock">Get my staffing plan</button></div>`;
+  } else {
+    const dep = deployment(c);
+    const checks = [
+      ["Licences checked", "Every door supervisor’s SIA licence checked against the SIA register before the shift, and their numbers recorded."],
+      ["Briefing", "A briefing before doors on the event, capacity, entry policy, search policy, refusals, emergency procedures and radio channels."],
+      ["Incident and refusals log", "A log kept on the night of incidents, refusals and ejections. Many licences require it."],
+      ["Counting", "Someone keeps a running count of people in, against the capacity."],
+      ["Welfare and vulnerability", "Staff know how to help someone vulnerable, including safe spaces and Ask for Angela if you use it."],
+      ["Martyn’s Law", "If you hold 200 or more people, staff know your evacuation, invacuation and lockdown procedures."]
+    ];
+    plan = `<div class="panel"><h2>Where everyone goes</h2><ul class="ticks">${dep.map(([h,d]) => `<li><div><strong>${esc(h)}</strong><span>${esc(d)}</span></div></li>`).join("")}</ul></div>
+      <div class="panel"><h2>Before the doors open</h2><ul class="ticks">${checks.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>
+      <div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>`;
+  }
+  el.innerHTML = `
+    <h1 id="h-staff" style="margin-bottom:4px">${esc(state.name || "Your event")}</h1>
+    <p class="small muted">${esc(c.type[1])}, ${n0(c.cap)} people. Staffing estimate, ${today}</p>
+    <div class="verdict v-main" role="status"><h3>Suggested team</h3><div class="big">${c.total} staff</div><p class="muted" style="margin:0">On duty at the busiest time. Risk level: <span class="risk">${c.level}</span></p></div>
+    <div class="roles">${roles.map(([n, t, w]) => `<div class="role"><b>${n}</b><div><strong>${t}</strong><span>${esc(w)}</span></div></div>`).join("")}</div>
+    ${c.female ? `<div class="status"><div><strong>Include female door supervisors</strong><span class="small muted">With searching on entry, have at least ${c.female} female door supervisor${c.female > 1 ? "s" : ""} so women can be searched by a woman. Many licences require this.</span></div></div>` : ""}
+    <div class="panel"><h2>How we worked it out</h2><ul class="why">${c.why.map(w => `<li>${esc(w.t)}<span class="src">${esc(w.s)}</span></li>`).join("")}</ul></div>
+    ${plan}${ctaHTML(c)}
+    <div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="event">Change my event</button> &nbsp; <button class="link-btn" data-go="entry">Change entry</button></div>
+    ${DISCLAIMER}`;
+  const u = $("#unlock"); if(u) u.onclick = openSheet;
+  const p = $("#print"); if(p) p.onclick = () => window.print();
+  bindGo(el);
+}
+
+/* ---------- Lead sheet ---------- */
+function openSheet(){ $("#overlay").classList.add("on"); $("#sheet").classList.add("on"); setTimeout(() => $("#f-name").focus(), 250); }
+function closeSheet(){ $("#overlay").classList.remove("on"); $("#sheet").classList.remove("on"); }
+$("#overlay").onclick = closeSheet;
+$("#sheet-close").onclick = closeSheet;
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeSheet(); });
+$("#lead-form").onsubmit = async e => {
+  e.preventDefault();
+  const email = $("#f-email").value.trim(), err = $("#f-email-err");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "Enter a valid email address, like name@venue.co.uk."; err.hidden = false; $("#f-email").focus(); return; }
+  err.hidden = true;
+  const c = calc();
+  const lead = { tool:"staffing-calculator", name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(), marketing_opt_in:$("#f-mkt").checked,
+    venue:state.name, mode:state.mode, type:c.type[1], capacity:c.cap, alcohol:label(ALCOHOL, state.alcohol), finish:label(FINISH, state.finish), hours:c.hours,
+    entrances:c.entrances, exits:c.exits, search:label(SEARCH, state.search), risk:c.level,
+    door_supervisors:c.ds, stewards:c.st, response:c.resp, supervisors:c.sup, head_of_security:c.head, relief:c.relief, total:c.total, female_door_supervisors:c.female,
+    reasons:c.why.map(w => w.t).slice(0, 12), deployment:deployment(c).map(([h,d]) => h + ": " + d).slice(0, 20), submitted_at:new Date().toISOString() };
+  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  state.unlocked = true; save(); closeSheet(); renderStaff(); window.scrollTo(0,0);
+};
+
+/* ---------- Navigation ---------- */
+const TABS = ["start","event","entry","staff"];
+function go(tab){
+  if(tab !== "start" && !state.agreed) tab = "start";
+  TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  ({start:renderStart, event:renderEvent, entry:renderEntry, staff:renderStaff})[tab]();
+  if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+  window.scrollTo(0,0);
+}
+function keep(fn){ const y = window.scrollY; fn(); window.scrollTo(0, y); }
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go)); }
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(TABS.includes(h)) go(h); });
+go(PREFILLED ? "event" : TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "start");
+</script>
+</body>
+</html>

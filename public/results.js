@@ -38,6 +38,12 @@
         return [d, n + " cue" + (n === 1 ? "" : "s"), k + " crew call" + (k === 1 ? "" : "s")].filter(Boolean).join(", ");
       }
     },
+    "staffing": {
+      label: "Security Staffing Calculator", key: "fg-staffing-v1", tab: "staff",
+      ready: function () { return calc().ready; },
+      title: function (s) { return s.name || "Staffing plan"; },
+      summary: function () { var c = calc(); return c.total + " staff for " + c.cap.toLocaleString("en-GB") + " people (" + c.ds + " door supervisors" + (c.st ? ", " + c.st + " stewards" : "") + ")"; }
+    },
     "capacity": {
       label: "Capacity Calculator", key: "fg-capacity-v1", tab: "capacity",
       ready: function () { return calc().ready; },
