@@ -77,6 +77,14 @@ Deno.serve(async (req) => {
       return json({ shifts });
     }
 
+    if (p.action === "clicker") {
+      if (!(await canVenue(p.venue_id))) return json({ error: "Not allowed" }, 403);
+      const from = new Date(p.from), to = new Date(p.to);
+      if (isNaN(+from) || isNaN(+to) || to <= from || +to - +from > 93 * DAY) return json({ error: "Bad date range" }, 400);
+      const shifts = await checkin("portal_clicker", { p_key: key, p_venue: p.venue_id, p_from: from.toISOString(), p_to: to.toISOString() });
+      return json({ shifts });
+    }
+
     if (p.action === "request_staff") {
       if (!(await canVenue(p.venue_id))) return json({ error: "Not allowed" }, 403);
       const extra = Number(p.extra);

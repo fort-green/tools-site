@@ -61,6 +61,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none}
 .pill{display:inline-block;padding:3px 9px;border:1px solid currentColor;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .pill.ok{color:var(--ok);background:var(--ok-soft)} .pill.warn{color:var(--warn);background:var(--warn-soft)}
 .pill.bad{color:var(--err);background:var(--err-soft)} .pill.mute{color:var(--muted)}
+/* door counts */
+.dc-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:8px}
+.dc-tile{border:1px solid var(--line);padding:12px 14px;background:var(--soft)}
+.dc-tile b{display:block;font-size:40px;line-height:1} .dc-tile span{font-size:13px;font-weight:600;color:var(--muted)}
+.dc-h{margin:22px 0 8px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dc-chart{width:100%;height:auto;display:block;font:600 15px Manrope,Arial,sans-serif;fill:var(--muted)}
+.dc-bar{fill:var(--ink);opacity:.28} .dc-line{fill:none;stroke:var(--ok);stroke-width:3} .dc-axis{stroke:var(--line)} .dc-cap{stroke:var(--err);stroke-dasharray:5 5}
+.dc-key{display:inline-block;width:12px;height:10px;vertical-align:middle} .dc-key.bar{background:var(--ink);opacity:.28} .dc-key.line{height:3px;background:var(--ok)}
+.dc-table{width:100%;border-collapse:collapse;font-size:15px} .dc-table th,.dc-table td{padding:8px 4px;border-bottom:1px solid var(--line);text-align:right}
+.dc-table th:first-child,.dc-table td:first-child{text-align:left} .dc-table th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 /* calendar */
 .calbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
 .calbar h3{margin:0;font-size:32px}
@@ -191,6 +201,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       <a href="#bookings" data-tab="bookings">Bookings</a>
       <a href="#booking" data-tab="booking">New booking <span class="count" id="bk-count" hidden></span></a>
       <a href="#documents" data-tab="documents">Documents</a>
+      <a href="#counts" data-tab="counts">Door counts</a>
       <a href="#extra" data-tab="extra">Extra staff <span class="count" id="pending-count" hidden></span></a>
       <a href="#invoicing" data-tab="invoicing">Invoicing details</a>
       <a href="#toolkit" data-tab="toolkit">Toolkit</a>
@@ -285,6 +296,20 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       <div class="list" id="docs-invoice"></div>
       <h3 class="display sub">Licences and documents</h3>
       <div class="list" id="docs-other"></div>
+    </section>
+
+    <!-- DOOR COUNTS -->
+    <section id="t-counts" data-panel="counts" hidden>
+      <div class="sechead"><h2 class="display">Door counts</h2></div>
+      <div class="panel">
+        <p style="margin:0 0 16px">How many people our door team counted in at each finished shift, when it was busiest and how many were inside at the peak. Counts appear here once the shift has ended.</p>
+        <div class="fields">
+          <label class="f">From <input type="date" id="dc-from"></label>
+          <label class="f">To <input type="date" id="dc-to"></label>
+        </div>
+        <div class="btnrow" style="margin-top:16px"><button class="btn" type="button" id="dc-go">Show</button></div>
+      </div>
+      <div id="dc-list"></div>
     </section>
 
     <!-- EXTRA STAFF -->
@@ -418,6 +443,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     if (S.tab === "bookings") loadMonth();
     else if (S.tab === "booking") loadBookings();
     else if (S.tab === "documents") loadDocs();
+    else if (S.tab === "counts") loadCounts();
     else if (S.tab === "extra") loadExtra();
     else if (S.tab === "invoicing") loadBilling();
     else if (S.tab === "access") loadAccess();
@@ -768,6 +794,59 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
         '</div></div><div class="acts">' + acts + "</div></div>";
     }).join("") : '<div class="empty">No requests yet.</div>';
   }
+
+  /* ---------- door counts (from the Staff Check-In clicker) ---------- */
+  function loadCounts() {
+    if (!$("dc-from").value) { var t = new Date(), f = new Date(t.getTime() - 30 * 864e5); $("dc-from").value = ymd(f); $("dc-to").value = ymd(t); }
+    runCounts();
+  }
+  async function runCounts() {
+    var from = new Date($("dc-from").value + "T00:00:00"), to = new Date($("dc-to").value + "T00:00:00");
+    if (isNaN(+from) || isNaN(+to) || to < from) { msg("fail", "Choose a From date before the To date."); return; }
+    to = new Date(to.getTime() + 864e5);
+    if (+to - +from > 92 * 864e5) { msg("fail", "Choose up to three months at a time."); return; }
+    msg();
+    $("dc-list").innerHTML = '<div class="loading">Loading…</div>';
+    try {
+      var r = await api({ action: "clicker", venue_id: S.venue, from: from.toISOString(), to: to.toISOString() });
+      S.counts = r.shifts || [];
+      $("dc-list").innerHTML = S.counts.length ? S.counts.map(countPanel).join("") : '<div class="empty">No door counts for finished shifts in these dates.</div>';
+    } catch (e) { $("dc-list").innerHTML = ""; msg("fail", e.message); }
+  }
+  function countPanel(s) {
+    var tr = s.trends || {}, pk = tr.peak_inside, bz = tr.busiest;
+    var tile = function (big, small) { return '<div class="dc-tile"><b class="display">' + big + '</b><span>' + small + "</span></div>"; };
+    var groups = (s.groups || []).filter(function (g) { return g.arrivals || g.id; });
+    return '<div class="panel dc">' +
+      '<div class="sechead" style="margin-bottom:12px"><div><h3 class="display" style="margin:0;font-size:28px">' + esc(dayLong(s.starts_at)) + '</h3><p class="hint">' + esc(s.title || "Shift") + " · " + esc(hm(s.starts_at)) + "–" + esc(hm(s.ends_at)) + "</p></div></div>" +
+      '<div class="dc-tiles">' + tile(s.arrivals, "People in") + tile(pk ? pk.inside : 0, "Peak inside" + (pk ? ", " + esc(hm(pk.at)) : "")) +
+        tile(bz ? esc(hm(bz.at)) : "–", "Busiest 15 min" + (bz ? ", " + bz.arrivals + " in" : "")) + (s.capacity ? tile(s.capacity, "Capacity") : "") + "</div>" +
+      '<h4 class="dc-h">Arrivals every 15 minutes</h4>' + countChart(tr.slots || [], s.capacity) +
+      (groups.length > 1 ? '<h4 class="dc-h">By group</h4><table class="dc-table"><thead><tr><th>Group</th><th>In</th><th>Expected</th></tr></thead><tbody>' +
+        groups.map(function (g) { return "<tr><td>" + esc(g.name) + "</td><td>" + g.arrivals + "</td><td>" + (g.expected || "–") + "</td></tr>"; }).join("") + "</tbody></table>" : "") +
+      "</div>";
+  }
+  function countChart(slots, capacity) {
+    if (!slots.length) return '<p class="hint">No counts.</p>';
+    var W = 760, H = 260, L = 60, B = 34, T = 24, n = slots.length, bw = (W - L - 8) / n;
+    var maxIn = Math.max.apply(null, [1].concat(slots.map(function (x) { return x.arrivals; })));
+    var maxInside = Math.max.apply(null, [1, capacity || 0].concat(slots.map(function (x) { return x.inside; })));
+    var y1 = function (v) { return T + (H - T - B) * (1 - v / maxIn); }, y2 = function (v) { return T + (H - T - B) * (1 - v / maxInside); };
+    var every = Math.ceil(n / 6), bars = "", labels = "", path = "";
+    slots.forEach(function (x, i) {
+      var cx = L + i * bw + bw / 2;
+      bars += '<rect x="' + (L + i * bw + 1).toFixed(1) + '" y="' + y1(x.arrivals).toFixed(1) + '" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + (H - B - y1(x.arrivals)).toFixed(1) + '" class="dc-bar"><title>' + hm(x.at) + ": " + x.arrivals + " in, " + x.inside + " inside</title></rect>";
+      path += (i ? "L" : "M") + cx.toFixed(1) + "," + y2(x.inside).toFixed(1) + " ";
+      if (i % every === 0) labels += '<text x="' + cx.toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + hm(x.at) + "</text>";
+    });
+    var cap = capacity ? '<line x1="' + L + '" x2="' + (W - 8) + '" y1="' + y2(capacity) + '" y2="' + y2(capacity) + '" class="dc-cap"/><text x="' + (W - 10) + '" y="' + (y2(capacity) - 6) + '" text-anchor="end">Capacity ' + capacity + "</text>" : "";
+    return '<svg viewBox="0 0 ' + W + " " + H + '" class="dc-chart" role="img" aria-label="People in per 15 minutes">' +
+      '<line x1="' + L + '" x2="' + (W - 8) + '" y1="' + (H - B) + '" y2="' + (H - B) + '" class="dc-axis"/>' +
+      '<text x="' + (L - 6) + '" y="' + (T + 8) + '" text-anchor="end">' + maxIn + ' in</text><text x="' + (L - 6) + '" y="' + (H - B) + '" text-anchor="end">0</text>' +
+      bars + cap + '<path d="' + path + '" class="dc-line"/>' + labels + "</svg>" +
+      '<p class="hint" style="font-size:13px;margin-top:6px"><span class="dc-key bar"></span> People in, per 15 min &nbsp; <span class="dc-key line"></span> Inside at the time</p>';
+  }
+  $("dc-go").addEventListener("click", runCounts);
   function setN(n) { $("req-n").value = Math.max(1, Math.min(50, n || 1)); }
   $("req-minus").addEventListener("click", function () { setN(+$("req-n").value - 1); });
   $("req-plus").addEventListener("click", function () { setN(+$("req-n").value + 1); });
