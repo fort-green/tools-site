@@ -159,7 +159,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
   </section>
 
   <section class="wrap" aria-labelledby="h-public">
-    <div class="sechead"><h2 class="display" id="h-public">Available to you</h2><span>8 tools</span></div>
+    <div class="sechead"><h2 class="display" id="h-public">Available to you</h2><span>9 tools</span></div>
     <div class="grid">
       <div class="card wx" id="card-weather">
         <span class="tag">Live weather</span>
@@ -227,6 +227,13 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
         <p>How many door supervisors, stewards and supervisors your venue or event needs, with the reasoning.</p>
         <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
       </a>
+      <a class="card" href="/quote/">
+        <span class="num display" aria-hidden="true">08</span>
+        <span class="tag">Budget</span>
+        <h3 class="display">Event Quote Estimator</h3>
+        <p>An instant estimate for security, power, crew and equipment, then a firm quote in one tap.</p>
+        <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
+      </a>
       <a class="card ask" href="https://wa.me/447399232855" target="_blank" rel="noopener">
         <span class="tag">More coming</span>
         <h3 class="display">Need something else?</h3>
@@ -260,6 +267,12 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
           <h3 class="display">Lead Finder</h3>
           <p>Find and track new sales leads.</p>
           <div class="foot"><span></span><span class="go">Open</span></div>
+        </a>
+        <a class="card" href="/quote/rates/" id="card-rates" hidden>
+          <span class="tag">Admins</span>
+          <h3 class="display">Quote rates</h3>
+          <p>Set the rates behind the event quote estimator. Clients never see them.</p>
+          <div class="foot"><span>Admins only</span><span class="go">Open</span></div>
         </a>
         <a class="card" href="/users/" id="card-users" hidden>
           <span class="num display" aria-hidden="true">09</span>
@@ -318,7 +331,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     $("view-login").hidden = true; $("view-hub").hidden = false;
     $("who").hidden = !email; $("who-email").textContent = email || "";
     $("staff").hidden = !isStaff(email);
-    $("card-users").hidden = true; $("card-portal").hidden = true;
+    $("card-users").hidden = true; $("card-rates").hidden = true; $("card-portal").hidden = true;
     lastEmail = email;
     if (sb && email) checkAccess();
   }
@@ -330,6 +343,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     if (window.FGWeather) FGWeather.mountCard($("card-weather"), sb);
     var a = await sb.rpc("hub_is_admin");
     $("card-users").hidden = !(a && a.data === true);
+    $("card-rates").hidden = !(a && a.data === true);
     if (isStaff(lastEmail)) { $("card-portal").hidden = false; $("portal-sub").textContent = "Staff view: all venues"; }
     else {
       var v = await sb.from("cp_venue_access").select("venue_id", { count: "exact", head: true });

@@ -28,6 +28,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/run-sheet/` | Run sheet & call sheet builder: event details, contacts, timed cues, crew calls, crew link and PDFs. Saves to My Results (`hub_results`, tool `run-sheet`) |
 | `public/run-sheet/view/` | Public crew view of a published run sheet (`?t=<token>`, no sign-in). `sheet.js`/`sheet.css` render it for both pages |
 | `public/staffing/` | Security staffing calculator: door supervisors (1 per 100, or per entrance), stewards (1:250 / 1:100 by risk), response, supervisors, relief, with reasoning. Capacity Calculator links in with `?capacity=&mode=&name=` |
+| `public/quote/` | Event quote estimator: security, power, crew and equipment → one estimate (+VAT) from `qe_estimate()`, then a firm quote request |
+| `public/quote/rates/` | Quote rates (admins only): edit the rate card in `qe_rates` |
 | `public/results/` | My Results: everyone's saved results from the free tools, with open, duplicate and delete. Admins can switch to all clients' results |
 | `public/results.js` | Include on free tool pages (after auth-guard.js): autosaves the tool's work to `hub_results` and reopens it from `?result=<id>`. Tool settings (which localStorage key, title, summary) are in its `TOOLS` list |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
@@ -111,3 +113,9 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - Every tool form posts through `public/lead.js` (`FGLead.post`), which adds the signed-in user's Supabase access token to the body.
 - Each lead workflow in n8n (Martyn's Law report and review, capacity, power planner, staffing) starts with **Check signed in**: it calls `/auth/v1/user` on FORT GREEN PROJECT1 with that token. A missing or invalid token gets a 401/403, which stops the workflow before any email or sheet row. **Signed-in request** then merges the original webhook data back so the rest runs unchanged.
 - A new tool form must use `FGLead.post`, and its workflow needs the same two nodes.
+
+## Quote estimator: what lives outside this repo
+
+- **Rate card:** table `qe_rates` (excluding VAT). Only admins (`hub_is_admin()`) can read or change it, on `/quote/rates/`; a trigger records who changed what. Blank rates are left out of estimates and listed as "not priced".
+- **Estimates:** `qe_estimate(jsonb)` (security definer, signed-in users only) works out the total and per-service subtotals on the server, so clients never see unit rates. Staff and crew pay at least the minimum shift (`sec_min_hours`, `crew_min_hours`) per person per day; generators are per day plus delivery once each; the booking fee is added once.
+- **Firm quote requests** post (with sign-in proof) to the n8n workflow "Quote estimator: firm quote request" (webhook `quote-request`): emails info@fortgreen.co.uk (reply goes to the client), sends the client a confirmation with the "estimate, not a quote" box at the top, logs to the "Quote requests" tab, adds opted-in people to the Email list.

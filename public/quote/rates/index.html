@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/staff-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quote rates | Fort Green tools</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;
+  --err:#b42318;--err-soft:#fbe4e1;--ok:#1d6b3a;--ok-soft:#e3f3e8;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#100f10;--surface:#1a191a;--ink:#fff;--body:#e2e2e2;--muted:#a9a9a9;--line:#3b3a3b;--soft:#232223;
+  --err:#ff7b6e;--err-soft:#2d1513;--ok:#7fd69b;--ok-soft:#12271a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Manrope,Arial,sans-serif}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.display{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;text-transform:uppercase;line-height:.95;letter-spacing:.005em}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.hero{padding-top:48px;padding-bottom:28px;display:flex;flex-wrap:wrap;gap:16px 40px;align-items:flex-end;justify-content:space-between}
+.hero .kicker{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--muted)}
+.hero h1{margin:0;font-size:clamp(56px,10vw,120px)}
+.hero .lede{margin:0;max-width:440px;color:var(--body)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-top:1px solid var(--ink);border-left:1px solid var(--ink);margin-bottom:32px}
+.stat{padding:18px 20px;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);background:var(--surface)}
+.stat b{display:block;font-family:Antonio,'Arial Narrow',sans-serif;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:14px;font-weight:600;color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.filters{display:flex;flex-wrap:wrap;border:1px solid var(--ink)}
+.filters button{min-height:44px;padding:0 16px;border:0;border-right:1px solid var(--ink);background:transparent;color:var(--ink);font:700 13px Manrope,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.filters button:last-child{border-right:0}
+.filters button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.search{flex:1 1 240px;max-width:360px}
+input[type=search],textarea{width:100%;min-height:46px;padding:10px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 16px Manrope,Arial,sans-serif}
+textarea{min-height:90px;resize:vertical}
+input:focus,textarea:focus{border-color:var(--ink);outline:none}
+.list{border-top:1px solid var(--ink)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px 20px;align-items:center;padding:16px 4px;border-bottom:1px solid var(--line)}
+.row.removed .email{color:var(--muted);text-decoration:line-through}
+.email{font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.sub{margin-top:4px;font-size:14px;color:var(--muted)}
+.note{margin-top:6px;font-size:14px;color:var(--err)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{display:inline-block;padding:3px 8px;border:1px solid var(--line);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--body)}
+.pill{display:inline-block;padding:4px 10px;border:1px solid currentColor;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.pill.active{color:var(--ok);background:var(--ok-soft)}
+.pill.removed{color:var(--err);background:var(--err-soft)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:0;font:700 13px Manrope,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.danger{background:transparent;color:var(--err);border-color:var(--err)}
+.btn.danger.solid{background:var(--err);color:var(--bg)}
+.btn[disabled]{opacity:.55;cursor:wait}
+.you{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.empty{border:1px dashed var(--line);padding:40px 24px;text-align:center;color:var(--muted)}
+.err{margin:0 0 16px;padding:12px 14px;background:var(--err-soft);color:var(--err);font-weight:600;font-size:15px}
+.okmsg{margin:0 0 16px;padding:12px 14px;background:var(--ok-soft);color:var(--ok);font-weight:600;font-size:15px}
+h2.sec{margin:56px 0 16px;font-size:36px}
+.log{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
+.log li{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line);font-size:15px}
+.log time{color:var(--muted)}
+.loading{padding:60px 0;color:var(--muted)}
+dialog{max-width:480px;width:calc(100% - 32px);padding:28px;border:1px solid var(--ink);background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h3{margin:0 0 12px;font-size:32px}
+dialog p{margin:0 0 16px;color:var(--body)}
+dialog label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px;margin-bottom:20px}
+.btnrow{display:flex;flex-wrap:wrap;gap:12px}
+footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-size:14px;color:var(--muted)}
+[hidden]{display:none!important}
+@media (max-width:700px){
+  .wrap{padding:0 16px}
+  .hero{padding-top:24px;padding-bottom:20px}
+  .hero h1{font-size:clamp(48px,15vw,64px)}
+  .stat b{font-size:36px}
+  .row{grid-template-columns:minmax(0,1fr) auto}
+  .row .act{grid-column:1/-1}
+  .row .act .btn{width:100%}
+  .search{max-width:none}
+  .filters{width:100%}
+  .filters button{flex:1 1 auto;padding:0 10px}
+  .log li{grid-template-columns:1fr;gap:2px}
+  h2.sec{font-size:30px}
+}
+</style>
+<style>
+.cat{margin:40px 0 0}
+.cat h2{font-size:36px;margin:0 0 6px}
+.rate{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:8px 20px;align-items:center;padding:14px 4px;border-bottom:1px solid var(--line)}
+.rate b{display:block;font-size:17px}
+.rate span{font-size:14px;color:var(--muted)}
+.rate .in{display:flex;align-items:center;gap:6px}
+.rate .in i{font-style:normal;font-weight:700}
+.rate input{width:100%;min-height:46px;padding:8px 10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:600 17px Manrope,Arial,sans-serif;text-align:right}
+.rate input:focus{border-color:var(--ink);outline:none}
+.rate.changed input{border-color:var(--ink);background:var(--soft)}
+.rate.unset b::after{content:"Not set";margin-left:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--err);border:1px solid currentColor;padding:1px 6px;vertical-align:2px}
+.savebar{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--ink);padding:14px 0;margin-top:32px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div><p class="kicker">Admins only</p><h1 class="display">Quote rates</h1></div>
+    <p class="lede">The rates behind the event quote estimator, excluding VAT. Clients never see these: they only see the estimate. Leave a rate blank and that item is left out of estimates and marked for you to price.</p>
+  </section>
+  <div class="err" id="err" hidden></div>
+  <div class="okmsg" id="ok" hidden></div>
+  <div id="list"><p class="loading">Loading rates…</p></div>
+  <div class="savebar" id="savebar" hidden><span id="changes" class="you"></span><div class="btnrow"><button class="btn ghost" id="undo" type="button">Undo changes</button><button class="btn" id="save" type="button">Save rates</button></div></div>
+</main>
+<footer><div class="wrap">Shift minimums apply per person per day: someone booked for fewer hours is charged the minimum. Generator rates are per generator per day, plus delivery once per generator. <a href="/quote/">Open the quote estimator</a>.</div></footer>
+<script>
+(function () {
+  var c = window.FG_CONFIG || {};
+  var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]; }); };
+  var CATS = [["security","Security staff"],["power","Event power"],["crew","Production crew"],["equipment","Equipment hire"],["general","General"]];
+  var rows = [], edits = {};
+  function msg(id, t) { $(id).textContent = t || ""; $(id).hidden = !t; }
+  function isHours(r) { return r.unit === "hours"; }
+  function render() {
+    $("list").innerHTML = CATS.map(function (cat) {
+      var list = rows.filter(function (r) { return r.category === cat[0]; });
+      if (!list.length) return "";
+      return '<section class="cat"><h2 class="display">' + cat[1] + '</h2>' + list.map(function (r) {
+        var v = r.key in edits ? edits[r.key] : (r.rate == null ? "" : String(Number(r.rate)));
+        var who = r.updated_by ? "Last changed by " + r.updated_by + ", " + new Date(r.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+        return '<div class="rate' + (r.key in edits ? " changed" : "") + (v === "" ? " unset" : "") + '"><div><b>' + esc(r.label) + '</b><span>' + esc(r.unit) + (who ? " · " + esc(who) : "") + '</span></div>' +
+          '<div class="in">' + (isHours(r) ? "" : "<i>£</i>") + '<input type="number" min="0" step="' + (isHours(r) ? "0.5" : "0.01") + '" inputmode="decimal" data-key="' + r.key + '" value="' + esc(v) + '" aria-label="' + esc(r.label) + '">' + (isHours(r) ? "<i>h</i>" : "") + '</div></div>';
+      }).join("") + "</section>";
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-key]"), function (i) {
+      i.oninput = function () {
+        var r = rows.find(function (x) { return x.key === i.dataset.key; });
+        var orig = r.rate == null ? "" : String(Number(r.rate));
+        if (i.value.trim() === orig) delete edits[r.key]; else edits[r.key] = i.value.trim();
+        i.closest(".rate").classList.toggle("changed", r.key in edits);
+        bar();
+      };
+    });
+    bar();
+  }
+  function bar() {
+    var n = Object.keys(edits).length;
+    $("savebar").hidden = !n;
+    $("changes").textContent = n + " change" + (n === 1 ? "" : "s") + " not saved";
+  }
+  async function load() {
+    var r = await sb.from("qe_rates").select("*").order("sort");
+    if (r.error || !r.data) { msg("err", "Couldn’t load the rates."); return; }
+    if (!r.data.length) { $("list").innerHTML = '<p class="empty">Only admins can see the rates.</p>'; return; }
+    rows = r.data; render();
+  }
+  $("undo").onclick = function () { edits = {}; render(); msg("ok"); };
+  $("save").onclick = async function () {
+    var btn = $("save"); btn.disabled = true; msg("err"); msg("ok");
+    var keys = Object.keys(edits), failed = 0;
+    for (var i = 0; i < keys.length; i++) {
+      var v = edits[keys[i]], num = v === "" ? null : Number(v);
+      if (num !== null && (!isFinite(num) || num < 0)) { failed++; continue; }
+      var u = await sb.from("qe_rates").update({ rate: num }).eq("key", keys[i]).select("key");
+      if (u.error || !u.data || !u.data.length) failed++;
+    }
+    btn.disabled = false;
+    if (failed) msg("err", failed + " rate" + (failed > 1 ? "s" : "") + " couldn’t be saved. Check they’re numbers and try again.");
+    else msg("ok", "Rates saved. Estimates use them straight away.");
+    edits = {}; load();
+  };
+  sb.auth.getSession().then(async function (r) {
+    if (!(r.data && r.data.session)) return;
+    var a = await sb.rpc("hub_is_admin");
+    if (!(a && a.data === true)) { $("list").innerHTML = '<p class="empty">This page is for admins only.</p>'; return; }
+    load();
+  });
+})();
+</script>
+</body>
+</html>

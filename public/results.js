@@ -44,6 +44,15 @@
       title: function (s) { return s.name || "Staffing plan"; },
       summary: function () { var c = calc(); return c.total + " staff for " + c.cap.toLocaleString("en-GB") + " people (" + c.ds + " door supervisors" + (c.st ? ", " + c.st + " stewards" : "") + ")"; }
     },
+    "quote": {
+      label: "Event Quote Estimator", key: "fg-quote-v1", tab: "estimate",
+      ready: function (s) { return !!(s.name && ["security", "power", "crew", "equipment"].some(function (k) { return s[k] && s[k].on; })); },
+      title: function (s) { return s.name || "Event estimate"; },
+      summary: function (s) {
+        var on = [["security", "security"], ["power", "power"], ["crew", "crew"], ["equipment", "equipment"]].filter(function (x) { return s[x[0]] && s[x[0]].on; }).map(function (x) { return x[1]; });
+        return [s.date ? new Date(s.date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "", on.join(", ")].filter(Boolean).join(": ");
+      }
+    },
     "capacity": {
       label: "Capacity Calculator", key: "fg-capacity-v1", tab: "capacity",
       ready: function () { return calc().ready; },
