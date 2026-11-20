@@ -658,7 +658,8 @@ function renderCapacity(){
   }
 
   const staffLink = `<a class="btn btn-ghost btn-block no-print" style="margin-top:12px" href="/staffing/?capacity=${c.cap}&mode=${outdoor() ? "event" : "venue"}&name=${encodeURIComponent(state.name || "")}">Work out the security staff for ${n0(c.cap)} people</a>`;
-  el.innerHTML = head + verdict + stats + staffLink + notes.join("") + limits + martyn + plan + ctaHTML(c)
+  const welfareLink = `<a class="btn btn-ghost btn-block no-print" style="margin-top:8px" href="/welfare/?people=${c.cap}&name=${encodeURIComponent(state.name || "")}">Toilets, water and first aid for ${n0(c.cap)} people</a>`;
+  el.innerHTML = head + verdict + stats + staffLink + welfareLink + notes.join("") + limits + martyn + plan + ctaHTML(c)
     + `<div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="space">Change my space</button> &nbsp; <button class="link-btn" data-go="exits">Change my exits</button></div>` + DISCLAIMER;
   const u = $("#unlock"); if(u) u.onclick = openSheet;
   const p = $("#print"); if(p) p.onclick = () => window.print();

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<script src="/results.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Welfare and provisions calculator | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
+  --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-out:#ffffff; --zone-std:#cecece;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+  --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top, 0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.brand{display:flex;align-items:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.tool-name{font-size:14px;color:var(--muted);font-weight:500}
+
+main{max-width:560px;margin:0 auto;padding:20px 18px 120px}
+.screen{display:none}
+.screen.on{display:block}
+
+h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(46px,13vw,72px);line-height:.9;letter-spacing:-.01em;margin:8px 0 16px}
+h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:28px;line-height:1.1;margin:0 0 6px}
+h3{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:22px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}
+.lede{font-size:18px;color:var(--muted);max-width:34em}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:18px;margin:16px 0}
+.status{display:flex;gap:10px;align-items:flex-start;border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0;margin:18px 0}
+.status strong{display:block}
+.status.warn{border-left-color:var(--red)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:0;border:0;cursor:pointer;font-family:"Manrope",system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:grid;gap:10px;margin-top:18px}
+.link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Forms */
+.field{margin:0 0 18px}
+.field label,.field .label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-size:14px;color:var(--muted);margin-top:6px}
+input[type=text],input[type=email],input[type=number],input[type=search],select{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:0}
+.seg button{min-height:44px;border:0;border-radius:0;background:transparent;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);padding:4px 6px;line-height:1.2}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.check{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent);flex:none}
+
+/* Load meter: signature element */
+.meter{margin:40px 0 8px}
+.meter-track{position:relative;height:46px;background:var(--zone-out);box-shadow:inset 0 0 0 1px var(--line)}
+.meter-track .run{position:absolute;left:0;top:0;bottom:0;background:var(--accent);transition:width .4s ease}
+.meter-track .peak{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--zone-std) 0 6px,transparent 6px 11px);box-shadow:inset 0 0 0 1px var(--zone-std);transition:left .4s ease,width .4s ease}
+.meter-track .limit{position:absolute;top:-10px;bottom:-10px;width:0}
+.meter-track .limit::before{content:"";position:absolute;left:-1.5px;top:0;bottom:0;width:3px;background:var(--red)}
+.meter-track .limit::after{content:attr(data-label);position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:12px;font-weight:600;padding:1px 7px;white-space:nowrap}
+.meter-track .over{position:absolute;inset:0;background:var(--red-soft);box-shadow:inset 0 0 0 2px var(--red)}
+.meter-ticks{position:relative;height:22px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter-ticks span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
+.meter-ticks span:first-child{transform:none}
+.meter-ticks span:last-child{transform:translateX(-100%)}
+.legend{list-style:none;padding:0;margin:6px 0 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:14px;height:14px;flex:none;display:inline-block}
+.sw-run{background:var(--accent)}
+.sw-peak{background:repeating-linear-gradient(135deg,var(--zone-std) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1px var(--zone-std)}
+.sw-lim{background:var(--red);width:4px}
+
+/* Verdict */
+.verdict{border-radius:0;padding:18px;margin:18px 0;border:1.5px solid var(--line);background:var(--surface)}
+.verdict.v-main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.verdict.v-main .muted{color:inherit;opacity:.8}
+.verdict.v-alt{border-color:var(--accent)}
+.verdict.v-check{border-color:var(--ink);border-style:dashed}
+.big{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:56px;line-height:.95;text-transform:uppercase;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:16px 0}
+.stats div{background:var(--surface);padding:12px}
+.stats b{display:block;font-family:"Antonio","Arial Narrow",sans-serif;font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+
+/* Equipment */
+.sum{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 53px);z-index:5;background:var(--bg);padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+.sum-row strong{font-size:16px}
+.bar{height:6px;background:var(--surface-2);border-radius:0;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s ease}
+.q-group{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:24px 0 2px;padding-top:6px}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.item strong{display:block;font-weight:600;line-height:1.3}
+.item .muted{font-size:13px}
+.item.has{}
+.item.has strong::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);margin-right:8px;vertical-align:2px}
+.stepper{display:grid;grid-template-columns:44px 40px 44px;border:1.5px solid var(--line);background:var(--surface)}
+.stepper button{height:42px;border:0;background:none;cursor:pointer;font-size:22px;font-weight:600;line-height:1}
+.stepper button:disabled{opacity:.3;cursor:default}
+.stepper output{display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums}
+.rm{font-size:13px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.phase{display:grid;grid-template-columns:34px 1fr 70px;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.phase .bar{margin:0;height:14px}
+.phase b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:18px}
+.ticks{list-style:none;padding:0;margin:0}
+.ticks li{display:grid;grid-template-columns:20px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.ticks li:last-child{border-bottom:0}
+.ticks li::before{content:"";width:16px;height:16px;border:1.5px solid var(--ink);margin-top:3px}
+.ticks strong{display:block}
+.ticks span{color:var(--muted);font-size:14px}
+
+.locked{border:1.5px dashed var(--line);border-radius:0;padding:20px;margin:18px 0;text-align:left}
+.cta{background:var(--accent);color:var(--accent-ink);padding:20px;margin:18px 0}
+.cta .muted{color:inherit;opacity:.8}
+.cta .btn-primary{background:var(--accent-ink);color:var(--accent)}
+.cta .btn-ghost{border-color:currentColor;color:inherit}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+.empty{padding:40px 0;text-align:left}
+
+/* Bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent);border-radius:0}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;line-height:18px;text-align:center}
+
+/* Bottom sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--surface);border-radius:0;padding:10px 20px calc(20px + env(safe-area-inset-bottom, 0px));max-height:90vh;overflow-y:auto;transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.grabber{width:42px;height:5px;border-radius:0;background:var(--line);margin:4px auto 14px}
+.error{color:var(--red);font-size:14px;margin-top:6px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+@media print{
+  .topbar,.nav,.no-print,.overlay,.sheet{display:none!important}
+  :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc;--accent:#000;--accent-ink:#fff}
+  body{background:#fff}
+  main{padding:0;max-width:none}
+  .screen{display:none!important}
+  #screen-power{display:block!important}
+  .panel,.verdict,.stats,.meter,table{break-inside:avoid}
+  .verdict.v-main,.cta{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+/* Welfare calculator */
+.nav-in{grid-template-columns:repeat(3,1fr)}
+.seg{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.roles{border:1px solid var(--line);margin:12px 0}
+.role{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:start;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.role:last-child{border-bottom:0}
+.role b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:40px;line-height:.95;font-weight:700;font-variant-numeric:tabular-nums}
+.role strong{display:block;font-size:16px}
+.role span{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.src{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="https://www.fortgreen.co.uk" target="_blank" rel="noopener">Fort Green</a>
+    <div class="tool-name">Welfare and provisions</div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="screen" id="screen-start" aria-labelledby="h-start"></section>
+  <section class="screen" id="screen-event" aria-labelledby="h-event"></section>
+  <section class="screen" id="screen-plan" aria-labelledby="h-plan"></section>
+</main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="start"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="event"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Event</button>
+    <button data-tab="plan"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg>Provisions</button>
+  </div>
+</nav>
+
+<script>
+const CONTACT_EMAIL = "info@fortgreen.co.uk";
+const WHATSAPP = "https://wa.me/447399232855";
+const STORE_KEY = "fg-welfare-v1";
+
+/* Toilet ratios used by UK local authorities from the Event Safety Guide / Purple Guide:
+   [people per female WC, people per male WC, people per urinal] */
+const TIERS = {
+  short:   {label:"Open under 6 hours", f:100, m:500, u:150},
+  long:    {label:"Open 6 hours or more, little alcohol or food", f:85, m:425, u:125},
+  drink:   {label:"Open 6 hours or more, alcohol and food served", f:75, m:400, u:100},
+  camping: {label:"Camping", f:75, m:150, u:250}
+};
+const ALCOHOL = [["none","None or very little"],["served","Served"],["heavy","A main part of the event"]];
+const WEATHER = [["mild","Mild"],["hot","Hot (25°C or more)"]];
+
+const BLANK = () => ({agreed:false, name:"", people:"", hours:"6", days:"1", alcohol:"served", food:true, camping:false, female:"50", existing:"", weather:"mild", traders:""});
+let state = BLANK();
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
+let PREFILLED = false;
+(function(){
+  const q = new URLSearchParams(location.search);
+  const cap = parseInt(q.get("people") || q.get("capacity") || "", 10);
+  if(cap > 0){
+    if(window.FGResults) FGResults.startNew();
+    state = Object.assign(BLANK(), {agreed: state.agreed, people: String(cap), name: (q.get("name") || "").slice(0, 120)});
+    PREFILLED = true; save(); history.replaceState(null, "", location.pathname);
+  }
+})();
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const int = v => { const x = parseInt(v, 10); return isFinite(x) && x > 0 ? x : 0; };
+const n0 = x => Math.round(x).toLocaleString("en-GB");
+
+function calc(){
+  const people = int(state.people), hours = Math.min(24, Math.max(0, parseFloat(state.hours) || 0)), days = Math.max(1, int(state.days) || 1);
+  const fShare = Math.min(100, Math.max(0, parseFloat(state.female) || 50)) / 100;
+  const tierKey = state.camping ? "camping" : hours < 6 ? "short" : (state.alcohol !== "none" && state.food) ? "drink" : "long";
+  const t = TIERS[tierKey];
+  const females = people * fShare, males = people - females;
+  const fWC = Math.ceil(females / t.f), mWC = Math.ceil(males / t.m), urinals = Math.ceil(males / t.u);
+  const existing = int(state.existing);
+  const wcNeeded = fWC + mWC;
+  const wcTemp = Math.max(0, wcNeeded - existing);
+  const accessible = people ? Math.max(1, Math.ceil((wcNeeded + urinals) / 25)) : 0;
+  const basins = people ? Math.max(1, Math.ceil((wcNeeded + urinals) / 5)) : 0;
+  // Drinking water: 2 litres a person a day or 0.5 litres an hour, whichever is more; hot weather +50%.
+  const perPerson = Math.max(2, 0.5 * hours) * (state.weather === "hot" ? 1.5 : 1);
+  const water = Math.ceil(people * perPerson * days / 100) * 100;
+  const outlets = people ? Math.max(1, Math.ceil(people / 500)) : 0;
+  // First aid: St John Ambulance guide, at least 2 under 500, 4 up to 2,000, then about 2 per 1,000.
+  const firstAid = !people ? 0 : people < 500 ? 2 : people <= 2000 ? 4 : Math.ceil(people / 1000) * 2;
+  const bins = people ? Math.ceil(people / 100) + int(state.traders) : 0;
+  return {people, hours, days, tierKey, t, fWC, mWC, urinals, wcNeeded, existing, wcTemp, accessible, basins, perPerson, water, outlets, firstAid, bins, ready: people > 0 && hours > 0};
+}
+
+function seg(name, list, val){ return `<div class="seg" role="group" aria-label="${esc(name)}">${list.map(([v,l]) => `<button type="button" data-k="${name}" data-v="${v}" aria-pressed="${val === v}">${esc(l)}</button>`).join("")}</div>`; }
+
+function renderStart(){
+  const started = state.people || state.name;
+  $("#screen-start").innerHTML = `
+    <h1 id="h-start">Toilets, water and first aid for your event</h1>
+    <p class="lede">Enter your crowd size and how long you’re open, and get the toilets, hand washing, drinking water, first aid and bins to plan for, from UK event guidance.</p>
+    <div class="panel">
+      <h3>Before you start</h3>
+      <p class="muted small">This gives general planning figures only. It isn’t a welfare, medical or risk assessment, and Fort Green Limited accepts no responsibility for decisions made using it. Your local authority, Safety Advisory Group or licence may require more.</p>
+      <label class="check" style="margin-bottom:0"><input type="checkbox" id="agree" ${state.agreed ? "checked" : ""}><span>I understand these are planning figures, not an assessment.</span></label>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="go-start" ${state.agreed ? "" : "disabled"}>${started ? "Continue" : "Start"}</button>
+      ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start again</button>` : ""}
+    </div>
+    <div class="panel"><h3>Not sure of your numbers?</h3><p class="muted small" style="margin:0">Work out a safe capacity first with the <a href="/capacity/" style="color:var(--ink);font-weight:600">Capacity Calculator</a>.</p></div>`;
+  $("#agree").onchange = e => { state.agreed = e.target.checked; save(); $("#go-start").disabled = !state.agreed; };
+  $("#go-start").onclick = () => go("event");
+  const r = $("#reset");
+  if(r) r.onclick = () => { if(window.FGResults) FGResults.startNew(); state = Object.assign(BLANK(), {agreed:state.agreed}); save(); go("event"); };
+}
+
+function renderEvent(){
+  $("#screen-event").innerHTML = `
+    <h1 id="h-event">Your event</h1>
+    <div class="field"><label for="w-name">Event name</label><input type="text" id="w-name" value="${esc(state.name)}" placeholder="e.g. Summer Yard Party"></div>
+    <div class="field"><label for="w-people">People at the busiest time</label><input type="number" id="w-people" inputmode="numeric" min="1" value="${esc(state.people)}" placeholder="e.g. 2000"></div>
+    <div class="two">
+      <div class="field"><label for="w-hours">Hours open a day</label><input type="number" id="w-hours" inputmode="decimal" min="1" max="24" step="0.5" value="${esc(state.hours)}"></div>
+      <div class="field"><label for="w-days">Days</label><input type="number" id="w-days" inputmode="numeric" min="1" max="30" value="${esc(state.days)}"></div>
+    </div>
+    <div class="field"><span class="label">Alcohol</span>${seg("alcohol", ALCOHOL, state.alcohol)}</div>
+    <label class="check"><input type="checkbox" id="w-food" ${state.food ? "checked" : ""}><span>Food served</span></label>
+    <label class="check"><input type="checkbox" id="w-camp" ${state.camping ? "checked" : ""}><span>Camping on site</span></label>
+    <div class="field" style="margin-top:16px"><label for="w-female">Women in the audience (%)</label><input type="number" id="w-female" inputmode="numeric" min="0" max="100" value="${esc(state.female)}"><div class="hint">Use 50 if you don’t know.</div></div>
+    <div class="field"><span class="label">Expected weather</span>${seg("weather", WEATHER, state.weather)}</div>
+    <div class="two">
+      <div class="field"><label for="w-existing">Toilets already on site</label><input type="number" id="w-existing" inputmode="numeric" min="0" value="${esc(state.existing)}" placeholder="0"><div class="hint">Permanent toilets the audience can use.</div></div>
+      <div class="field"><label for="w-traders">Food and bar units</label><input type="number" id="w-traders" inputmode="numeric" min="0" value="${esc(state.traders)}" placeholder="0"></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary btn-block" data-go="plan">See what to provide</button></div>`;
+  const el = $("#screen-event");
+  el.querySelectorAll("[data-k]").forEach(b => b.onclick = () => { state[b.dataset.k] = b.dataset.v; save(); keep(renderEvent); });
+  const bind = (id, k) => { $(id).oninput = e => { state[k] = e.target.value; save(); }; };
+  bind("#w-name","name"); bind("#w-people","people"); bind("#w-hours","hours"); bind("#w-days","days"); bind("#w-female","female"); bind("#w-existing","existing"); bind("#w-traders","traders");
+  $("#w-food").onchange = e => { state.food = e.target.checked; save(); };
+  $("#w-camp").onchange = e => { state.camping = e.target.checked; save(); };
+  bindGo(el);
+}
+
+function renderPlan(){
+  const c = calc(), el = $("#screen-plan");
+  if(!c.ready){ el.innerHTML = `<div class="empty"><h1 id="h-plan">Provisions</h1><p class="muted">Add your crowd size and hours to see what to provide.</p><button class="btn btn-primary btn-block" data-go="event">Add your event</button></div>`; bindGo(el); return; }
+  const t = c.t;
+  const toilets = [
+    [c.fWC, "Female toilets", `1 per ${t.f} women`],
+    [c.mWC, "Male toilets", `1 per ${t.m} men`],
+    [c.urinals, "Urinals", `1 per ${t.u} men`],
+    [c.accessible, "Accessible toilets", "At least 1, and about 1 per 25 toilets and urinals"],
+    [c.basins, "Hand-washing points", "1 per 5 toilets and urinals, at least 1"]
+  ];
+  const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+  el.innerHTML = `
+    <h1 id="h-plan" style="margin-bottom:4px">${esc(state.name || "Your event")}</h1>
+    <p class="small muted">${n0(c.people)} people, ${c.hours} hours a day for ${c.days} day${c.days > 1 ? "s" : ""}. Welfare estimate, ${today}</p>
+    <div class="verdict v-main" role="status"><h3>Toilets</h3><div class="big">${c.wcNeeded} + ${c.urinals} urinals</div>
+      <p class="muted" style="margin:0">${c.existing ? `${n0(c.existing)} already on site, so hire about <b>${c.wcTemp}</b> toilets plus the urinals. ` : ""}Based on: ${esc(t.label.toLowerCase())}.</p></div>
+    <div class="roles">${toilets.map(([n, l, w]) => `<div class="role"><b>${n}</b><div><strong>${l}</strong><span>${esc(w)}</span></div></div>`).join("")}</div>
+    <p class="small muted">Toilet ratios from the Event Safety Guide and Purple Guide, as published by UK councils. Accessible toilet figure is a Fort Green planning assumption. Spread toilets around the site rather than in one block.</p>
+
+    <div class="panel"><h2>Drinking water</h2>
+      <div class="stats" style="grid-template-columns:repeat(2,1fr);margin-top:8px">
+        <div><b>${n0(c.water)} L</b><span>free drinking water over the event</span></div>
+        <div><b>${c.outlets}</b><span>water point${c.outlets > 1 ? "s" : ""}, about 1 per 500 people</span></div>
+      </div>
+      <p class="small muted" style="margin:0">${c.perPerson.toFixed(1)} litres a person a day: 2 litres or half a litre an hour, whichever is more${state.weather === "hot" ? ", plus 50% for hot weather" : ""}. UK guidance doesn’t set a figure, so this follows Australian state event guidance. ${state.alcohol !== "none" ? "Where alcohol is sold, free tap water must be available on request." : ""}</p>
+    </div>
+
+    <div class="panel"><h2>First aid</h2>
+      <div class="stats" style="grid-template-columns:1fr;margin-top:8px"><div><b>${c.firstAid}</b><span>qualified first aiders on duty at all times</span></div></div>
+      <p class="small muted" style="margin:0">From St John Ambulance guidance: at least 2 for under 500 people, 4 for up to 2,000, and roughly 2 per 1,000 above that.${c.people > 500 ? " Consider a nurse or paramedic." : ""}${c.people > 2000 ? " Over 2,000 people you need a proper medical risk assessment and plan, following the Purple Guide, agreed with your Safety Advisory Group. It may need ambulances and a treatment centre." : ""}${state.alcohol === "heavy" || state.weather === "hot" ? " Heavy drinking and hot weather both increase demand, so plan above the minimum." : ""}</p>
+    </div>
+
+    <div class="panel"><h2>Bins</h2>
+      <div class="stats" style="grid-template-columns:1fr;margin-top:8px"><div><b>${c.bins}</b><span>litter bins, with recycling alongside</span></div></div>
+      <p class="small muted" style="margin:0">About 1 per 100 people${int(state.traders) ? ", plus 1 at each of the " + int(state.traders) + " food and bar units" : ""}. A Fort Green planning assumption: no UK guidance sets a figure. Plan emptying during the event, not just at the end.</p>
+    </div>
+
+    <div class="panel"><h2>Also plan for</h2><ul class="ticks">
+      <li><div><strong>Servicing</strong><span>Toilets emptied, cleaned and restocked during the event, not just before it opens. Long or busy events need servicing several times a day.</span></div></li>
+      <li><div><strong>Lighting and signs</strong><span>Toilets, water points and first aid clearly signed and lit after dark.</span></div></li>
+      <li><div><strong>Welfare and vulnerability</strong><span>A welfare point or safe space for people who are lost, drunk, unwell or vulnerable, with trained staff.</span></div></li>
+      <li><div><strong>Staff and crew</strong><span>Separate toilets, water and rest areas for staff where you can.</span></div></li>
+      ${c.hours >= 6 || state.weather === "hot" ? `<li><div><strong>Shade and shelter</strong><span>Shade and water in hot weather, and shelter if it rains.</span></div></li>` : ""}
+    </ul></div>
+
+    <div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>
+    <div class="cta no-print">
+      <h2>Need it delivered and run?</h2>
+      <p class="muted">Fort Green supplies stewards, welfare and first aid teams, power and site crew, and can arrange toilets, water and waste alongside your security.</p>
+      <div class="btn-row">
+        <a class="btn btn-primary btn-block" href="/quote/">Get an estimate</a>
+        <a class="btn btn-ghost btn-block" href="${WHATSAPP}" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+      </div>
+    </div>
+    <div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="event">Change my event</button></div>
+    <p class="disclaimer">These are general planning figures to help you prepare. They aren’t a welfare, medical, sanitation or risk assessment, or professional advice. Toilet ratios follow those published by UK local authorities from the Event Safety Guide and Purple Guide; first aid figures follow St John Ambulance guidance; drinking water follows Australian state event guidance because UK guidance doesn’t set a figure; accessible toilet and bin figures are Fort Green planning assumptions. Real needs depend on your audience, layout, weather, alcohol, duration and site. Your local authority, Safety Advisory Group, licence and medical provider may require more, and their requirements apply over these figures. Fort Green Limited accepts no responsibility or liability for any injury, illness, enforcement action, cost or loss arising from use of this tool or reliance on its results. Fort Green isn’t affiliated with or endorsed by St John Ambulance, the Events Industry Forum or any local authority.</p>`;
+  $("#print").onclick = () => window.print();
+  bindGo(el);
+}
+
+const TABS = ["start","event","plan"];
+function go(tab){
+  if(tab !== "start" && !state.agreed) tab = "start";
+  TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  ({start:renderStart, event:renderEvent, plan:renderPlan})[tab]();
+  if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+  window.scrollTo(0,0);
+}
+function keep(fn){ const y = window.scrollY; fn(); window.scrollTo(0, y); }
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go)); }
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(TABS.includes(h)) go(h); });
+go(PREFILLED ? "event" : TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "start");
+</script>
+</body>
+</html>

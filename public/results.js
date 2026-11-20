@@ -53,6 +53,12 @@
         return [s.date ? new Date(s.date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "", on.join(", ")].filter(Boolean).join(": ");
       }
     },
+    "welfare": {
+      label: "Welfare & Provisions Calculator", key: "fg-welfare-v1", tab: "plan",
+      ready: function () { return calc().ready; },
+      title: function (s) { return s.name || "Welfare plan"; },
+      summary: function () { var c = calc(); return c.wcNeeded + " toilets + " + c.urinals + " urinals, " + c.firstAid + " first aiders for " + c.people.toLocaleString("en-GB") + " people"; }
+    },
     "capacity": {
       label: "Capacity Calculator", key: "fg-capacity-v1", tab: "capacity",
       ready: function () { return calc().ready; },

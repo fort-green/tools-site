@@ -30,6 +30,7 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/staffing/` | Security staffing calculator: door supervisors (1 per 100, or per entrance), stewards (1:250 / 1:100 by risk), response, supervisors, relief, with reasoning. Capacity Calculator links in with `?capacity=&mode=&name=` |
 | `public/quote/` | Event quote estimator: security, power, crew and equipment → one estimate (+VAT) from `qe_estimate()`, then a firm quote request |
 | `public/quote/rates/` | Quote rates (admins only): edit the rate card in `qe_rates` |
+| `public/welfare/` | Welfare & provisions calculator: toilets (Event Safety Guide / Purple Guide ratios by duration, alcohol and camping), hand washing, accessible toilets, drinking water, first aid (St John Ambulance), bins. Capacity Calculator links in with `?people=&name=` |
 | `public/results/` | My Results: everyone's saved results from the free tools, with open, duplicate and delete. Admins can switch to all clients' results |
 | `public/results.js` | Include on free tool pages (after auth-guard.js): autosaves the tool's work to `hub_results` and reopens it from `?result=<id>`. Tool settings (which localStorage key, title, summary) are in its `TOOLS` list |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
