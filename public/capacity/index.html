@@ -5,6 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
+<script src="/lead.js"></script>
 <script src="/results.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -686,7 +687,7 @@ $("#lead-form").onsubmit = async e => {
     exits:c.es.filter(e => num(e.width)).slice(0, 30).map((e, i) => { const x = exitCalc(e); return {name:e.name || "Exit " + (i + 1),
       width: outdoor() ? n1(x.w) + " m" + (e.stepped ? ", stepped" : "") : n0(x.w) + " mm", people:x.cap, blocked: !!(c.discounted && c.discounted.id === e.id)}; }),
     submitted_at:new Date().toISOString() };
-  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  if(LEAD_ENDPOINT){ try{ await FGLead.post(LEAD_ENDPOINT, lead); }catch(x){} }
   state.unlocked = true; save(); closeSheet(); renderCapacity(); window.scrollTo(0,0);
 };
 

@@ -5,6 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
+<script src="/lead.js"></script>
 <script src="/results.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -765,7 +766,7 @@ async function bookReview(r, gaps, btn){
     submitted_at:new Date().toISOString()
   });
   try{
-    const res = await fetch(REVIEW_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+    const res = await FGLead.post(REVIEW_ENDPOINT, payload);
     if(!res.ok) throw new Error(res.status);
     state.reviewRequested = true; save(); renderReport();
   }catch(x){
@@ -792,7 +793,7 @@ $("#lead-form").onsubmit = async e => {
     use:state.use, tier:r.t.key, score:r.score, answers:state.answers, submitted_at:new Date().toISOString() };
   const submitBtn = e.target.querySelector("[type=submit]"); submitBtn.disabled = true; submitBtn.textContent = "Sending…";
   let sent = false;
-  if(LEAD_ENDPOINT){ try{ const res = await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); sent = res.ok; }catch(x){} }
+  if(LEAD_ENDPOINT){ try{ const res = await FGLead.post(LEAD_ENDPOINT, lead); sent = res.ok; }catch(x){} }
   submitBtn.disabled = false; submitBtn.textContent = "Show my full report";
   state.reportEmailed = sent;
   state.lead = {name:lead.name, email:lead.email, organisation:lead.organisation, phone:lead.phone, marketing_opt_in:lead.marketing_opt_in};

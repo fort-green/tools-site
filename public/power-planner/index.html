@@ -5,6 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
+<script src="/lead.js"></script>
 <script src="/results.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -815,7 +816,7 @@ $("#lead-form").onsubmit = async e => {
     load_pct: c.loadPct ? Math.round(c.loadPct * 100) : null, litres_per_hour: c.lph ? +c.lph.toFixed(1) : null,
     fuel_litres: c.gen && c.hours ? Math.round(c.lph * c.hours * 1.1) : null, total_hours: c.hours,
     items:c.items.slice(0, 80).map(i => ({name:i.name, qty:i.qty, watts:i.w, outlet:connector(i)})), submitted_at:new Date().toISOString() };
-  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  if(LEAD_ENDPOINT){ try{ await FGLead.post(LEAD_ENDPOINT, lead); }catch(x){} }
   state.unlocked = true; save(); closeSheet(); if(fuelAfterUnlock){ fuelAfterUnlock = false; renderFuel(); } else renderPower(); window.scrollTo(0,0);
 };
 
