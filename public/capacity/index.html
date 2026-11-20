@@ -255,7 +255,7 @@ textarea{font:inherit;color:inherit}
 /* ---------- Config ----------
    LEAD_ENDPOINT: set to an n8n webhook URL to capture leads.
    Left empty: the report unlocks on the device without sending anything. */
-const LEAD_ENDPOINT = "";
+const LEAD_ENDPOINT = "https://sierra-six.app.n8n.cloud/webhook/capacity-lead";
 const CONTACT_EMAIL = "info@fortgreen.co.uk";
 const WHATSAPP = "https://wa.me/447399232855";
 const STORE_KEY = "fg-capacity-v1";
@@ -678,7 +678,13 @@ $("#lead-form").onsubmit = async e => {
   const lead = { tool:"capacity-calculator", name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
     marketing_opt_in:$("#f-mkt").checked, venue:state.name, type:state.mode, capacity:c.cap, limited_by:c.min.key,
     floor_capacity:c.floorCap, exit_capacity:c.exitCap, staff:c.staff, licence_capacity:Math.floor(num(state.licence)) || null,
-    martyns_law_tier:tier(c.cap).name, submitted_at:new Date().toISOString() };
+    martyns_law_tier:tier(c.cap).name, limited_by_label:c.min.label, guests:c.guests,
+    egress_minutes: outdoor() ? parseFloat(state.egress) || 8 : null, alcohol: outdoor() ? !!state.alcohol : null,
+    zones:c.zs.filter(z => z.people || z.area).slice(0, 30).map((z, i) => ({name:z.name || "Area " + (i + 1),
+      working: z.seats ? n0(z.people) + " seats" : n1(z.area) + " m² " + (outdoor() ? "× " + z.d + " per m²" : "÷ " + z.f + " m² per person"), people:z.people})),
+    exits:c.es.filter(e => num(e.width)).slice(0, 30).map((e, i) => { const x = exitCalc(e); return {name:e.name || "Exit " + (i + 1),
+      width: outdoor() ? n1(x.w) + " m" + (e.stepped ? ", stepped" : "") : n0(x.w) + " mm", people:x.cap, blocked: !!(c.discounted && c.discounted.id === e.id)}; }),
+    submitted_at:new Date().toISOString() };
   if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
   state.unlocked = true; save(); closeSheet(); renderCapacity(); window.scrollTo(0,0);
 };

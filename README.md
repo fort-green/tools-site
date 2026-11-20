@@ -18,7 +18,7 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/risk-assessment-full/` | Risk assessment generator, full staff version: editable hazards and actions, revisions, branded Word and PDF export (staff) |
 | `public/licensing/` | Licensing and TEN guidance |
 | `public/power-planner/` | Event power planner |
-| `public/capacity/` | Capacity calculator: safe capacity from floor space and exits (indoor, Approved Document B) or crowd density and egress time (outdoor, Green Guide rates), with Martyn's Law tier. Lead endpoint not connected yet |
+| `public/capacity/` | Capacity calculator: safe capacity from floor space and exits (indoor, Approved Document B) or crowd density and egress time (outdoor, Green Guide rates), with Martyn's Law tier |
 | `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in (staff) |
 | `public/portal/` | Client portal: bookings calendar, documents, extra staff requests, invoicing details, toolkit; staff manage client access |
 | `supabase/functions/client-portal/` | Source of the client-portal edge function (deployed to Supabase, not served by Netlify) |
@@ -78,3 +78,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **How saving works:** each free tool already keeps its work in one localStorage key. `results.js` watches that key and saves it about a second after each change, once the tool's `ready` check passes. A tool's "start again" button calls `FGResults.startNew()` so the next save becomes a new result.
 - **Admins viewing a client's result:** it opens in the tool with a red banner, nothing is saved, and the admin's own work on that device is put back when they close it.
 - **Adding a new free tool:** add it to `TOOLS` in `results.js`, add it to the `tool` check constraint on `hub_results`, include `results.js` on the page and call `FGResults.startNew()` in its reset button.
+
+## Capacity calculator and power planner: what lives outside this repo
+
+- **Report forms** post to the n8n workflows "Capacity calculator: report request (lead capture)" (webhook `capacity-lead`) and "Power planner: plan request (lead capture)" (webhook `power-planner-lead`) on sierra-six. Each emails the visitor their full report via Gmail, logs every lead on its own tab of the Fort Green email list sheet ("Capacity leads", "Power planner leads"), and adds opted-in people to the "Email list" tab.
+- Both webhooks only accept browser requests from tools.fortgreen.co.uk, but like the Martyn's Law one they're public, so a bot check (e.g. Cloudflare Turnstile) is still to be added.

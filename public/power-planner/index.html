@@ -238,7 +238,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 /* ---------- Config ----------
    LEAD_ENDPOINT: set to the n8n webhook URL when this runs on fortgreen.co.uk.
    Left empty here: the plan unlocks on the device without sending anything. */
-const LEAD_ENDPOINT = "";
+const LEAD_ENDPOINT = "https://sierra-six.app.n8n.cloud/webhook/power-planner-lead";
 const CONTACT_EMAIL = "info@fortgreen.co.uk";
 const WHATSAPP = "https://wa.me/447399232855";
 const STORE_KEY = "fg-power-planner-v1";
@@ -675,7 +675,11 @@ $("#lead-form").onsubmit = async e => {
   const lead = { tool:"power-planner", name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
     marketing_opt_in:$("#f-mkt").checked, event:state.name, site:state.site, hours_per_day:state.hours, days:state.days,
     running_kw:+(c.runW/1000).toFixed(2), peak_kva:+(c.peakVA/1000).toFixed(2), generator_kva:c.gen, three_phase:c.threePhase,
-    supply_amps:c.supply.amps, items:c.items.map(i => ({name:i.name, qty:i.qty, watts:i.w})), submitted_at:new Date().toISOString() };
+    supply_amps:c.supply.amps, supply_label: c.supply.amps ? c.supply.amps + "A " + (c.threePhase ? "three-phase" : "single-phase") : "Beyond a typical venue supply",
+    generator_label: c.gen ? c.gen + " kVA " + (c.threePhase ? "three-phase" : "single-phase") : "Over 1,000 kVA",
+    load_pct: c.loadPct ? Math.round(c.loadPct * 100) : null, litres_per_hour: c.lph ? +c.lph.toFixed(1) : null,
+    fuel_litres: c.gen && c.hours ? Math.round(c.lph * c.hours * 1.1) : null, total_hours: c.hours,
+    items:c.items.slice(0, 80).map(i => ({name:i.name, qty:i.qty, watts:i.w, outlet:connector(i)})), submitted_at:new Date().toISOString() };
   if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
   state.unlocked = true; save(); closeSheet(); renderPower(); window.scrollTo(0,0);
 };
