@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
+<script src="/wx.js"></script>
 <style>
 :root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;--ghost:#ececec;
   --staff-bg:#100f10;--staff-ink:#fff;--staff-muted:#c9c9c9;--staff-line:#3d3c3d;--staff-ghost:#1f1e1f;--err:#b42318;color-scheme:light}
@@ -49,6 +50,21 @@ header .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-con
 .go{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
 .card.portal{background:var(--ink);color:var(--bg);border-color:var(--ink)}.card.portal p,.card.portal .go{color:var(--bg)}.card.portal .foot{border-color:rgba(127,127,127,.5);color:var(--bg)}
 .card.ask{background:var(--soft);border-color:var(--line)}
+.card.wx{gap:14px;cursor:default}
+.wx-gallery{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -2px;flex:1}
+.wx-gallery::-webkit-scrollbar{display:none}
+.wx-slide{flex:0 0 100%;scroll-snap-align:start;display:flex;flex-direction:column;gap:10px;padding:0 2px;color:inherit;text-decoration:none}
+.wx-place{display:flex;flex-direction:column;gap:2px}.wx-place b{font-size:20px;font-weight:700}.wx-place span{font-size:14px;color:var(--muted)}
+.wx-now{display:flex;align-items:baseline;gap:12px;margin-top:auto}.wx-now b{font-family:Antonio,'Arial Narrow',sans-serif;font-size:72px;line-height:.9;font-weight:700}.wx-now span{font-size:17px;color:var(--body)}
+.wx-wind{display:flex;align-items:center;gap:8px;font-size:17px}.wx-arrow{flex:none}
+.wx-next{font-size:15px;color:var(--body);line-height:1.4}
+.wx-status{font-size:14px;font-weight:700;padding:8px 10px;border:1px solid currentColor}
+.wx-ok{color:var(--ink)}.wx-caution{color:#8a5a00;background:#fff4e0}.wx-stop{color:#b42318;background:#fbe4e1}
+.wx-dots{display:flex;gap:8px;justify-content:center}.wx-dots button{width:10px;height:10px;padding:0;border:1px solid var(--ink);background:transparent;cursor:pointer}.wx-dots button[aria-selected=true]{background:var(--ink)}
+.wx-empty{margin-top:auto;display:flex;flex-direction:column;gap:16px;align-items:flex-start}.wx-empty p{margin:0}
+.wx-issue{margin:auto 0 0;color:var(--muted)}
+.wx-foot-link{color:var(--ink)}
+
 .staff{background:var(--staff-bg);color:var(--staff-ink);padding:72px 0 88px;margin-top:88px}
 .staff .sechead span{color:var(--staff-muted)}
 .staff .card{background:transparent;border-color:var(--staff-line);color:var(--staff-ink);min-height:320px}
@@ -143,8 +159,13 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
   </section>
 
   <section class="wrap" aria-labelledby="h-public">
-    <div class="sechead"><h2 class="display" id="h-public">Available to you</h2><span>5 tools</span></div>
+    <div class="sechead"><h2 class="display" id="h-public">Available to you</h2><span>6 tools</span></div>
     <div class="grid">
+      <div class="card wx" id="card-weather">
+        <span class="tag">Live weather</span>
+        <div data-wx-body style="display:flex;flex-direction:column;flex:1;gap:12px"><p class="wx-issue">Loading weather…</p></div>
+        <div class="foot"><span data-wx-foot>Met Office forecast</span><a class="go" href="/weather/">Open weather</a></div>
+      </div>
       <a class="card portal" href="/portal/" id="card-portal" hidden>
         <span class="tag">Your account</span>
         <h3 class="display">Client portal</h3>
@@ -292,6 +313,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
   async function checkAccess() {
     var b = await sb.rpc("hub_is_blocked");
     if (b && b.data === true) { await sb.auth.signOut(); signedIn = false; showLogin("email"); err("email-err", REMOVED_MSG); return; }
+    if (window.FGWeather) FGWeather.mountCard($("card-weather"), sb);
     var a = await sb.rpc("hub_is_admin");
     $("card-users").hidden = !(a && a.data === true);
     if (isStaff(lastEmail)) { $("card-portal").hidden = false; $("portal-sub").textContent = "Staff view: all venues"; }

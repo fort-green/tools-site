@@ -22,6 +22,9 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in (staff) |
 | `public/portal/` | Client portal: bookings calendar, documents, extra staff requests, invoicing details, toolkit; staff manage client access |
 | `supabase/functions/client-portal/` | Source of the client-portal edge function (deployed to Supabase, not served by Netlify) |
+| `public/weather/` | Weather and wind: Met Office forecast and gusts for up to 3 saved UK places, 48-hour wind chart, optional caution/stop gust limits. The same places show as a swipeable gallery on the hub's first card |
+| `public/wx.js` | Shared weather helpers and the hub weather card (`FGWeather.mountCard`) |
+| `supabase/functions/weather/` | Source of the `weather` edge function (deployed to Supabase, not served by Netlify) |
 | `public/results/` | My Results: everyone's saved results from the free tools, with open, duplicate and delete. Admins can switch to all clients' results |
 | `public/results.js` | Include on free tool pages (after auth-guard.js): autosaves the tool's work to `hub_results` and reopens it from `?result=<id>`. Tool settings (which localStorage key, title, summary) are in its `TOOLS` list |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
@@ -83,3 +86,10 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 
 - **Report forms** post to the n8n workflows "Capacity calculator: report request (lead capture)" (webhook `capacity-lead`) and "Power planner: plan request (lead capture)" (webhook `power-planner-lead`) on sierra-six. Each emails the visitor their full report via Gmail, logs every lead on its own tab of the Fort Green email list sheet ("Capacity leads", "Power planner leads"), and adds opted-in people to the "Email list" tab.
 - Both webhooks only accept browser requests from tools.fortgreen.co.uk, but like the Martyn's Law one they're public, so a bot check (e.g. Cloudflare Turnstile) is still to be added.
+
+## Weather and wind: what lives outside this repo
+
+- **Forecasts:** Met Office Weather DataHub, Site Specific **Global Spot** hourly API. The key is the Supabase edge function secret `METOFFICE_API_KEY` (never in this repo or the browser). Until it's set, the card and page say the forecast isn't connected.
+- **Edge function `weather`** (source in `supabase/functions/weather/`): signed-in users only; takes up to 3 places, rounds each to a ~2 km grid point, serves cached forecasts from `wx_cache` for 60 minutes and otherwise calls the Met Office. Calls are counted per UTC day in `wx_usage` and stop at `METOFFICE_DAILY_LIMIT` (default 340, under the free plan's 360); after that it serves the last cached forecast. On a paid plan, raise that secret.
+- **Places:** table `wx_places` (owner-only RLS, max 3 per person enforced by a trigger), with optional caution/stop gust limits in mph.
+- **Place search:** postcodes.io (free, no key) for postcodes, outcodes, place names and "use my current location".
