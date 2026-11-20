@@ -5,6 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
+<script src="/results.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Capacity calculator | Fort Green</title>
@@ -389,7 +390,7 @@ function renderStart(){
   $("#agree").onchange = e => { state.agreed = e.target.checked; save(); $("#go-start").disabled = !state.agreed; };
   $("#go-start").onclick = () => go("space");
   const r = $("#reset");
-  if(r) r.onclick = () => { state = Object.assign(BLANK(), {agreed:state.agreed}); save(); go("space"); };
+  if(r) r.onclick = () => { if(window.FGResults) FGResults.startNew(); state = Object.assign(BLANK(), {agreed:state.agreed}); save(); go("space"); };
 }
 
 function zoneText(z){

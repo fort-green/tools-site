@@ -22,6 +22,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in (staff) |
 | `public/portal/` | Client portal: bookings calendar, documents, extra staff requests, invoicing details, toolkit; staff manage client access |
 | `supabase/functions/client-portal/` | Source of the client-portal edge function (deployed to Supabase, not served by Netlify) |
+| `public/results/` | My Results: everyone's saved results from the free tools, with open, duplicate and delete. Admins can switch to all clients' results |
+| `public/results.js` | Include on free tool pages (after auth-guard.js): autosaves the tool's work to `hub_results` and reopens it from `?result=<id>`. Tool settings (which localStorage key, title, summary) are in its `TOOLS` list |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
 | `public/staff-guard.js` | Like auth-guard, but also sends non-staff back to the hub |
 
@@ -69,3 +71,10 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Documents:** private storage bucket `client-docs`, files at `<venue_id>/<kind>/...`, listed in `cp_documents`. Clients upload licences and other files; only staff can upload invoices.
 - **Invoicing details:** `cp_billing`, with every change kept in `cp_billing_log`.
 - **Emails:** n8n workflow "FG Client portal – email notifications" (sierra-six), sent through Gmail. Fort Green alerts go to info@fortgreen.co.uk (set as OPS in its Build email node); clients get emails when requests are decided and invoices are added.
+
+## My Results: what lives outside this repo
+
+- **Table:** `hub_results` in FORT GREEN PROJECT1 (one row per saved result; the tool's whole state in `data`). Row-level security: people read, change and delete only their own rows; admins (`hub_is_admin()`) can read everyone's. A trigger keeps `user_id`, `email`, `tool` and `created_at` fixed and stamps `updated_at`.
+- **How saving works:** each free tool already keeps its work in one localStorage key. `results.js` watches that key and saves it about a second after each change, once the tool's `ready` check passes. A tool's "start again" button calls `FGResults.startNew()` so the next save becomes a new result.
+- **Admins viewing a client's result:** it opens in the tool with a red banner, nothing is saved, and the admin's own work on that device is put back when they close it.
+- **Adding a new free tool:** add it to `TOOLS` in `results.js`, add it to the `tool` check constraint on `hub_results`, include `results.js` on the page and call `FGResults.startNew()` in its reset button.

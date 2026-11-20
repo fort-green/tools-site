@@ -5,6 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
+<script src="/results.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Event risk assessment builder | Fort Green</title>
@@ -476,7 +477,7 @@ function renderStart(){
   $("#accept").onchange = e => { state.accepted = e.target.checked ? new Date().toISOString() : null; save(); renderStart(); updateBadges(); };
   $("#begin").onclick = () => go("event");
   const r = $("#reset");
-  if(r) r.onclick = () => { const a = state.accepted; state = BLANK(); state.accepted = a; save(); updateBadges(); go("event"); };
+  if(r) r.onclick = () => { if(window.FGResults) FGResults.startNew(); const a = state.accepted; state = BLANK(); state.accepted = a; save(); updateBadges(); go("event"); };
 }
 
 function renderEvent(){
