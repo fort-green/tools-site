@@ -25,6 +25,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/weather/` | Weather and wind: Met Office forecast and gusts for up to 3 saved UK places, 48-hour wind chart, optional caution/stop gust limits. The same places show as a swipeable gallery on the hub's first card |
 | `public/wx.js` | Shared weather helpers and the hub weather card (`FGWeather.mountCard`) |
 | `supabase/functions/weather/` | Source of the `weather` edge function (deployed to Supabase, not served by Netlify) |
+| `public/run-sheet/` | Run sheet & call sheet builder: event details, contacts, timed cues, crew calls, crew link and PDFs. Saves to My Results (`hub_results`, tool `run-sheet`) |
+| `public/run-sheet/view/` | Public crew view of a published run sheet (`?t=<token>`, no sign-in). `sheet.js`/`sheet.css` render it for both pages |
 | `public/results/` | My Results: everyone's saved results from the free tools, with open, duplicate and delete. Admins can switch to all clients' results |
 | `public/results.js` | Include on free tool pages (after auth-guard.js): autosaves the tool's work to `hub_results` and reopens it from `?result=<id>`. Tool settings (which localStorage key, title, summary) are in its `TOOLS` list |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
@@ -93,3 +95,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Edge function `weather`** (source in `supabase/functions/weather/`): signed-in users only; takes up to 3 places, rounds each to a ~2 km grid point, serves cached forecasts from `wx_cache` for 60 minutes and otherwise calls the Met Office. Calls are counted per UTC day in `wx_usage` and stop at `METOFFICE_DAILY_LIMIT` (default 340, under the free plan's 360); after that it serves the last cached forecast. On a paid plan, raise that secret.
 - **Places:** table `wx_places` (owner-only RLS, max 3 per person enforced by a trigger), with optional caution/stop gust limits in mph.
 - **Place search:** postcodes.io (free, no key) for postcodes, outcodes, place names and "use my current location".
+
+## Run sheet: what lives outside this repo
+
+- **Saved run sheets** are rows in `hub_results` with tool `run-sheet`, autosaved by `results.js` like the other tools.
+- **Crew links:** table `rs_shares` (one row per published run sheet, 64-character random token; owner-only via `rs_owns()`). Deleting the row turns the link off. The public view reads through `rs_view(token)`, the only part callable without signing in, which returns just that run sheet's content. The view refreshes every minute, so crew see edits without a new link.

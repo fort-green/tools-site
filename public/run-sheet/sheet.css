@@ -1,0 +1,33 @@
+/* Run sheet and call sheet layout, shared by the builder preview, PDFs and the crew link. */
+.rs{color:var(--ink)}
+.rs-head h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(38px,10vw,56px);line-height:.95;margin:0 0 8px}
+.rs-date{font-weight:700;font-size:17px;margin:0 0 4px}
+.rs-addr{color:var(--muted);margin:0 0 4px;font-size:15px}
+.rs-link{color:var(--ink);font-weight:700;margin-left:6px}
+.rs-sec{margin:26px 0 0}
+.rs-sec h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:26px;margin:0 0 6px;padding-top:10px;border-top:2px solid var(--ink)}
+.rs-day{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:18px;color:var(--muted);margin:14px 0 2px}
+.rs-run{list-style:none;margin:0;padding:0}
+.rs-cue{display:grid;grid-template-columns:82px 1fr;gap:12px;padding:11px 6px;border-bottom:1px solid var(--line);break-inside:avoid}
+.rs-time{font-family:"Antonio","Arial Narrow",sans-serif;font-size:22px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.rs-time span{display:block;font-size:15px;color:var(--muted)}
+.rs-what strong{display:block;font-size:16px;line-height:1.3}
+.rs-what span{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.rs-what em{display:block;font-style:normal;font-size:14px;margin-top:4px;padding-left:8px;border-left:2px solid var(--line)}
+.rs-now{background:var(--accent);color:var(--accent-ink)}
+.rs-now .rs-time span,.rs-now .rs-what span{color:inherit;opacity:.8}
+.rs-now .rs-what em{border-color:currentColor}
+.rs-next{box-shadow:inset 4px 0 0 var(--accent)}
+.rs-flag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid currentColor;padding:1px 6px;margin-bottom:4px}
+.rs-contacts{list-style:none;margin:0;padding:0}
+.rs-contacts li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.rs-contacts span{display:block;font-size:14px;color:var(--muted)}
+.rs-tel{font-weight:700;color:var(--ink);white-space:nowrap}
+.rs-what .rs-tel{display:inline-block;margin-top:4px;font-size:14px}
+.rs-note,.rs-notes{font-size:15px;margin:10px 0 0}
+.rs-empty{color:var(--muted)}
+@media print{
+  .rs-now{background:none;color:inherit}.rs-next{box-shadow:none}.rs-flag{display:none}
+  .rs-cue{padding:6px 0}.rs-sec{margin-top:16px}
+  .rs a{text-decoration:none}
+}

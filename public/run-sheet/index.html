@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/auth-guard.js"></script>
+<script src="/results.js"></script>
+<script src="/run-sheet/sheet.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Run sheet &amp; call sheet | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/run-sheet/sheet.css">
+<style>
+:root{
+  --bg:#fbfbfb; --surface:#ffffff; --surface-2:#eeeeee; --ink:#000000; --muted:#5f5f5f;
+  --line:#cecece; --accent:#000000; --accent-ink:#ffffff; --accent-soft:#e8e8e8;
+  --amber:#4a4a4a; --amber-soft:#e3e3e3; --red:#b42318; --red-soft:#fbe4e1; --zone-out:#ffffff; --zone-std:#cecece;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+    --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+    --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#100f10; --surface:#1a191a; --surface-2:#262526; --ink:#ffffff; --muted:#a9a9a9;
+  --line:#3b3a3b; --accent:#ffffff; --accent-ink:#000000; --accent-soft:#2e2d2e;
+  --amber:#cecece; --amber-soft:#333233; --red:#ff7b6e; --red-soft:#2d1513; --zone-out:#1a191a; --zone-std:#4a494a;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top, 0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top, 0px);z-index:10;background:var(--bg)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.topbar{position:sticky;top:env(safe-area-inset-top, 0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+.brand{display:flex;align-items:center;font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.01em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+.tool-name{font-size:14px;color:var(--muted);font-weight:500}
+
+main{max-width:560px;margin:0 auto;padding:20px 18px 120px}
+.screen{display:none}
+.screen.on{display:block}
+
+h1{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:clamp(46px,13vw,72px);line-height:.9;letter-spacing:-.01em;margin:8px 0 16px}
+h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:28px;line-height:1.1;margin:0 0 6px}
+h3{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;font-size:22px;line-height:1.15;margin:0 0 4px}
+p{margin:0 0 12px}
+.lede{font-size:18px;color:var(--muted);max-width:34em}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:0;padding:18px;margin:16px 0}
+.status{display:flex;gap:10px;align-items:flex-start;border-left:4px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0;margin:18px 0}
+.status strong{display:block}
+.status.warn{border-left-color:var(--red)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border-radius:0;border:0;cursor:pointer;font-family:"Manrope",system-ui,sans-serif;font-weight:600;font-size:16px;letter-spacing:.01em;text-decoration:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-row{display:grid;gap:10px;margin-top:18px}
+.link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Forms */
+.field{margin:0 0 18px}
+.field label,.field .label{display:block;font-weight:600;margin-bottom:6px}
+.hint{font-size:14px;color:var(--muted);margin-top:6px}
+input[type=text],input[type=email],input[type=number],input[type=search],select{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:0}
+.seg button{min-height:44px;border:0;border-radius:0;background:transparent;cursor:pointer;font-weight:600;font-size:15px;color:var(--muted);padding:4px 6px;line-height:1.2}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.check{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--accent);flex:none}
+
+/* Load meter: signature element */
+.meter{margin:40px 0 8px}
+.meter-track{position:relative;height:46px;background:var(--zone-out);box-shadow:inset 0 0 0 1px var(--line)}
+.meter-track .run{position:absolute;left:0;top:0;bottom:0;background:var(--accent);transition:width .4s ease}
+.meter-track .peak{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--zone-std) 0 6px,transparent 6px 11px);box-shadow:inset 0 0 0 1px var(--zone-std);transition:left .4s ease,width .4s ease}
+.meter-track .limit{position:absolute;top:-10px;bottom:-10px;width:0}
+.meter-track .limit::before{content:"";position:absolute;left:-1.5px;top:0;bottom:0;width:3px;background:var(--red)}
+.meter-track .limit::after{content:attr(data-label);position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:12px;font-weight:600;padding:1px 7px;white-space:nowrap}
+.meter-track .over{position:absolute;inset:0;background:var(--red-soft);box-shadow:inset 0 0 0 2px var(--red)}
+.meter-ticks{position:relative;height:22px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter-ticks span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
+.meter-ticks span:first-child{transform:none}
+.meter-ticks span:last-child{transform:translateX(-100%)}
+.legend{list-style:none;padding:0;margin:6px 0 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{width:14px;height:14px;flex:none;display:inline-block}
+.sw-run{background:var(--accent)}
+.sw-peak{background:repeating-linear-gradient(135deg,var(--zone-std) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1px var(--zone-std)}
+.sw-lim{background:var(--red);width:4px}
+
+/* Verdict */
+.verdict{border-radius:0;padding:18px;margin:18px 0;border:1.5px solid var(--line);background:var(--surface)}
+.verdict.v-main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.verdict.v-main .muted{color:inherit;opacity:.8}
+.verdict.v-alt{border-color:var(--accent)}
+.verdict.v-check{border-color:var(--ink);border-style:dashed}
+.big{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:56px;line-height:.95;text-transform:uppercase;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:16px 0}
+.stats div{background:var(--surface);padding:12px}
+.stats b{display:block;font-family:"Antonio","Arial Narrow",sans-serif;font-size:26px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+
+/* Equipment */
+.sum{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 53px);z-index:5;background:var(--bg);padding:10px 0 12px;border-bottom:1px solid var(--line)}
+.sum-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+.sum-row strong{font-size:16px}
+.bar{height:6px;background:var(--surface-2);border-radius:0;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s ease}
+.q-group{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:600;text-transform:uppercase;font-size:24px;margin:24px 0 2px;padding-top:6px}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.item strong{display:block;font-weight:600;line-height:1.3}
+.item .muted{font-size:13px}
+.item.has{}
+.item.has strong::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);margin-right:8px;vertical-align:2px}
+.stepper{display:grid;grid-template-columns:44px 40px 44px;border:1.5px solid var(--line);background:var(--surface)}
+.stepper button{height:42px;border:0;background:none;cursor:pointer;font-size:22px;font-weight:600;line-height:1}
+.stepper button:disabled{opacity:.3;cursor:default}
+.stepper output{display:flex;align-items:center;justify-content:center;font-weight:700;font-variant-numeric:tabular-nums}
+.rm{font-size:13px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.phase{display:grid;grid-template-columns:34px 1fr 70px;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.phase .bar{margin:0;height:14px}
+.phase b{font-family:"Antonio","Arial Narrow",sans-serif;font-size:18px}
+.ticks{list-style:none;padding:0;margin:0}
+.ticks li{display:grid;grid-template-columns:20px 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.ticks li:last-child{border-bottom:0}
+.ticks li::before{content:"";width:16px;height:16px;border:1.5px solid var(--ink);margin-top:3px}
+.ticks strong{display:block}
+.ticks span{color:var(--muted);font-size:14px}
+
+.locked{border:1.5px dashed var(--line);border-radius:0;padding:20px;margin:18px 0;text-align:left}
+.cta{background:var(--accent);color:var(--accent-ink);padding:20px;margin:18px 0}
+.cta .muted{color:inherit;opacity:.8}
+.cta .btn-primary{background:var(--accent-ink);color:var(--accent)}
+.cta .btn-ghost{border-color:currentColor;color:inherit}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+.empty{padding:40px 0;text-align:left}
+
+/* Bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--accent)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;background:var(--accent);border-radius:0}
+.badge{position:absolute;top:5px;left:calc(50% + 8px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;line-height:18px;text-align:center}
+
+/* Bottom sheet */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--surface);border-radius:0;padding:10px 20px calc(20px + env(safe-area-inset-bottom, 0px));max-height:90vh;overflow-y:auto;transform:translateY(105%);transition:transform .28s ease}
+.sheet.on{transform:none}
+.grabber{width:42px;height:5px;border-radius:0;background:var(--line);margin:4px auto 14px}
+.error{color:var(--red);font-size:14px;margin-top:6px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+@media print{
+  .topbar,.nav,.no-print,.overlay,.sheet{display:none!important}
+  :root{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#ccc;--accent:#000;--accent-ink:#fff}
+  body{background:#fff}
+  main{padding:0;max-width:none}
+  .screen{display:none!important}
+  #screen-power{display:block!important}
+  .panel,.verdict,.stats,.meter,table{break-inside:avoid}
+  .verdict.v-main,.cta{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+/* Run sheet builder */
+.nav-in{grid-template-columns:repeat(5,1fr)}
+textarea{width:100%;min-height:90px;padding:10px 14px;border:1.5px solid var(--line);background:var(--surface);font:inherit;font-size:16px;color:var(--ink);resize:vertical}
+textarea:focus{border-color:var(--accent);outline:none}
+input[type=time],input[type=date],input[type=tel]{width:100%;min-height:50px;padding:10px 14px;border-radius:0;border:1.5px solid var(--line);background:var(--surface);font-size:17px;color:var(--ink)}
+.row-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+.row-head h3{margin:0}
+.three{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.entry{padding:16px 18px}
+.entry .field{margin-bottom:12px}
+.entry.compact{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;cursor:pointer}
+.entry.compact .t{font-family:"Antonio","Arial Narrow",sans-serif;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.entry.compact strong{display:block}
+.entry.compact span{display:block;font-size:13px;color:var(--muted)}
+.share-box{border:1.5px solid var(--accent);padding:16px;margin:12px 0;word-break:break-all}
+.share-box code{font-size:14px}
+.preview{border:1px solid var(--line);background:var(--surface);padding:18px;margin-top:16px}
+.ok-msg{font-weight:600;font-size:14px;margin:8px 0 0}
+#print-area{display:none}
+@media print{
+  #main>*:not(#print-area){display:none!important}
+  #print-area{display:block!important}
+  .rs-head h1{font-size:34px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="https://www.fortgreen.co.uk" target="_blank" rel="noopener">Fort Green</a>
+    <div class="tool-name">Run sheet &amp; call sheet</div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="screen" id="screen-start" aria-labelledby="h-start"></section>
+  <section class="screen" id="screen-event" aria-labelledby="h-event"></section>
+  <section class="screen" id="screen-schedule" aria-labelledby="h-schedule"></section>
+  <section class="screen" id="screen-crew" aria-labelledby="h-crew"></section>
+  <section class="screen" id="screen-share" aria-labelledby="h-share"></section>
+  <div id="print-area"></div>
+</main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="nav-in">
+    <button data-tab="start"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+    <button data-tab="event"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Event</button>
+    <button data-tab="schedule"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Run sheet</button>
+    <button data-tab="crew"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 14.8c1.8.7 3 2.6 3 5.2"/></svg>Crew calls</button>
+    <button data-tab="share"><svg viewBox="0 0 24 24"><circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.8l7.6-4M8.2 13.2l7.6 4"/></svg>Share</button>
+  </div>
+</nav>
+
+<script>
+const STORE_KEY = "fg-run-sheet-v1";
+const CONTACT_EMAIL = "info@fortgreen.co.uk";
+const WHATSAPP = "https://wa.me/447399232855";
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+const BLANK = () => ({agreed:false, name:"", date:"", venue:"", address:"", postcode:"", hospital:"", notes:"", contacts:[], items:[], crew:[]});
+let state = BLANK();
+try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = FGSheet.esc;
+const cfg = window.FG_CONFIG || {};
+const sb = window.supabase && cfg.SUPABASE_URL ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY) : null;
+let editing = null, msg = "";
+
+function addMins(t, m){ if(!/^\d\d:\d\d$/.test(t||"")) return ""; const [h, mi] = t.split(":").map(Number); const x = (h * 60 + mi + m) % 1440; return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); }
+function byTime(list, f){ return list.slice().sort((a, b) => ((a.date || state.date) + " " + (a[f] || "99:99")).localeCompare((b.date || state.date) + " " + (b[f] || "99:99"))); }
+function shortDate(d){ return d ? new Date(d + "T12:00:00").toLocaleDateString("en-GB", {weekday:"short", day:"numeric", month:"short"}) : ""; }
+
+/* ---------- Home ---------- */
+async function renderStart(){
+  const started = state.name || state.items.length || state.crew.length;
+  $("#screen-start").innerHTML = `
+    <h1 id="h-start">Run sheets your crew can open on their phones</h1>
+    <p class="lede">Build the timed running order and crew call times for your event, then share one link. Crew see what’s on now and next, tap to call key contacts, and always see your latest changes.</p>
+    <div class="panel">
+      <h3>Before you start</h3>
+      <p class="muted small">This tool helps you organise and share timings. It doesn’t check that your plans are safe, legal or achievable, and Fort Green Limited accepts no responsibility for decisions made using it or for how it’s shared. Anyone with a crew link can see what’s on it, including names and phone numbers.</p>
+      <label class="check" style="margin-bottom:0"><input type="checkbox" id="agree" ${state.agreed ? "checked" : ""}><span>I understand, and I’ll only add details I’m happy to share with my crew.</span></label>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="go-start" ${state.agreed ? "" : "disabled"}>${started ? "Continue " + esc(state.name || "your run sheet") : "Start a run sheet"}</button>
+      ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start a new run sheet</button>` : ""}
+    </div>
+    <div id="recent"></div>
+    <div class="panel">
+      <h3>Smart people, on short notice, solving problems.</h3>
+      <p class="muted" style="margin:0">Festivals, venues and corporate events across London. Fort Green supplies security, stewards, production crew and power, and runs the day from one team.</p>
+    </div>`;
+  $("#agree").onchange = e => { state.agreed = e.target.checked; save(); $("#go-start").disabled = !state.agreed; };
+  $("#go-start").onclick = () => go("event");
+  const r = $("#reset");
+  if(r) r.onclick = () => { if(window.FGResults) FGResults.startNew(); state = Object.assign(BLANK(), {agreed:state.agreed}); save(); go("event"); };
+  if(sb){
+    const s = await sb.auth.getSession();
+    const u = s.data && s.data.session && s.data.session.user;
+    if(!u) return;
+    const q = await sb.from("hub_results").select("id,title,summary,updated_at").eq("tool", "run-sheet").eq("user_id", u.id).order("updated_at", {ascending:false}).limit(5);
+    const rows = (q.data || []);
+    if(rows.length && $("#recent")) $("#recent").innerHTML = `<div class="panel"><h3>Your run sheets</h3><ul class="ticks" style="margin-top:6px">${rows.map(x => `<li style="grid-template-columns:1fr;"><div><a href="/run-sheet/?result=${encodeURIComponent(x.id)}" style="color:var(--ink);font-weight:700">${esc(x.title || "Untitled")}</a><span>${esc(x.summary || "")}</span></div></li>`).join("")}</ul><p class="small muted" style="margin:8px 0 0">All of them are in <a href="/results/" style="color:var(--ink)">My Results</a>.</p></div>`;
+  }
+}
+
+/* ---------- Event ---------- */
+function renderEvent(){
+  $("#screen-event").innerHTML = `
+    <h1 id="h-event">Event</h1>
+    <div class="field"><label for="e-name">Event name</label><input type="text" id="e-name" data-f="name" value="${esc(state.name)}" placeholder="e.g. Summer Yard Party"></div>
+    <div class="field"><label for="e-date">Date</label><input type="date" id="e-date" data-f="date" value="${esc(state.date)}"><div class="hint">For multi-day events, use the first day. You can set a different day on any cue.</div></div>
+    <div class="field"><label for="e-venue">Venue</label><input type="text" id="e-venue" data-f="venue" value="${esc(state.venue)}" placeholder="e.g. Maxilla Social Club"></div>
+    <div class="field"><label for="e-addr">Address</label><input type="text" id="e-addr" data-f="address" value="${esc(state.address)}"></div>
+    <div class="field"><label for="e-pc">Postcode</label><input type="text" id="e-pc" data-f="postcode" value="${esc(state.postcode)}" autocomplete="postal-code"></div>
+    <div class="field"><label for="e-hosp">Nearest A&amp;E</label><input type="text" id="e-hosp" data-f="hospital" value="${esc(state.hospital)}" placeholder="e.g. St Mary’s Hospital, Praed Street, W2 1NY"></div>
+    <div class="field"><label for="e-notes">Notes for crew</label><textarea id="e-notes" data-f="notes" placeholder="Parking, load-in access, dress code, wifi, where to eat…">${esc(state.notes)}</textarea></div>
+    <h2 style="margin-top:28px">Key contacts</h2>
+    <p class="muted small">Event manager, venue manager, security lead, production manager and so on. Crew can tap to call them.</p>
+    <div id="contacts">${state.contacts.map(c => `
+      <div class="panel entry" data-c="${c.id}">
+        <div class="row-head"><h3>${esc(c.name || "New contact")}</h3><button class="link-btn rm" data-crm="${c.id}">Remove</button></div>
+        <div class="two"><div class="field"><label>Name</label><input type="text" data-cf="name" value="${esc(c.name)}"></div><div class="field"><label>Role</label><input type="text" data-cf="role" value="${esc(c.role)}" placeholder="e.g. Event manager"></div></div>
+        <div class="field" style="margin-bottom:0"><label>Phone</label><input type="tel" data-cf="phone" value="${esc(c.phone)}" inputmode="tel"></div>
+      </div>`).join("")}</div>
+    <div class="btn-row" style="margin-top:4px"><button class="btn btn-ghost btn-block" id="add-contact">Add a contact</button></div>
+    <div class="btn-row"><button class="btn btn-primary btn-block" data-go="schedule">Next: run sheet</button></div>`;
+  const el = $("#screen-event");
+  el.querySelectorAll("[data-f]").forEach(i => i.oninput = e => { state[i.dataset.f] = e.target.value; save(); });
+  el.querySelectorAll("[data-cf]").forEach(i => i.oninput = e => {
+    const c = state.contacts.find(x => x.id === i.closest("[data-c]").dataset.c); if(!c) return;
+    c[i.dataset.cf] = e.target.value; save();
+    if(i.dataset.cf === "name") i.closest("[data-c]").querySelector("h3").textContent = e.target.value || "New contact";
+  });
+  el.querySelectorAll("[data-crm]").forEach(b => b.onclick = () => { state.contacts = state.contacts.filter(x => x.id !== b.dataset.crm); save(); keep(renderEvent); });
+  $("#add-contact").onclick = () => { state.contacts.push({id:uid(), name:"", role:"", phone:""}); save(); keep(renderEvent); const l = el.querySelectorAll("[data-c]"); const last = l[l.length - 1]; if(last) last.querySelector("input").focus(); };
+  bindGo(el);
+}
+
+/* ---------- Lists (run sheet cues and crew calls) ---------- */
+function listScreen(kind){
+  const isRun = kind === "items", list = byTime(state[kind], isRun ? "start" : "call"), el = $(isRun ? "#screen-schedule" : "#screen-crew");
+  const title = isRun ? "Run sheet" : "Crew calls";
+  const rows = list.map(x => editing === x.id ? editForm(kind, x) : `
+    <div class="panel entry compact" data-open="${x.id}" role="button" tabindex="0">
+      <div class="t">${esc((isRun ? x.start : x.call) || "--:--")}</div>
+      <div><strong>${esc((isRun ? x.title : x.name) || (isRun ? "Untitled cue" : "Unnamed crew"))}</strong><span>${esc([x.date && x.date !== state.date ? shortDate(x.date) : "", isRun ? [x.end ? "until " + x.end : "", x.where, x.who].filter(Boolean).join(" · ") : [x.role, x.reportTo ? "report to " + x.reportTo : ""].filter(Boolean).join(" · ")].filter(Boolean).join(" · "))}</span></div>
+      <span class="link-btn" aria-hidden="true">Edit</span>
+    </div>`).join("");
+  el.innerHTML = `
+    <h1 id="h-${isRun ? "schedule" : "crew"}">${title}</h1>
+    <p class="muted">${isRun ? "Every timed moment of the day: get-in, doors, sets, speeches, last orders, curfew, get-out. They sort by time automatically." : "Who needs to be where, and when. Each person’s call time sorts into order automatically."}</p>
+    ${state.name ? "" : `<div class="status warn"><div><strong>Add an event name first</strong><span class="small muted">It’s on the Event tab. Your run sheet saves to My Results once it has a name.</span></div></div>`}
+    <div id="list-${kind}">${rows || `<p class="muted">${isRun ? "No cues yet." : "No crew calls yet."}</p>`}</div>
+    <div class="btn-row"><button class="btn btn-primary btn-block" id="add-${kind}">${isRun ? "Add a cue" : "Add a crew call"}</button></div>
+    <div class="btn-row"><button class="btn btn-ghost btn-block" data-go="${isRun ? "crew" : "share"}">${isRun ? "Next: crew calls" : "Next: share"}</button></div>`;
+  el.querySelectorAll("[data-open]").forEach(b => { b.onclick = () => { editing = b.dataset.open; keep(() => listScreen(kind)); }; b.onkeydown = e => { if(e.key === "Enter") b.click(); }; });
+  $("#add-" + kind).onclick = () => {
+    const last = list[list.length - 1];
+    const x = isRun
+      ? {id:uid(), date:"", start: last ? (last.end || addMins(last.start, 30)) : "", end:"", title:"", where:"", who:"", notes:""}
+      : {id:uid(), date:"", call: last ? last.call : "", name:"", role:"", reportTo:"", phone:"", notes:""};
+    state[kind].push(x); editing = x.id; save(); listScreen(kind);
+    const f = el.querySelector(`[data-edit="${x.id}"]`); if(f){ f.scrollIntoView({block:"center"}); const i = f.querySelector(isRun ? "[data-xf=title]" : "[data-xf=name]"); if(i) i.focus(); }
+  };
+  bindEdit(kind, el);
+  bindGo(el);
+}
+function editForm(kind, x){
+  const isRun = kind === "items";
+  return `<div class="panel entry" data-edit="${x.id}">
+    <div class="row-head"><h3>${isRun ? "Cue" : "Crew call"}</h3><button class="link-btn rm" data-xrm="${x.id}">Remove</button></div>
+    ${isRun ? `
+      <div class="field"><label>What happens</label><input type="text" data-xf="title" value="${esc(x.title)}" placeholder="e.g. Doors open"></div>
+      <div class="three"><div class="field"><label>Start</label><input type="time" data-xf="start" value="${esc(x.start)}"></div><div class="field"><label>End (optional)</label><input type="time" data-xf="end" value="${esc(x.end)}"></div></div>
+      <div class="two"><div class="field"><label>Where</label><input type="text" data-xf="where" value="${esc(x.where)}" placeholder="e.g. Main stage"></div><div class="field"><label>Who</label><input type="text" data-xf="who" value="${esc(x.who)}" placeholder="e.g. Security team"></div></div>
+      <div class="field"><label>Notes</label><input type="text" data-xf="notes" value="${esc(x.notes)}"></div>`
+    : `
+      <div class="two"><div class="field"><label>Name or team</label><input type="text" data-xf="name" value="${esc(x.name)}" placeholder="e.g. Door team"></div><div class="field"><label>Role</label><input type="text" data-xf="role" value="${esc(x.role)}" placeholder="e.g. SIA door supervisors"></div></div>
+      <div class="two"><div class="field"><label>Call time</label><input type="time" data-xf="call" value="${esc(x.call)}"></div><div class="field"><label>Report to</label><input type="text" data-xf="reportTo" value="${esc(x.reportTo)}" placeholder="e.g. Head of security, main gate"></div></div>
+      <div class="field"><label>Phone (optional)</label><input type="tel" data-xf="phone" value="${esc(x.phone)}" inputmode="tel"></div>
+      <div class="field"><label>Notes</label><input type="text" data-xf="notes" value="${esc(x.notes)}" placeholder="e.g. Bring hi-vis and radio"></div>`}
+    <div class="field"><label>Day</label><input type="date" data-xf="date" value="${esc(x.date || "")}"><div class="hint">Leave blank for the event date${state.date ? " (" + esc(shortDate(state.date)) + ")" : ""}.</div></div>
+    <div class="btn-row" style="margin-top:4px"><button class="btn btn-primary btn-block" data-done="1">Done</button></div>
+  </div>`;
+}
+function bindEdit(kind, el){
+  const f = el.querySelector("[data-edit]"); if(!f) return;
+  const x = state[kind].find(i => i.id === f.dataset.edit); if(!x) return;
+  f.querySelectorAll("[data-xf]").forEach(i => i.oninput = e => { x[i.dataset.xf] = e.target.value; save(); });
+  f.querySelector("[data-xrm]").onclick = () => { state[kind] = state[kind].filter(i => i.id !== x.id); editing = null; save(); keep(() => listScreen(kind)); };
+  f.querySelector("[data-done]").onclick = () => { editing = null; keep(() => listScreen(kind)); };
+}
+
+/* ---------- Share ---------- */
+async function renderShare(){
+  const el = $("#screen-share");
+  const ready = state.name && (state.items.length || state.crew.length);
+  const viewing = window.FGResults && FGResults.viewing && FGResults.viewing();
+  el.innerHTML = `
+    <h1 id="h-share">Share</h1>
+    <div class="panel">
+      <h2>Crew link</h2>
+      <div id="link-box">${viewing ? `<p class="muted" style="margin:0">You’re viewing someone else’s run sheet, so you can’t share it.</p>` : !ready ? `<p class="muted" style="margin:0">Add an event name and at least one cue or crew call, then come back here to share it.</p>` : `<p class="muted" style="margin:0">Checking…</p>`}</div>
+      ${msg ? `<p class="ok-msg">${esc(msg)}</p>` : ""}
+    </div>
+    <div class="panel">
+      <h2>Print or save as PDF</h2>
+      <p class="muted small">For a clipboard, the production office or sending as an attachment.</p>
+      <div class="btn-row"><button class="btn btn-ghost btn-block" id="pdf-run">Run sheet PDF</button><button class="btn btn-ghost btn-block" id="pdf-call">Call sheet PDF</button></div>
+    </div>
+    <h2 style="margin-top:28px">Preview</h2>
+    <p class="small muted">This is what crew see. On the day, the cue happening now is highlighted.</p>
+    <div class="preview">${FGSheet.render(state, {mode:"both", live:true})}</div>
+    <div class="cta no-print">
+      <h2>Need the crew as well?</h2>
+      <p class="muted">Fort Green supplies SIA-licensed security, stewards, production crew and event power, and runs the day from one team.</p>
+      <div class="btn-row">
+        <a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Crew for " + (state.name || "my event"))}&body=${encodeURIComponent("Event: " + (state.name || "") + "\nDate: " + (state.date || "") + "\nVenue: " + [state.venue, state.postcode].filter(Boolean).join(", ") + "\n\nI'd like a quote for crew.")}">Get a crew quote</a>
+        <a class="btn btn-ghost btn-block" href="${WHATSAPP}" target="_blank" rel="noopener">24/7 WhatsApp chat</a>
+      </div>
+    </div>
+    <p class="disclaimer">This tool helps you organise and share timings. It doesn’t check that your plans are safe, legal or achievable. Anyone with a crew link can see what’s on it until you turn the link off. Fort Green Limited accepts no responsibility or liability for any loss arising from use of this tool, from how a run sheet is shared, or from reliance on its contents.</p>`;
+  $("#pdf-run").onclick = () => printSheet("run");
+  $("#pdf-call").onclick = () => printSheet("call");
+  if(!viewing && ready) linkState();
+}
+async function linkState(){
+  const box = $("#link-box"); if(!box) return;
+  if(!sb || !window.FGResults){ box.innerHTML = `<p class="muted" style="margin:0">Sharing isn’t available right now.</p>`; return; }
+  const id = FGResults.currentId() || await FGResults.saveNow();
+  if(!id){ box.innerHTML = `<p class="muted" style="margin:0">Couldn’t save your run sheet yet. Check your connection and try again.</p>`; return; }
+  const r = await sb.from("rs_shares").select("token").eq("result_id", id).maybeSingle();
+  const token = r.data && r.data.token;
+  if(!token){
+    box.innerHTML = `<p class="muted">Create a link to send to your crew. They don’t need to sign in, and they always see your latest changes.</p><button class="btn btn-primary btn-block" id="mk-link">Create crew link</button><div class="error" id="link-err" hidden></div>`;
+    $("#mk-link").onclick = async () => {
+      $("#mk-link").disabled = true;
+      const ins = await sb.from("rs_shares").insert({result_id:id}).select("token").single();
+      if(ins.error){ $("#mk-link").disabled = false; const e = $("#link-err"); e.textContent = "Couldn’t create the link. Try again."; e.hidden = false; return; }
+      msg = "Link created."; keep(renderShare);
+    };
+    return;
+  }
+  const url = location.origin + "/run-sheet/view/?t=" + token;
+  const wa = "https://wa.me/?text=" + encodeURIComponent((state.name ? state.name + " run sheet: " : "Run sheet: ") + url);
+  box.innerHTML = `<div class="share-box"><code id="link-url">${esc(url)}</code></div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-block" id="copy-link">Copy link</button>
+      <a class="btn btn-ghost btn-block" href="${wa}" target="_blank" rel="noopener">Send on WhatsApp</a>
+      <a class="btn btn-ghost btn-block" href="${esc(url)}" target="_blank" rel="noopener">Open crew view</a>
+    </div>
+    <p class="small muted" style="margin:12px 0 0">Anyone with this link can see the run sheet. Changes you make appear on it within a minute.</p>
+    <button class="link-btn" id="kill-link" style="color:var(--red);margin-top:10px">Turn this link off</button>`;
+  $("#copy-link").onclick = async () => {
+    try{ await navigator.clipboard.writeText(url); $("#copy-link").textContent = "Copied"; }
+    catch(e){ const rng = document.createRange(); rng.selectNodeContents($("#link-url")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rng); $("#copy-link").textContent = "Selected: copy it now"; }
+  };
+  let armed = false;
+  $("#kill-link").onclick = async () => {
+    if(!armed){ armed = true; $("#kill-link").textContent = "Tap again to turn it off. The current link stops working."; return; }
+    const d = await sb.from("rs_shares").delete().eq("result_id", id);
+    msg = d.error ? "Couldn’t turn the link off. Try again." : "Link turned off. Creating a new one gives a different address.";
+    keep(renderShare);
+  };
+}
+function printSheet(mode){
+  $("#print-area").innerHTML = FGSheet.render(state, {mode:mode, live:false}) + `<p class="small muted" style="margin-top:18px">Printed ${new Date().toLocaleString("en-GB", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"})}.</p>`;
+  const t = document.title; document.title = (state.name || "Run sheet") + (mode === "call" ? " call sheet" : " run sheet");
+  window.print(); document.title = t;
+}
+
+/* ---------- Navigation ---------- */
+const TABS = ["start","event","schedule","crew","share"];
+function render(tab){ ({start:renderStart, event:renderEvent, schedule:() => listScreen("items"), crew:() => listScreen("crew"), share:renderShare})[tab](); }
+function go(tab){
+  if(tab !== "start" && !state.agreed) tab = "start";
+  editing = null; msg = "";
+  TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
+  document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  render(tab);
+  if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
+  window.scrollTo(0,0);
+}
+function keep(fn){ const y = window.scrollY; fn(); window.scrollTo(0, y); }
+function bindGo(root){ root.querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go)); }
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if(TABS.includes(h)) go(h); });
+go(TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "start");
+</script>
+</body>
+</html>

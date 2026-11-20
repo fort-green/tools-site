@@ -28,6 +28,16 @@
       title: function (s) { return s.name || "Power plan"; },
       summary: function () { var c = calc(); return c.gen ? c.gen + " kVA " + (c.threePhase ? "three-phase" : "single-phase") + " generator" : "Over 1,000 kVA"; }
     },
+    "run-sheet": {
+      label: "Run Sheet & Call Sheet", key: "fg-run-sheet-v1", tab: "schedule",
+      ready: function (s) { return !!(s.name && ((s.items && s.items.length) || (s.crew && s.crew.length))); },
+      title: function (s) { return s.name || "Run sheet"; },
+      summary: function (s) {
+        var d = s.date ? new Date(s.date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+        var n = (s.items || []).length, k = (s.crew || []).length;
+        return [d, n + " cue" + (n === 1 ? "" : "s"), k + " crew call" + (k === 1 ? "" : "s")].filter(Boolean).join(", ");
+      }
+    },
     "capacity": {
       label: "Capacity Calculator", key: "fg-capacity-v1", tab: "capacity",
       ready: function () { return calc().ready; },
@@ -49,7 +59,7 @@
   function put(k, v) { try { origSet.call(ls, k, v); } catch (e) {} }
   function del(k) { try { ls.removeItem(k); } catch (e) {} }
 
-  var loading = false, timer = null, pending = null, busy = false, userId = null;
+  var loading = false, timer = null, pending = null, busy = false, userId = null, inflight = Promise.resolve();
 
   // Opening a saved result: /tool/?result=<id>
   var rid = new URLSearchParams(location.search).get("result");
@@ -118,8 +128,18 @@
           del(LINK); return insert(); // deleted elsewhere: save as a new result
         })
       : insert();
-    p.then(done, function () { status("Not saved"); done(); });
+    inflight = p.then(done, function () { status("Not saved"); done(); });
+    return inflight;
   }
+
+  // For tools that need their saved result's id straight away (e.g. a run sheet's crew link).
+  window.FGResults.currentId = function () { return get(VIEW) ? null : get(LINK); };
+  window.FGResults.saveNow = function () {
+    clearTimeout(timer); timer = null;
+    var r = save(get(T.key));
+    return Promise.resolve(r || inflight).then(function () { return inflight; }).then(function () { return get(VIEW) ? null : get(LINK); });
+  };
+  window.FGResults.viewing = function () { return !!get(VIEW); };
 
   function schedule(raw) {
     pending = null;
