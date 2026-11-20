@@ -129,6 +129,23 @@
       Array.prototype.forEach.call(dots, function (d) {
         d.onclick = function () { g.scrollTo({ left: Number(d.dataset.i) * g.clientWidth, behavior: "smooth" }); };
       });
+      // Cycle through the places every 3 seconds. Pauses while someone is touching,
+      // hovering or focused on the tile, and while the page is in the background.
+      if (card._wxTimer) clearInterval(card._wxTimer);
+      if (places.length > 1) {
+        var held = false, resumeAt = 0;
+        var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var hold = function () { held = true; };
+        var release = function () { held = false; resumeAt = Date.now() + 3000; };
+        card.addEventListener("pointerenter", hold); card.addEventListener("pointerleave", release);
+        g.addEventListener("touchstart", hold, { passive: true }); g.addEventListener("touchend", release, { passive: true });
+        card.addEventListener("focusin", hold); card.addEventListener("focusout", release);
+        card._wxTimer = setInterval(function () {
+          if (held || document.hidden || Date.now() < resumeAt || !g.isConnected) return;
+          var i = Math.round(g.scrollLeft / Math.max(1, g.clientWidth));
+          g.scrollTo({ left: ((i + 1) % places.length) * g.clientWidth, behavior: calm ? "auto" : "smooth" });
+        }, 3000);
+      }
       var newest = fcs.filter(function (f) { return f && f.fetchedAt; }).map(function (f) { return Date.parse(f.fetchedAt); }).sort().pop();
       if (foot) foot.textContent = "Met Office forecast" + (newest ? ", updated " + hhmm(newest) : "");
     } catch (e) {
