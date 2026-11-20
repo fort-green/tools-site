@@ -55,7 +55,6 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Report form** posts to the n8n workflow "Martyn's Law: report request (lead capture)" (sierra-six, webhook `martyns-law-lead`). It emails the visitor their report via Gmail, logs every lead on the "Martyn's Law leads" tab of the Fort Green email list sheet, and adds opted-in people to the "Email list" tab.
 - **Book a readiness review** posts to the n8n workflow "Martyn's Law: readiness review request alert" (webhook `martyns-law-review`), which emails niall@fortgreen.co.uk.
 - **Save as PDF**: anyone who unlocks the report with an @fortgreen.co.uk email gets the Fort Green-branded version; everyone else gets a neutral version with Fort Green named only in the disclaimer.
-- Both webhooks are public; a bot check (e.g. Cloudflare Turnstile) is still to be added.
 
 ## Risk assessment generator (full): what lives outside this repo
 
@@ -88,7 +87,6 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 ## Capacity calculator and power planner: what lives outside this repo
 
 - **Report forms** post to the n8n workflows "Capacity calculator: report request (lead capture)" (webhook `capacity-lead`) and "Power planner: plan request (lead capture)" (webhook `power-planner-lead`) on sierra-six. Each emails the visitor their full report via Gmail, logs every lead on its own tab of the Fort Green email list sheet ("Capacity leads", "Power planner leads"), and adds opted-in people to the "Email list" tab.
-- Both webhooks only accept browser requests from tools.fortgreen.co.uk, but like the Martyn's Law one they're public, so a bot check (e.g. Cloudflare Turnstile) is still to be added.
 
 ## Weather and wind: what lives outside this repo
 
@@ -106,3 +104,9 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 
 - **Report form** posts to the n8n workflow "Staffing calculator: plan request (lead capture)" (webhook `staffing-lead`): emails the plan with the liability box at the top, logs to the "Staffing leads" tab, adds opted-in people to the Email list.
 - **Ratios:** door supervisors 1 per 100 people (licensing model conditions) or enough for every entrance; stewards 1:250 lower risk and 1:100 higher risk or with children (Green Guide / SGSA). Everything else (risk points, response team, 1 supervisor per 10, head of security at 20+, 10% relief over 6 hours) is a Fort Green planning assumption and is labelled as such on the page.
+
+## Sign-up forms: bot protection
+
+- Every tool form posts through `public/lead.js` (`FGLead.post`), which adds the signed-in user's Supabase access token to the body.
+- Each lead workflow in n8n (Martyn's Law report and review, capacity, power planner, staffing) starts with **Check signed in**: it calls `/auth/v1/user` on FORT GREEN PROJECT1 with that token. A missing or invalid token gets a 401/403, which stops the workflow before any email or sheet row. **Signed-in request** then merges the original webhook data back so the rest runs unchanged.
+- A new tool form must use `FGLead.post`, and its workflow needs the same two nodes.
