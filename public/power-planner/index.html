@@ -162,7 +162,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* Bottom nav */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:9;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px)}
-.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.nav-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 .nav button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 9px;background:none;border:0;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
 .nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .nav button[aria-current="page"]{color:var(--accent)}
@@ -185,7 +185,8 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   body{background:#fff}
   main{padding:0;max-width:none}
   .screen{display:none!important}
-  #screen-power{display:block!important}
+  body:not(.print-fuel) #screen-power{display:block!important}
+  body.print-fuel #screen-fuel{display:block!important}
   .panel,.verdict,.stats,.meter,table{break-inside:avoid}
   .verdict.v-main,.cta{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
@@ -205,6 +206,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   <section class="screen" id="screen-event" aria-labelledby="h-event"></section>
   <section class="screen" id="screen-kit" aria-labelledby="h-kit"></section>
   <section class="screen" id="screen-power" aria-labelledby="h-power"></section>
+  <section class="screen" id="screen-fuel" aria-labelledby="h-fuel"></section>
 </main>
 
 <nav class="nav" aria-label="Sections">
@@ -213,6 +215,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
     <button data-tab="event"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Event</button>
     <button data-tab="kit"><svg viewBox="0 0 24 24"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v3"/></svg>Equipment<span class="badge" id="badge" hidden></span></button>
     <button data-tab="power"><svg viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/></svg>Power</button>
+    <button data-tab="fuel"><svg viewBox="0 0 24 24"><path d="M4.5 20.5V5a1.5 1.5 0 0 1 1.5-1.5h7A1.5 1.5 0 0 1 14.5 5v15.5M3 20.5h13M7 7.5h5v4H7z"/><path d="M14.5 9h2.2a1.3 1.3 0 0 1 1.3 1.3v6.2a1.5 1.5 0 0 0 3 0V8.5L18 6"/></svg>Fuel</button>
   </div>
 </nav>
 
@@ -312,7 +315,8 @@ const SUPPLY_1PH = [16, 32, 63, 100];
 const SUPPLY_3PH = [16, 32, 63, 125, 200, 400, 630];
 
 /* ---------- State ---------- */
-const BLANK = {agreed:false, name:"", site:"", hours:"", days:"1", qty:{}, custom:[], query:"", unlocked:false};
+const BLANK = {agreed:false, name:"", site:"", hours:"", days:"1", qty:{}, custom:[], query:"", unlocked:false,
+  tank:"", fuelType:"white", price:"", start:"10:00", mGen:"", mLoad:"50"};
 let state = JSON.parse(JSON.stringify(BLANK));
 try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)||"null"); if(s) state = Object.assign(state, s); }catch(e){}
 function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
@@ -625,7 +629,7 @@ function renderPower(){
           <div><b>${c.lph.toFixed(1)} L</b><span>per hour, roughly</span></div>
           <div><b>${c.hours ? n0(c.lph * c.hours * 1.1) + " L" : "Add hours"}</b><span>${c.hours ? `for ${n0(c.hours)} hours, plus 10%` : "on the Event tab"}</span></div>
         </div>
-        <p class="small muted" style="margin:0">Diesel or HVO, based on how much of the time each item actually draws power. Real use depends on the generator model and the weather. Agree a refuelling schedule and who carries it out.</p>
+        <p class="small muted" style="margin:0"><button class="link-btn" data-go="fuel">Plan refuelling on the Fuel tab</button>. Diesel or HVO, based on how much of the time each item actually draws power. Real use depends on the generator model and the weather. Agree a refuelling schedule and who carries it out.</p>
       </div>` : "";
 
     const sched = `<div class="panel">
@@ -660,6 +664,137 @@ function renderPower(){
   bindGo(el);
 }
 
+
+/* ---------- Fuel ----------
+   Uses the generator and load from the equipment list, or a size and average load typed in here.
+   Litres per hour use the same rule as the Power tab: 0.06 L/h per rated kW plus 0.21 L per kWh delivered.
+   Tanks are refilled when they reach a quarter full. CO2: UK government conversion factor for
+   100% mineral diesel burned, 2.66 kg CO2e per litre. */
+const FUEL_TYPES = [["white","White diesel"],["hvo","HVO"]];
+const CO2_PER_L = 2.66;
+function fuelCalc(){
+  const c = calc();
+  const fromKit = !!(c.units && c.gen);
+  let kva, lph, loadPct;
+  if(fromKit){ kva = c.gen; lph = c.lph; loadPct = Math.round(c.avgW / (kva * 800) * 100); }
+  else {
+    kva = Math.max(0, parseFloat(state.mGen) || 0);
+    loadPct = Math.min(100, Math.max(5, parseFloat(state.mLoad) || 50));
+    lph = kva ? 0.06 * kva * 0.8 + 0.21 * kva * 0.8 * loadPct / 100 : 0;
+  }
+  const perDay = Math.min(24, Math.max(0, parseFloat(state.hours) || 0)), days = Math.max(1, parseInt(state.days, 10) || 1);
+  const hours = perDay * days, burn = lph * hours;
+  const tank = Math.max(0, parseFloat(state.tank) || 0);
+  const out = {fromKit, kva, lph, loadPct, perDay, days, hours, burn, order: burn ? Math.ceil(burn * 1.1 / 50) * 50 : 0, tank, refuels:[], perTank:0, delivered:0};
+  if(tank && lph && hours){
+    out.perTank = tank * 0.75 / lph;
+    const [sh, sm] = (/^\d\d:\d\d$/.test(state.start) ? state.start : "10:00").split(":").map(Number);
+    let level = tank;
+    const step = 0.25, use = lph * step;
+    for(let d = 0; d < days; d++){
+      for(let t = 0; t < perDay; t += step){
+        level -= use;
+        const remaining = (days - d - 1) * perDay + (perDay - t - step);
+        if(level <= tank * 0.25 && remaining > 0.01 && out.refuels.length < 60){
+          const mins = sh * 60 + sm + Math.round((t + step) * 60);
+          const add = tank - level;
+          out.refuels.push({day: d + 1 + Math.floor(mins / 1440), time: String(Math.floor(mins % 1440 / 60)).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0"), litres: add});
+          out.delivered += add; level = tank;
+        }
+      }
+    }
+    out.firstFill = tank; out.left = level;
+  }
+  out.price = Math.max(0, parseFloat(state.price) || 0);
+  out.cost = out.price ? out.order * out.price : 0;
+  out.co2 = burn * CO2_PER_L;
+  return out;
+}
+
+function renderFuel(){
+  const f = fuelCalc(), el = $("#screen-fuel");
+  const genOpts = [3, 6, 10, 15, 20, 30, 45, 60, 100, 150, 200, 250, 350, 500];
+  const inputs = `
+    ${f.fromKit ? `<div class="status"><div><strong>Using your ${f.kva} kVA generator</strong><span class="small muted">From the equipment you added, running at about ${f.loadPct}% on average. <button class="link-btn" data-go="kit">Change equipment</button></span></div></div>`
+    : `<div class="panel"><h3>Your generator</h3>
+        <p class="muted small">Add your equipment on the Equipment tab for the most accurate figure, or enter a generator here.</p>
+        <div class="two">
+          <div class="field"><label for="f-gen">Generator size (kVA)</label><select id="f-gen"><option value="">Choose</option>${genOpts.map(g => `<option value="${g}" ${String(g) === String(state.mGen) ? "selected" : ""}>${g} kVA</option>`).join("")}</select></div>
+          <div class="field"><label for="f-load">Average load (%)</label><input type="number" id="f-load" inputmode="numeric" min="5" max="100" step="5" value="${esc(state.mLoad)}"></div>
+        </div><div class="hint" style="margin-top:-8px">Most event generators average 30 to 60% across a day.</div></div>`}
+    <div class="panel"><h3>Running time and tank</h3>
+      <div class="two">
+        <div class="field"><label for="f-hours">Hours a day</label><input type="number" id="f-hours" inputmode="decimal" min="0" max="24" step="0.5" value="${esc(state.hours)}" placeholder="e.g. 12"></div>
+        <div class="field"><label for="f-days">Days</label><input type="number" id="f-days" inputmode="numeric" min="1" max="30" value="${esc(state.days)}"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label for="f-start">Switched on at</label><input type="time" id="f-start" value="${esc(state.start)}" style="width:100%;min-height:50px;padding:10px 14px;border:1.5px solid var(--line);background:var(--surface);font-size:17px"></div>
+        <div class="field"><label for="f-tank">Tank size (litres)</label><input type="number" id="f-tank" inputmode="numeric" min="0" value="${esc(state.tank)}" placeholder="e.g. 200"></div>
+      </div>
+      <div class="hint" style="margin-top:-8px">The tank size is on the generator’s spec sheet or hire paperwork. Include any extra tank connected to it.</div>
+      <div class="field" style="margin-top:16px"><span class="label">Fuel</span><div class="seg" role="group" aria-label="Fuel">${FUEL_TYPES.map(([v,l]) => `<button type="button" data-fuel="${v}" aria-pressed="${state.fuelType === v}">${l}</button>`).join("")}</div></div>
+      <div class="field" style="margin-bottom:0"><label for="f-price">Price per litre (£, optional)</label><input type="number" id="f-price" inputmode="decimal" min="0" step="0.01" value="${esc(state.price)}" placeholder="e.g. 1.45"></div>
+    </div>`;
+
+  let results = "";
+  if(!f.lph || !f.hours){
+    results = `<p class="muted">${f.lph ? "Add the hours a day" : "Add your generator"} to see how much fuel you need.</p>`;
+  } else {
+    results = `<div class="verdict v-main" role="status"><h3>Order about</h3><div class="big">${n0(f.order)} litres</div>
+        <p class="muted" style="margin:0">${n0(f.burn)} litres burned over ${n0(f.hours)} hours, plus about 10% spare, rounded up.</p></div>
+      <div class="stats">
+        <div><b>${f.lph.toFixed(1)}</b><span>litres an hour</span></div>
+        <div><b>${f.tank ? (f.perTank >= 100 ? n0(f.perTank) : f.perTank.toFixed(1)) : "–"}</b><span>${f.tank ? "hours per tank, to a quarter full" : "add tank size"}</span></div>
+        <div><b>${f.tank ? f.refuels.length : "–"}</b><span>refuel${f.refuels.length === 1 ? "" : "s"} needed</span></div>
+      </div>`;
+    if(!state.unlocked){
+      results += `<div class="locked"><h3>Your refuelling plan</h3><p class="muted">See when each refuel is due and how much to put in, the fuel cost and CO2, and a fuel safety checklist.</p><button class="btn btn-primary btn-block" id="fuel-unlock">Get my power plan</button></div>`;
+    } else {
+      const sched = f.tank ? (f.refuels.length
+        ? `<div class="tbl-wrap"><table><thead><tr><th>Refuel</th><th>When</th><th class="n">About</th></tr></thead><tbody>
+            <tr><td>Start</td><td>Day 1, ${esc(state.start || "10:00")}</td><td class="n">${n0(f.tank)} L (fill)</td></tr>
+            ${f.refuels.map((r, i) => `<tr><td>${i + 1}</td><td>Day ${r.day}, ${r.time}</td><td class="n">${n0(r.litres)} L</td></tr>`).join("")}
+            </tbody></table></div><p class="small muted" style="margin:8px 0 0">Times assume the load you set and refuelling when the tank is a quarter full. Check the gauge, not the clock: real use varies.</p>`
+        : `<p class="muted" style="margin:0">One full tank (${n0(f.tank)} litres) covers the whole event at this load, with a quarter left as reserve.</p>`)
+        : `<p class="muted" style="margin:0">Add the tank size to see when to refuel.</p>`;
+      const cost = f.cost ? `<div><b>£${n0(f.cost)}</b><span>fuel for ${n0(f.order)} L at £${f.price.toFixed(2)}</span></div>` : `<div><b>–</b><span>add a price per litre</span></div>`;
+      const co2 = state.fuelType === "hvo"
+        ? `<div><b>Lower</b><span>HVO: ask your supplier for its certified carbon figure</span></div>`
+        : `<div><b>${(f.co2 / 1000).toFixed(f.co2 >= 10000 ? 0 : 1)} t</b><span>CO2e from ${n0(f.burn)} L of diesel</span></div>`;
+      const checks = [
+        ["No red diesel", "Generators at events must run on white diesel or a biofuel such as HVO. Red diesel is only allowed for travelling fairs’ and circuses’ own machinery."],
+        ["Refuelling", "Refuel with the generator off where its maker requires it, using a pump or bowser rather than cans where possible, by someone trained to do it."],
+        ["Storage", "Keep spare fuel in a bunded tank or bowser, away from public routes, ignition sources and drains."],
+        ["Spills and fire", "A spill kit and a suitable fire extinguisher next to the generator and the fuel store."],
+        ["Fuel log", "Record each delivery and refuel, with the time and litres. It helps spot leaks and theft."],
+        ["HVO", "If you switch to HVO, check the generator is approved for it. Most modern sets are."]
+      ];
+      results += `<div class="panel"><h2>Refuelling plan</h2>${sched}</div>
+        <div class="stats" style="grid-template-columns:repeat(2,1fr)">${cost}${co2}</div>
+        <div class="panel"><h2>Fuel safety checklist</h2><ul class="ticks">${checks.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>
+        <div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="fuel-print">Save as PDF</button></div>`;
+    }
+  }
+
+  const cta = `<div class="cta no-print"><h2>Let Fort Green manage the fuel</h2>
+      <p class="muted">We arrange the generator, deliveries and refuelling on the day, keep the fuel log and watch the gauges, alongside your power, security and staffing.</p>
+      <div class="btn-row"><a class="btn btn-primary btn-block" href="mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Fuel management: " + (state.name || "my event"))}&body=${encodeURIComponent("Event: " + (state.name || "") + "\nGenerator: " + (f.kva ? f.kva + " kVA" : "?") + "\nHours: " + (state.hours || "?") + " a day for " + (state.days || 1) + " day(s)\nFuel estimate: about " + n0(f.order) + " litres\n\nI'd like a quote for fuel management.")}">Get a fuel quote</a>
+      <a class="btn btn-ghost btn-block" href="${WHATSAPP}" target="_blank" rel="noopener">24/7 WhatsApp chat</a></div></div>`;
+
+  el.innerHTML = `<h1 id="h-fuel">Fuel</h1><p class="muted">How much fuel to order, how long each tank lasts and when to refuel.</p>` + inputs + `<div id="fuel-results">${results}</div>` + cta +
+    `<p class="disclaimer">Fuel figures are estimates for planning. Real use depends on the generator model, its condition, the load and the weather. Always watch the fuel gauge and keep a reserve. This isn’t fuel, electrical or environmental advice, and Fort Green Limited accepts no responsibility or liability for any fuel shortfall, loss of power, spill, enforcement action, cost or loss arising from its use. CO2 uses the UK government conversion factor for diesel.</p>`;
+
+  const keepFuel = () => { const y = window.scrollY; renderFuel(); window.scrollTo(0, y); };
+  const g = $("#f-gen"); if(g) g.onchange = e => { state.mGen = e.target.value; save(); keepFuel(); };
+  const bind = (id, k) => { const i = $(id); if(i) i.onchange = e => { state[k] = e.target.value; save(); keepFuel(); }; };
+  bind("#f-load", "mLoad"); bind("#f-hours", "hours"); bind("#f-days", "days"); bind("#f-start", "start"); bind("#f-tank", "tank"); bind("#f-price", "price");
+  el.querySelectorAll("[data-fuel]").forEach(b => b.onclick = () => { state.fuelType = b.dataset.fuel; save(); keepFuel(); });
+  const u = $("#fuel-unlock"); if(u) u.onclick = () => { openSheet(); fuelAfterUnlock = true; };
+  const pr = $("#fuel-print"); if(pr) pr.onclick = () => { document.body.classList.add("print-fuel"); window.print(); document.body.classList.remove("print-fuel"); };
+  bindGo(el);
+}
+let fuelAfterUnlock = false;
+
 /* ---------- Lead sheet ---------- */
 function openSheet(){ $("#overlay").classList.add("on"); $("#sheet").classList.add("on"); setTimeout(() => $("#f-name").focus(), 250); }
 function closeSheet(){ $("#overlay").classList.remove("on"); $("#sheet").classList.remove("on"); }
@@ -681,16 +816,16 @@ $("#lead-form").onsubmit = async e => {
     fuel_litres: c.gen && c.hours ? Math.round(c.lph * c.hours * 1.1) : null, total_hours: c.hours,
     items:c.items.slice(0, 80).map(i => ({name:i.name, qty:i.qty, watts:i.w, outlet:connector(i)})), submitted_at:new Date().toISOString() };
   if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
-  state.unlocked = true; save(); closeSheet(); renderPower(); window.scrollTo(0,0);
+  state.unlocked = true; save(); closeSheet(); if(fuelAfterUnlock){ fuelAfterUnlock = false; renderFuel(); } else renderPower(); window.scrollTo(0,0);
 };
 
 /* ---------- Navigation ---------- */
-const TABS = ["start","event","kit","power"];
+const TABS = ["start","event","kit","power","fuel"];
 function go(tab){
   if(tab !== "start" && !state.agreed) tab = "start";
   TABS.forEach(t => $("#screen-" + t).classList.toggle("on", t === tab));
   document.querySelectorAll(".nav button").forEach(b => b.dataset.tab === tab ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
-  ({start:renderStart, event:renderEvent, kit:() => renderKit(), power:renderPower})[tab]();
+  ({start:renderStart, event:renderEvent, kit:() => renderKit(), power:renderPower, fuel:renderFuel})[tab]();
   if(location.hash.slice(1) !== tab) history.replaceState(null, "", "#" + tab);
   window.scrollTo(0,0);
 }
