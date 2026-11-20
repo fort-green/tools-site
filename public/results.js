@@ -8,25 +8,29 @@
       label: "Martyn’s Law Readiness Checker", key: "fg-martyns-law-v1", tab: "report",
       ready: function (s) { return s.answers && Object.keys(s.answers).length > 0; },
       title: function (s) { return s.name || (s.mode === "event" ? "Event" : "Venue"); },
-      summary: function () { var r = results(); return r.score == null ? "" : r.score + "% ready"; }
+      summary: function () { var r = results(); return r.score == null ? "" : r.score + "% ready"; },
+      facts: function (s) { var r = results(); return { rows: [["Result", r.t && r.t.title], ["Readiness", r.score == null ? "" : r.score + "%"], ["Capacity", s.capacity], ["Measures not started", r.none]] }; }
     },
     "risk-assessment": {
       label: "Risk Assessment Generator", key: "fg-ra-builder-v1", tab: "report",
       ready: function (s) { return !!(s.type && (s.name || s.venue)); },
       title: function (s) { return s.name || s.venue || "Risk assessment"; },
-      summary: function () { var n = results().all.length; return n + " hazard" + (n === 1 ? "" : "s"); }
+      summary: function () { var n = results().all.length; return n + " hazard" + (n === 1 ? "" : "s"); },
+      facts: function () { var r = results(); return { rows: [["Hazards identified", r.all.length], ["Rated high or very high", r.all.filter(function (h) { return h.score >= 10; }).length]], lines: r.all.slice(0, 15).map(function (h) { return h.haz + " (" + rating(h.score)[0].toLowerCase() + "): " + h.ctrl; }) }; }
     },
     "licensing": {
       label: "Licensing & TEN Guidance", key: "fg-licensing-v1", tab: "plan",
       ready: function (s) { return !!(s.postcode || (s.acts && s.acts.length)); },
       title: function (s) { return s.name || s.postcode || "Licensing check"; },
-      summary: function (s) { return [s.council, s.date].filter(Boolean).join(", "); }
+      summary: function (s) { return [s.council, s.date].filter(Boolean).join(", "); },
+      facts: function (s) { return { rows: [["Council", s.council], ["Postcode", s.postcode], ["Date", s.date], ["Licensable activities", (s.acts || []).join(", ")]] }; }
     },
     "power-planner": {
       label: "Power Planner", key: "fg-power-planner-v1", tab: "power",
       ready: function (s) { var q = s.qty || {}; return Object.keys(q).some(function (k) { return q[k] > 0; }); },
       title: function (s) { return s.name || "Power plan"; },
-      summary: function () { var c = calc(); return c.gen ? c.gen + " kVA " + (c.threePhase ? "three-phase" : "single-phase") + " generator" : "Over 1,000 kVA"; }
+      summary: function () { var c = calc(); return c.gen ? c.gen + " kVA " + (c.threePhase ? "three-phase" : "single-phase") + " generator" : "Over 1,000 kVA"; },
+      facts: function () { var c = calc(); return { rows: [["Generator", c.gen ? c.gen + " kVA " + (c.threePhase ? "three-phase" : "single-phase") : "Over 1,000 kVA"], ["Peak load", (c.peakVA / 1000).toFixed(1) + " kVA"], ["Fuel use", c.lph ? c.lph.toFixed(1) + " litres an hour" : ""], ["Venue supply instead", c.supply && c.supply.amps ? c.supply.amps + " A " + c.supply.label : ""]] }; }
     },
     "run-sheet": {
       label: "Run Sheet & Call Sheet", key: "fg-run-sheet-v1", tab: "schedule",
@@ -36,13 +40,15 @@
         var d = s.date ? new Date(s.date + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
         var n = (s.items || []).length, k = (s.crew || []).length;
         return [d, n + " cue" + (n === 1 ? "" : "s"), k + " crew call" + (k === 1 ? "" : "s")].filter(Boolean).join(", ");
-      }
+      },
+      facts: function (s) { var it = (s.items || []).slice().sort(function (a, b) { return ((a.date || s.date || "") + (a.start || "")).localeCompare((b.date || s.date || "") + (b.start || "")); }); return { rows: [["Date", s.date], ["Venue", s.venue], ["Nearest A&E", s.hospital], ["Cues", it.length], ["Crew calls", (s.crew || []).length]], lines: it.slice(0, 30).map(function (x) { return (x.start || "") + (x.end ? "–" + x.end : "") + " " + (x.title || "") + (x.where ? " (" + x.where + ")" : ""); }), contacts: (s.contacts || []).slice(0, 20).map(function (x) { return [x.name || "", x.role || "", x.phone || ""]; }) }; }
     },
     "staffing": {
       label: "Security Staffing Calculator", key: "fg-staffing-v1", tab: "staff",
       ready: function () { return calc().ready; },
       title: function (s) { return s.name || "Staffing plan"; },
-      summary: function () { var c = calc(); return c.total + " staff for " + c.cap.toLocaleString("en-GB") + " people (" + c.ds + " door supervisors" + (c.st ? ", " + c.st + " stewards" : "") + ")"; }
+      summary: function () { var c = calc(); return c.total + " staff for " + c.cap.toLocaleString("en-GB") + " people (" + c.ds + " door supervisors" + (c.st ? ", " + c.st + " stewards" : "") + ")"; },
+      facts: function () { var c = calc(); return { rows: [["Door supervisors", c.ds], ["Stewards", c.st], ["Response team", c.resp], ["Supervisors", c.sup], ["Head of security", c.head], ["Relief", c.relief], ["Total", c.total], ["Female staff (of total)", c.female]], lines: [c.dsWhy, c.stWhy].filter(Boolean) }; }
     },
     "quote": {
       label: "Event Quote Estimator", key: "fg-quote-v1", tab: "estimate",
@@ -57,13 +63,21 @@
       label: "Welfare & Provisions Calculator", key: "fg-welfare-v1", tab: "plan",
       ready: function () { return calc().ready; },
       title: function (s) { return s.name || "Welfare plan"; },
-      summary: function () { var c = calc(); return c.wcNeeded + " toilets + " + c.urinals + " urinals, " + c.firstAid + " first aiders for " + c.people.toLocaleString("en-GB") + " people"; }
+      summary: function () { var c = calc(); return c.wcNeeded + " toilets + " + c.urinals + " urinals, " + c.firstAid + " first aiders for " + c.people.toLocaleString("en-GB") + " people"; },
+      facts: function () { var c = calc(); return { rows: [["Female toilets", c.fWC], ["Male toilets", c.mWC], ["Urinals", c.urinals], ["Accessible toilets", c.accessible], ["Hand-washing points", c.basins], ["Drinking water", c.water.toLocaleString("en-GB") + " litres"], ["Water points", c.outlets], ["First aiders", c.firstAid], ["Bins", c.bins]], lines: ["Based on: " + c.t.label.toLowerCase()] }; }
+    },
+    "event-plan": {
+      label: "Event Management Plan", key: "fg-event-plan-v1", tab: "plan",
+      ready: function (s) { return !!(s.name && s.type); },
+      title: function (s) { return s.name || "Event plan"; },
+      summary: function () { var p = progress(); return p.done + " of " + p.total + " sections complete" + (p.gaps ? ", " + p.gaps + " to do" : ""); }
     },
     "capacity": {
       label: "Capacity Calculator", key: "fg-capacity-v1", tab: "capacity",
       ready: function () { return calc().ready; },
       title: function (s) { return s.name || (s.mode === "outdoor" ? "Outdoor site" : "Venue"); },
-      summary: function () { var c = calc(); return c.cap.toLocaleString("en-GB") + " people, set by " + c.min.label.toLowerCase(); }
+      summary: function () { var c = calc(); return c.cap.toLocaleString("en-GB") + " people, set by " + c.min.label.toLowerCase(); },
+      facts: function (s) { var c = calc(); return { rows: [["Safe capacity", c.cap.toLocaleString("en-GB")], ["Set by", c.min.label], [s.mode === "outdoor" ? "Crowd space allows" : "Floor space allows", c.floorCap.toLocaleString("en-GB")], ["Exit width allows", c.exitCap.toLocaleString("en-GB")], ["Exits", c.valid.length]] }; }
     }
   };
   window.FG_RESULT_TOOLS = TOOLS;
@@ -107,6 +121,16 @@
     return;
   }
 
+  // Key figures as plain strings, kept small, for the event plan builder.
+  function clean(f) {
+    var str = function (v) { return v == null || v === "" ? "" : String(v).slice(0, 400); };
+    var out = {};
+    out.rows = (f.rows || []).filter(function (r) { return str(r[1]) !== ""; }).map(function (r) { return [str(r[0]), str(r[1])]; });
+    if (f.lines) out.lines = f.lines.map(str).filter(Boolean).slice(0, 30);
+    if (f.contacts) out.contacts = f.contacts.map(function (r) { return r.map(str); });
+    return out;
+  }
+
   function restoreStash() {
     var s = get(STASH);
     if (s) put(T.key, s); else del(T.key);
@@ -131,7 +155,9 @@
     var title = "", summary = "";
     try { title = String(T.title(s) || "").slice(0, 200); } catch (e) {}
     try { summary = String(T.summary(s) || "").slice(0, 300); } catch (e) {}
-    var row = { title: title, summary: summary, data: s };
+    var facts = null;
+    try { facts = T.facts ? clean(T.facts(s)) : null; } catch (e) {}
+    var row = { title: title, summary: summary, data: s, facts: facts };
     var id = get(LINK);
     busy = true; status("Saving…");
     var done = function () {

@@ -31,6 +31,7 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/quote/` | Event quote estimator: security, power, crew and equipment → one estimate (+VAT) from `qe_estimate()`, then a firm quote request |
 | `public/quote/rates/` | Quote rates (admins only): edit the rate card in `qe_rates` |
 | `public/welfare/` | Welfare & provisions calculator: toilets (Event Safety Guide / Purple Guide ratios by duration, alcohol and camping), hand washing, accessible toilets, drinking water, first aid (St John Ambulance), bins. Capacity Calculator links in with `?people=&name=`. Toilet numbers are free; the full plan (water, first aid, bins, PDF) unlocks after name/email and is emailed by n8n workflow `welfare-lead` ("Welfare calculator: plan request"), which checks the sign-in token, logs to the **Welfare leads** tab and adds opt-ins to the Email list |
+| `public/event-plan/` | Event management plan builder: event details, team, and a 22-section checklist under Safety Advisory Group headings (Purple Guide / HSE). Each section can pull in a saved result from My Results (capacity, staffing, Martyn’s Law, welfare, run sheet, licensing, power, risk assessment) using the `facts` each tool saves. Progress and contents are free; the full written plan and PDF unlock after name/email and are emailed by n8n workflow `event-plan-lead`, which logs to the **Event plan leads** tab |
 | `public/results/` | My Results: everyone's saved results from the free tools, with open, duplicate and delete. Admins can switch to all clients' results |
 | `public/results.js` | Include on free tool pages (after auth-guard.js): autosaves the tool's work to `hub_results` and reopens it from `?result=<id>`. Tool settings (which localStorage key, title, summary) are in its `TOOLS` list |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
@@ -81,7 +82,9 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Invoicing details:** `cp_billing`, with every change kept in `cp_billing_log`.
 - **Emails:** n8n workflow "FG Client portal – email notifications" (sierra-six), sent through Gmail. Fort Green alerts go to info@fortgreen.co.uk (set as OPS in its Build email node); clients get emails when requests are decided and invoices are added.
 
-## My Results: what lives outside this repo
+## My Results
+
+- **Key figures (`facts`):** each tool in `results.js` also saves a small `facts` object (rows of label and value, plus a few lines) to `hub_results.facts`, worked out with that tool's own calculations. The event plan builder reads these so it never has to re-run another tool. Results saved before November 2026 have no facts until they are opened again.: what lives outside this repo
 
 - **Table:** `hub_results` in FORT GREEN PROJECT1 (one row per saved result; the tool's whole state in `data`). Row-level security: people read, change and delete only their own rows; admins (`hub_is_admin()`) can read everyone's. A trigger keeps `user_id`, `email`, `tool` and `created_at` fixed and stamps `updated_at`.
 - **How saving works:** each free tool already keeps its work in one localStorage key. `results.js` watches that key and saves it about a second after each change, once the tool's `ready` check passes. A tool's "start again" button calls `FGResults.startNew()` so the next save becomes a new result.
