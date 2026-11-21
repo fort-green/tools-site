@@ -14,9 +14,9 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/staff-guard.js` | Use instead of `auth-guard.js` on staff-only pages: also sends signed-in non-staff back to the hub. |
 | `netlify.toml` | Publishes `public/` and sets security headers for the whole site. |
 | `public/martyns-law/` | Martyn's Law readiness checker |
-| `public/risk-assessment/` | Risk assessment generator (free, client version). Its `HAZARDS` and `GAP` lists are the hazard library for both versions. |
+| `public/risk-assessment/` | Risk assessment generator (free, client version). Its `HAZARDS` and `GAP` lists are the hazard library for both versions. The report and A4 PDF unlock after name/email and are emailed by n8n workflow `risk-assessment-lead`, which logs to the **Risk assessment leads** tab |
 | `public/risk-assessment-full/` | Risk assessment generator, full staff version: editable hazards and actions, revisions, branded Word and PDF export (staff) |
-| `public/licensing/` | Licensing and TEN guidance |
+| `public/licensing/` | Licensing and TEN guidance. The dated action plan unlocks after name/email and is emailed by n8n workflow `licensing-lead`, which logs to the **Licensing leads** tab |
 | `public/power-planner/` | Event power planner, with a Fuel tab: litres per hour, amount to order (+10%, rounded to 50 L), hours per tank, refuelling schedule (refill at a quarter tank), cost and CO2 (2.66 kg CO2e/L diesel). Works from the equipment list or a generator size and load typed in |
 | `public/capacity/` | Capacity calculator: safe capacity from floor space and exits (indoor, Approved Document B) or crowd density and egress time (outdoor, Green Guide rates), with Martyn's Law tier |
 | `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in (staff) |

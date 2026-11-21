@@ -6,6 +6,7 @@
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
 <script src="/results.js"></script>
+<script src="/lead.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Event risk assessment builder | Fort Green</title>
@@ -195,27 +196,36 @@ body.has-live main{padding-bottom:190px}
 #print-doc{display:none}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 
-/* Unbranded print document */
+/* Printable report (A4 portrait, same layout as the other Fort Green tool reports) */
+@page{size:A4;margin:14mm}
 @media print{
-  @page{size:A4 landscape;margin:12mm}
-  body{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif}
+  html,body{background:#fff!important;color:#000}
   body::before{display:none}
-  .topbar,.nav,main,.overlay,.sheet{display:none!important}
-  #print-doc{display:block!important;font-size:9pt;line-height:1.35;color:#000}
-  #print-doc h1{font-family:Arial,Helvetica,sans-serif;text-transform:none;font-size:18pt;line-height:1.2;margin:0 0 4pt;letter-spacing:0}
-  #print-doc h2{font-family:Arial,Helvetica,sans-serif;text-transform:none;font-size:12pt;margin:14pt 0 6pt;break-after:avoid}
-  #print-doc .warn{border:1.5pt solid #000;padding:6pt 8pt;margin:8pt 0;font-weight:bold}
-  #print-doc table{width:100%;border-collapse:collapse;margin:0 0 8pt}
-  #print-doc th,#print-doc td{border:0.75pt solid #777;padding:3pt 4pt;vertical-align:top;text-align:left}
-  #print-doc th{background:#e6e6e6}
-  #print-doc thead{display:table-header-group}
-  #print-doc tr{break-inside:avoid}
-  #print-doc .num{text-align:center;white-space:nowrap}
-  #print-doc .ref{white-space:nowrap}
-  #print-doc .kv th{width:22%}
-  #print-doc .sign td{height:22pt}
-  #print-doc .foot{margin-top:10pt;font-size:8pt;color:#333}
+  body > *:not(#print-doc){display:none!important}
+  #print-doc{display:block!important;font-family:"Manrope",Arial,sans-serif;font-size:9.5pt;line-height:1.45;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+.pd-head{display:flex;justify-content:space-between;align-items:center;background:#000;color:#fff;padding:12px 16px}
+.pd-brand{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:22pt;letter-spacing:.02em;line-height:1}
+.pd-doc{font-family:"Antonio","Arial Narrow",sans-serif;font-size:11pt;text-transform:uppercase;letter-spacing:.06em;text-align:right;line-height:1.3}
+.pd-title{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:30pt;line-height:1;margin:18px 0 6px}
+.pd-meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:9.5pt;color:#444;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #cecece}
+.pd-meta b{color:#000;font-weight:600}
+.pd-warn{border:2px solid #b42318;background:#fff4e5;padding:10px 12px;margin:0 0 12px;font-size:9pt}
+.pd-warn b{display:block;color:#b42318;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.pd-h2{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;text-transform:uppercase;font-size:14pt;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #000;break-after:avoid}
+.pd-table{width:100%;border-collapse:collapse;font-size:9pt}
+.pd-table thead{display:table-header-group}
+.pd-table th{text-align:left;font-size:7.5pt;text-transform:uppercase;letter-spacing:.06em;color:#5f5f5f;font-weight:600;padding:0 8px 6px 0;border-bottom:1px solid #cecece;vertical-align:bottom}
+.pd-table td{vertical-align:top;padding:7px 8px 7px 0;border-bottom:1px solid #e3e3e3}
+.pd-table tr{break-inside:avoid}
+.pd-kv th{width:28%;font-size:8pt;padding:6px 8px 6px 0;border-bottom:1px solid #e3e3e3;vertical-align:top}
+.pd-ref{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:11pt;white-space:nowrap;width:34px}
+.pd-why{color:#5f5f5f;font-size:8.5pt}
+.pd-pill{display:inline-block;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;white-space:nowrap;margin-top:2px}
+.pd-pill.low{background:#1f9d55;color:#fff}.pd-pill.medium{background:#e0a800;color:#000}.pd-pill.high{background:#fbe4e1;color:#b42318}.pd-pill.veryhigh{background:#b42318;color:#fff}
+.pd-score{font-family:"Antonio","Arial Narrow",sans-serif;font-weight:700;font-size:12pt;white-space:nowrap}
+.pd-sign td,.pd-sign th{height:26pt}
+.pd-foot{margin-top:14px;font-size:7.5pt;color:#5f5f5f;border-top:1px solid #cecece;padding-top:6px;break-inside:avoid}
 </style>
 </head>
 <body>
@@ -276,7 +286,7 @@ body.has-live main{padding-bottom:190px}
 /* ---------- Config ----------
    LEAD_ENDPOINT: set to the n8n webhook URL when this runs on fortgreen.co.uk.
    Left empty here: the PDF unlocks on the device without sending anything. */
-const LEAD_ENDPOINT = "";
+const LEAD_ENDPOINT = "https://sierra-six.app.n8n.cloud/webhook/risk-assessment-lead";
 const CONTACT_EMAIL = "info@fortgreen.co.uk";
 const WHATSAPP = "https://wa.me/447399232855";
 const MARTYNS_LAW_URL = "https://claude.ai/artifact/AGZi7jKK2Zh3czKseT1oBW";
@@ -641,59 +651,74 @@ function planRows(r){
   return rows.map(a => Object.assign(a, {when:PHASES.find(p=>p[0]===a.ph)[1], due:due[a.ph]}));
 }
 
-/* ---------- Unbranded print document ---------- */
+/* ---------- Printable report ---------- */
+window.addEventListener("beforeprint", () => { if(state.unlocked) buildPrintDoc(); });
 function buildPrintDoc(){
   const r = results(), today = new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
   const when = state.date ? new Date(state.date+"T12:00").toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}) : "Not stated";
   const ml = martyns(r.cap), extra = r.all.length - r.top.length;
-  const prov = PROVISION.map(p => p[2] + ": " + ({yes:"Yes",no:"No",unsure:"Not sure"}[state.provision[p[0]]])).join("; ");
+  const prov = PROVISION.map(p => p[2] + ": " + ({yes:"Yes",no:"No",unsure:"Not sure"}[state.provision[p[0]]] || "Not answered")).join("; ");
+  const lead = state.lead || {};
+  const branded = /@fortgreen\.co\.uk$/i.test((lead.email || "").trim());
+  const prepared = branded ? (lead.name ? esc(lead.name) + ", Fort Green" : "Fort Green") : [lead.name, lead.organisation].filter(Boolean).map(esc).join(", ");
   const row = (k,v) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`;
+  const pill = n => { const t = rating(n)[0]; return `<span class="pd-pill ${t.toLowerCase().replace(/\s+/g,"")}">${t}</span>`; };
   $("#print-doc").innerHTML = `
-    <h1>Event risk assessment: draft</h1>
-    <div>${esc(state.name || "Unnamed event")}. Generated ${today}.</div>
-    <div class="warn">Automatically generated draft. Not reviewed by a competent person. It must be checked, adapted to the site and signed off before use.</div>
-    <h2>Event details</h2>
-    <table class="kv"><tbody>
-      ${row("Event name", state.name || "Not stated")}${row("Date", when)}${row("Site postcode", state.postcode || "Not stated")}
+    ${branded
+      ? `<div class="pd-head"><div class="pd-brand">FORT GREEN</div><div class="pd-doc">Event risk<br>assessment</div></div>`
+      : `<div class="pd-head"><div class="pd-brand">RISK ASSESSMENT</div><div class="pd-doc">Event<br>draft</div></div>`}
+    <div class="pd-title">${esc(state.name || "Unnamed event")}</div>
+    <div class="pd-meta">
+      <span><b>Event date</b> ${esc(when)}</span>
+      <span><b>Generated</b> ${today}</span>
+      ${prepared ? `<span><b>${branded ? "Prepared by" : "Prepared for"}</b> ${prepared}</span>` : ""}
+      ${state.postcode ? `<span><b>Postcode</b> ${esc(state.postcode)}</span>` : ""}
+    </div>
+    <div class="pd-warn"><b>Draft: check before use</b>Automatically generated from answers to an online form. Not reviewed by a competent person. It must be checked, adapted to the site and signed off before use.</div>
+
+    <div class="pd-h2">Event details</div>
+    <table class="pd-table pd-kv"><tbody>
       ${row("Event type", optLabel("type",state.type))}${row("Venue", optLabel("venue",state.venue))}${row("Maximum capacity", optLabel("cap",state.cap))}
       ${row("Timing", optLabel("timing",state.timing))}${row("Alcohol", optLabel("alcohol",state.alcohol))}${row("Audience", optLabel("audience",state.audience))}
       ${row("Temporary structures", multiLabels("struct"))}${row("Activities and effects", multiLabels("act"))}${row("Site factors", multiLabels("site"))}
       ${row("Provision confirmed", prov)}
     </tbody></table>
-    ${r.gaps.length ? `<p><strong>Provision gaps:</strong> ${r.gaps.map(p=>esc(p[2])).join(", ")} not confirmed. Likelihood has been increased by one on the hazards these normally control (marked *).</p>` : ""}
-    <h2>Risk scoring</h2>
-    <p>Risk = likelihood (1 rare to 5 almost certain) × severity (1 negligible to 5 catastrophic). 1–4 low: acceptable, monitor. 5–9 medium: reduce where reasonably practicable. 10–15 high: further controls needed before the event goes ahead. 16–25 very high: do not proceed until reduced.</p>
-    <h2>Hazards and controls</h2>
-    <table>
-      <thead><tr><th>Ref</th><th>Hazard and consequence</th><th>Who might be harmed</th><th class="num">L</th><th class="num">S</th><th class="num">Risk</th><th>Control measures</th><th class="num">Residual risk</th><th>Legislation and guidance</th></tr></thead>
+    ${r.gaps.length ? `<p><b>Provision gaps:</b> ${r.gaps.map(p=>esc(p[2])).join(", ")} not confirmed. Likelihood has been increased by one on the hazards these normally control (marked *).</p>` : ""}
+
+    <div class="pd-h2">Risk scoring</div>
+    <p style="margin:0">Risk = likelihood (L, 1 rare to 5 almost certain) × severity (S, 1 negligible to 5 catastrophic). <b>1–4 low:</b> acceptable, monitor. <b>5–9 medium:</b> reduce where reasonably practicable. <b>10–15 high:</b> further controls needed before the event goes ahead. <b>16–25 very high:</b> do not proceed until reduced.</p>
+
+    <div class="pd-h2">Hazards and controls</div>
+    <table class="pd-table">
+      <thead><tr><th>Ref</th><th style="width:30%">Hazard, consequence and who is at risk</th><th>Risk<br>L × S</th><th>Control measures</th><th>Residual</th></tr></thead>
       <tbody>
       ${r.top.map(h => `<tr>
-        <td class="ref">${h.id}</td>
-        <td><strong>${esc(h.haz)}</strong><br>${esc(h.con)}</td>
-        <td>${esc(h.who)}</td>
-        <td class="num">${h.Li}${h.gap?"*":""}</td><td class="num">${h.S}</td>
-        <td class="num">${h.score}<br>${rating(h.score)[0]}</td>
-        <td>${esc(h.ctrl)}</td>
-        <td class="num">${h.rscore}<br>${rating(h.rscore)[0]}</td>
-        <td>${esc(h.law)}<br><em>${esc(h.gd)}</em></td></tr>`).join("")}
+        <td class="pd-ref">${h.id}</td>
+        <td><b>${esc(h.haz)}</b><br>${esc(h.con)}<div class="pd-why">At risk: ${esc(h.who)}</div></td>
+        <td><span class="pd-score">${h.score}</span><div class="pd-why">${h.Li}${h.gap?"*":""} × ${h.S}</div>${pill(h.score)}</td>
+        <td>${esc(h.ctrl)}<div class="pd-why" style="margin-top:4px">${esc(h.law)}. ${esc(h.gd)}</div></td>
+        <td><span class="pd-score">${h.rscore}</span><br>${pill(h.rscore)}</td></tr>`).join("")}
       </tbody>
     </table>
-    <h2>Action plan</h2>
-    <p>Suggested improvements for the hazards above, in order of priority. ${r.gapActs.length ? "Gaps in confirmed provision come first. " : ""}Assign an owner to each action and record when it’s done.</p>
-    <table>
-      <thead><tr><th>When</th><th>Ref</th><th>Action</th><th>Due</th><th style="width:14%">Owner</th><th style="width:8%">Done</th></tr></thead>
-      <tbody>${planRows(r).map(a => `<tr><td class="ref">${a.when}</td><td class="ref">${a.ref}</td><td>${esc(a.t)}</td><td>${a.due}</td><td></td><td></td></tr>`).join("")}</tbody>
+    ${extra > 0 ? `<p class="pd-why">This draft covers the ${r.top.length} highest-scoring hazards. A further ${extra} hazard${extra>1?"s were":" was"} identified from your answers and ${extra>1?"are":"is"} not included. A complete assessment should cover every hazard on site.</p>` : ""}
+
+    <div class="pd-h2">Action plan</div>
+    <p style="margin:0 0 6px">Suggested improvements for the hazards above, in order of priority. ${r.gapActs.length ? "Gaps in confirmed provision come first. " : ""}Assign an owner to each action and record when it’s done.</p>
+    <table class="pd-table">
+      <thead><tr><th>When</th><th>Ref</th><th>Action</th><th>Due</th><th style="width:14%">Owner</th><th style="width:7%">Done</th></tr></thead>
+      <tbody>${planRows(r).map(a => `<tr><td style="white-space:nowrap">${a.when}</td><td class="pd-ref">${a.ref}</td><td>${esc(a.t)}</td><td style="white-space:nowrap">${a.due}</td><td></td><td></td></tr>`).join("")}</tbody>
     </table>
-    ${extra > 0 ? `<p>This draft covers the ${r.top.length} highest-scoring hazards. A further ${extra} hazard${extra>1?"s were":" was"} identified from your answers and ${extra>1?"are":"is"} not included. A complete assessment should cover every hazard on site.</p>` : ""}
-    ${ml ? `<p><strong>Terrorism (Protection of Premises) Act 2025:</strong> ${ml.body} Check the Home Office statutory guidance.</p>` : ""}
-    <p>Residual risk assumes every listed control is in place and working. Purple Guide references are to topic areas of the Purple Guide to Health, Safety and Welfare at Music and Other Events, published by the Events Industry Forum.</p>
-    <h2>Review and sign-off</h2>
-    <table class="sign"><tbody>
+    ${ml ? `<p><b>Terrorism (Protection of Premises) Act 2025:</b> ${ml.body} Check the Home Office statutory guidance.</p>` : ""}
+    <p class="pd-why">Residual risk assumes every listed control is in place and working. Purple Guide references are to topic areas of the Purple Guide to Health, Safety and Welfare at Music and Other Events, published by the Events Industry Forum.</p>
+
+    <div class="pd-h2">Review and sign-off</div>
+    <table class="pd-table pd-sign"><tbody>
       <tr><th>Assessor (competent person)</th><td></td><th>Signature</th><td></td></tr>
       <tr><th>Date assessed</th><td></td><th>Next review date</th><td></td></tr>
       <tr><th>Approved by</th><td></td><th>Signature</th><td></td></tr>
     </tbody></table>
-    <p class="foot">This document was generated automatically from answers given to an online form. It is a general template, not a site-specific risk assessment, and no warranty is given that it is accurate, complete or suitable for any purpose. The person responsible for the event remains responsible for assessing risk and meeting their duties under the Health and Safety at Work etc. Act 1974, the Management of Health and Safety at Work Regulations 1999 and all other applicable law.</p>`;
+
+    <div class="pd-foot">This document was generated automatically from answers given to an online form${branded ? " using the Fort Green risk assessment builder" : ""}. It is a general template, not a site-specific risk assessment, and no warranty is given that it is accurate, complete or suitable for any purpose. The person responsible for the event remains responsible for assessing risk and meeting their duties under the Health and Safety at Work etc. Act 1974, the Management of Health and Safety at Work Regulations 1999 and all other applicable law. Fort Green Limited accepts no liability for decisions made using it.</div>`;
 }
 
 /* ---------- Lead sheet ---------- */
@@ -714,9 +739,14 @@ $("#lead-form").onsubmit = async e => {
     marketing_opt_in:$("#f-mkt").checked, terms_accepted_at:state.accepted, terms_version:TERMS_VERSION,
     event:{name:state.name, date:state.date, postcode:state.postcode, type:state.type, venue:state.venue, capacity_band:state.cap,
       timing:state.timing, alcohol:state.alcohol, audience:state.audience, structures:state.struct, activities:state.act, site:state.site, provision:state.provision},
-    hazards_identified:r.all.length, actions_in_plan:r.nActs, very_high:r.all.filter(h=>h.score>=16).length, provision_gaps:r.gaps.map(p=>p[0]),
+    hazards_identified:r.all.length, actions_in_plan:r.nActs, very_high:r.all.filter(h=>h.score>=16).length, provision_gaps:r.gaps.map(p=>p[2]),
+    event_label:{type:optLabel("type",state.type), venue:optLabel("venue",state.venue), capacity:optLabel("cap",state.cap), alcohol:optLabel("alcohol",state.alcohol)},
+    hazards:r.top.map(h => ({ref:h.id, hazard:h.haz, consequence:h.con, who:h.who, score:h.score, rating:rating(h.score)[0], controls:h.ctrl, residual:h.rscore, residual_rating:rating(h.rscore)[0]})),
+    actions:planRows(r).slice(0, 40).map(a => ({when:a.when, ref:a.ref, action:a.t, due:a.due})),
+    not_included:Math.max(0, r.all.length - r.top.length),
     submitted_at:new Date().toISOString() };
-  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+  try{ await FGLead.post(LEAD_ENDPOINT, lead); }catch(x){}
+  state.lead = {name:lead.name, email:lead.email, organisation:lead.organisation};
   state.unlocked = true; save(); closeSheet(); renderReport(); window.scrollTo(0,0);
 };
 

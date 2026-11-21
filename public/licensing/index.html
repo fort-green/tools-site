@@ -6,6 +6,7 @@
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
 <script src="/results.js"></script>
+<script src="/lead.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Event licensing check | Fort Green</title>
@@ -237,7 +238,7 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
    POSTCODE_API: postcodes.io fills in the council and nation on the live site.
    Inside the claude.ai preview the lookup is blocked, so the nation is read from
    the postcode area instead and the council is typed in by hand. */
-const LEAD_ENDPOINT = "";
+const LEAD_ENDPOINT = "https://sierra-six.app.n8n.cloud/webhook/licensing-lead";
 const POSTCODE_API = "https://api.postcodes.io/postcodes/";
 const CONTACT_EMAIL = "info@fortgreen.co.uk";
 const WHATSAPP = "https://wa.me/447399232855";
@@ -756,6 +757,9 @@ function renderPlan(){
   bindGo(el);
 }
 
+// Plain text of a snippet of report HTML, for the emailed copy.
+function txt(h){ const d = document.createElement("div"); d.innerHTML = h || ""; return d.textContent.replace(/\s+/g, " ").trim(); }
+
 /* ---------- Lead sheet ---------- */
 function openSheet(){ $("#overlay").classList.add("on"); $("#sheet").classList.add("on"); setTimeout(() => $("#f-name").focus(), 250); }
 function closeSheet(){ $("#overlay").classList.remove("on"); $("#sheet").classList.remove("on"); }
@@ -771,8 +775,13 @@ $("#lead-form").onsubmit = async e => {
   const lead = { tool:"event-licensing", name:$("#f-name").value.trim(), email, organisation:$("#f-org").value.trim(),
     marketing_opt_in:$("#f-mkt").checked, event:state.name, postcode:state.postcode, council:state.council, nation:state.nation,
     venue:state.venue, date:state.date, days:state.days, capacity:state.capacity, access:state.access, activities:state.acts,
-    route: a && a.verdict ? a.verdict.t : "", submitted_at:new Date().toISOString() };
-  if(LEAD_ENDPOINT){ try{ await fetch(LEAD_ENDPOINT, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(lead)}); }catch(x){} }
+    route: a && a.verdict ? txt(a.verdict.t) : "", route_detail: a && a.verdict ? txt(a.verdict.b) : "",
+    event_date: a && a.ev ? fmt(a.ev) : "",
+    timeline: a && a.actions ? a.actions.slice(0, 30).map(x => ({date: fmt(x.date), title: txt(x.title), body: txt(x.body), event: !!x.event})) : [],
+    other: a && a.other ? a.other.slice(0, 15).map(o => ({title: txt(o.t), body: txt(o.b)})) : [],
+    local: a && a.local ? a.local.slice(0, 15).map(txt) : [],
+    submitted_at:new Date().toISOString() };
+  try{ await FGLead.post(LEAD_ENDPOINT, lead); }catch(x){}
   state.unlocked = true; save(); closeSheet(); renderPlan(); window.scrollTo(0,0);
 };
 

@@ -3,7 +3,10 @@
   var c = window.FG_CONFIG || {};
   function reveal() { var s = document.getElementById("fg-guard"); if (s) s.remove(); }
   function addBar() {
+    // Shared print rules for every tool: the bar never prints and documents print A4 portrait.
+    var ps = document.createElement("style"); ps.textContent = "@page{size:A4;margin:14mm}@media print{.fg-bar{display:none!important}}"; document.head.appendChild(ps);
     var bar = document.createElement("div");
+    bar.className = "fg-bar";
     bar.setAttribute("style", "font:600 14px/1 Manrope,Arial,sans-serif;background:#100f10;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px");
     bar.innerHTML = '<a href="/" style="color:#fff;text-decoration:none;font-family:Antonio,\'Arial Narrow\',sans-serif;font-weight:700;font-size:18px;letter-spacing:.02em">FORT GREEN TOOLS</a><span style="display:flex;gap:16px;align-items:center"><span id="fg-save-state" style="font-weight:500;opacity:.7" aria-live="polite"></span><a href="/results/" style="color:#fff">My Results</a><a href="/" style="color:#fff">All tools</a></span>';
     document.body.insertBefore(bar, document.body.firstChild);
