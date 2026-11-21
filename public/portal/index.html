@@ -162,6 +162,15 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   .row .acts{justify-content:flex-start}
   input,select,textarea{font-size:16px}
 }
+/* Live now */
+.lv{margin-bottom:18px}
+.lv-big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:4px 0 10px}
+.lv-big b{font-size:72px;line-height:.9}
+.lv-big span{font-size:18px;font-weight:600;color:var(--muted)}
+.lv-bar{height:14px;background:var(--soft);border:1px solid var(--line);position:relative;margin:6px 0 4px}
+.lv-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ok)}
+.lv-bar.warn i{background:var(--warn)} .lv-bar.bad i{background:var(--err)}
+.lv-bar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
 </style>
 </head>
 <body>
@@ -199,6 +208,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     </div>
     <nav class="tabs" aria-label="Portal sections">
       <a href="#bookings" data-tab="bookings">Bookings</a>
+      <a href="#live" data-tab="live">Live now</a>
       <a href="#booking" data-tab="booking">New booking <span class="count" id="bk-count" hidden></span></a>
       <a href="#documents" data-tab="documents">Documents</a>
       <a href="#counts" data-tab="counts">Door counts</a>
@@ -298,6 +308,13 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       <div class="list" id="docs-other"></div>
     </section>
 
+    <!-- LIVE NOW -->
+    <section id="t-live" data-panel="live" hidden>
+      <div class="sechead"><h2 class="display">Live now</h2><span class="hint" id="lv-at"></span></div>
+      <div id="lv-list"></div>
+      <p class="hint" style="font-size:13px">People inside, counted in and out by our door team. Updates every 20 seconds while this page is open. Counts are only as accurate as the clicker count on the door.</p>
+    </section>
+
     <!-- DOOR COUNTS -->
     <section id="t-counts" data-panel="counts" hidden>
       <div class="sechead"><h2 class="display">Door counts</h2></div>
@@ -383,6 +400,18 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
         </form>
       </div>
       <div class="list" id="acc-list"></div>
+      <div class="sechead" style="margin-top:28px"><h2 class="display">Venue capacity</h2></div>
+      <div class="panel">
+        <form id="capf" class="stack">
+          <p style="margin:0">Used for the Live now view and the end-of-shift email to this venue’s clients. If left blank, the capacity the door team sets on the shift is used.</p>
+          <div class="fields">
+            <label class="f">Capacity (people) <input type="number" id="cap-n" min="1" max="200000" inputmode="numeric" placeholder="e.g. 450"></label>
+            <label class="f">Warn at (% of capacity) <input type="number" id="cap-warn" min="50" max="100" inputmode="numeric" value="90"></label>
+          </div>
+          <p class="hint" id="cap-who" style="margin:0"></p>
+          <div class="btnrow"><button class="btn" type="submit" id="cap-go">Save capacity</button></div>
+        </form>
+      </div>
     </section>
   </div>
 </main>
@@ -447,6 +476,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     else if (S.tab === "extra") loadExtra();
     else if (S.tab === "invoicing") loadBilling();
     else if (S.tab === "access") loadAccess();
+    else if (S.tab === "live") loadLive();
   }
   document.querySelector(".tabs").addEventListener("click", function (e) {
     var a = e.target.closest("a[data-tab]"); if (!a) return;
@@ -795,6 +825,53 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     }).join("") : '<div class="empty">No requests yet.</div>';
   }
 
+  /* ---------- live now (from the Staff Check-In clicker) ---------- */
+  var liveTimer = null;
+  function loadLive() {
+    clearInterval(liveTimer);
+    $("lv-list").innerHTML = '<div class="loading">Loading…</div>';
+    runLive();
+    liveTimer = setInterval(function () {
+      if (S.tab !== "live") { clearInterval(liveTimer); return; }
+      if (document.visibilityState === "visible") runLive();
+    }, 20000);
+  }
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && S.tab === "live") runLive(); });
+  async function runLive() {
+    var v = S.venue;
+    try {
+      var r = await api({ action: "venue_live", venue_id: v });
+      if (v !== S.venue || S.tab !== "live") return;
+      var list = r.shifts || [];
+      $("lv-at").textContent = "Updated " + new Date(r.at || Date.now()).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      $("lv-list").innerHTML = list.length ? list.map(function (s) { return livePanel(s, r.capacity, r.warn_pct); }).join("") :
+        '<div class="panel"><p style="margin:0">No shift is running at ' + esc(venueName()) + ' right now. The live count appears here from an hour before each shift starts.</p>' +
+        (staffView() && !r.capacity ? '<p class="hint" style="margin:10px 0 0">Set this venue’s capacity in Client access.</p>' : "") + "</div>";
+    } catch (e) { if (S.tab === "live") { $("lv-list").innerHTML = ""; msg("fail", "Couldn’t load the live count: " + e.message); } }
+  }
+  function ago(d) {
+    var m = Math.round((Date.now() - new Date(d)) / 60000);
+    return m < 1 ? "just now" : m === 1 ? "1 minute ago" : m < 60 ? m + " minutes ago" : hm(d);
+  }
+  function livePanel(s, venueCap, warn) {
+    var cap = venueCap || s.capacity || 0, inside = Math.max(0, s.inside || 0);
+    var pct = cap ? Math.round(inside / cap * 100) : null, w = warn || 90;
+    var level = !cap ? "" : inside >= cap ? "bad" : pct >= w ? "warn" : "ok";
+    var pill = !s.started ? '<span class="pill mute">Starts ' + esc(hm(s.starts_at)) + "</span>" :
+      level === "bad" ? '<span class="pill bad">At or over capacity</span>' : level === "warn" ? '<span class="pill warn">Near capacity</span>' : level === "ok" ? '<span class="pill ok">Below capacity</span>' : '<span class="pill mute">Live</span>';
+    var tile = function (big, small) { return '<div class="dc-tile"><b class="display">' + big + "</b><span>" + small + "</span></div>"; };
+    var groups = (s.groups || []).filter(function (g) { return g.arrivals || g.id; });
+    return '<div class="panel lv">' +
+      '<div class="sechead" style="margin-bottom:6px"><div><h3 class="display" style="margin:0;font-size:24px">' + esc(s.title || "Shift") + '</h3><p class="hint" style="margin:2px 0 0">' + esc(hm(s.starts_at)) + "–" + esc(hm(s.ends_at)) + "</p></div>" + pill + "</div>" +
+      '<div class="lv-big"><b class="display">' + inside.toLocaleString("en-GB") + "</b><span>inside now" + (cap ? " of " + cap.toLocaleString("en-GB") + " (" + pct + "%)" : "") + "</span></div>" +
+      (cap ? '<div class="lv-bar ' + level + '" role="img" aria-label="' + pct + '% of capacity"><i style="width:' + Math.min(100, pct) + '%"></i><u style="left:' + w + '%" title="Warning level ' + w + '%"></u></div><p class="hint" style="font-size:13px;margin:0 0 12px">Line marks the ' + w + "% warning level" + (venueCap ? "" : ". Capacity set by the door team for this shift") + ".</p>" : "") +
+      '<div class="dc-tiles">' + tile((s.arrivals || 0).toLocaleString("en-GB"), "Came in") + tile((s.departures || 0).toLocaleString("en-GB"), "Left") +
+        tile(s.last_tap_at ? esc(hm(s.last_tap_at)) : "–", s.last_tap_at ? "Last count, " + esc(ago(s.last_tap_at)) : "No counts yet") + "</div>" +
+      (groups.length > 1 ? '<table class="dc-table" style="margin-top:10px"><thead><tr><th>Group</th><th>In</th><th>Inside</th><th>Expected</th></tr></thead><tbody>' +
+        groups.map(function (g) { return "<tr><td>" + esc(g.name) + "</td><td>" + g.arrivals + "</td><td>" + g.inside + "</td><td>" + (g.expected || "–") + "</td></tr>"; }).join("") + "</tbody></table>" : "") +
+      "</div>";
+  }
+
   /* ---------- door counts (from the Staff Check-In clicker) ---------- */
   function loadCounts() {
     if (!$("dc-from").value) { var t = new Date(), f = new Date(t.getTime() - 30 * 864e5); $("dc-from").value = ymd(f); $("dc-to").value = ymd(t); }
@@ -914,7 +991,25 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   });
 
   /* ---------- client access (staff) ---------- */
+  async function loadCapacity() {
+    var r = await sb.from("cp_venues").select("capacity,warn_pct,capacity_set_by,capacity_set_at").eq("venue_id", S.venue).maybeSingle();
+    var v = r.data || {};
+    $("cap-n").value = v.capacity || ""; $("cap-warn").value = v.warn_pct || 90;
+    $("cap-who").textContent = v.capacity_set_by ? "Last set by " + v.capacity_set_by + " on " + dayShort(v.capacity_set_at) + "." : "";
+  }
+  $("capf").addEventListener("submit", async function (e) {
+    e.preventDefault(); msg();
+    var n = $("cap-n").value.trim(), w = parseInt($("cap-warn").value, 10) || 90;
+    busy($("cap-go"), true, "Saving…");
+    try {
+      await api({ action: "set_capacity", venue_id: S.venue, capacity: n === "" ? null : parseInt(n, 10), warn_pct: w });
+      msg("ok", n ? venueName() + " capacity set to " + Number(n).toLocaleString("en-GB") + ", warning at " + w + "%." : "Capacity cleared for " + venueName() + ".");
+      loadCapacity();
+    } catch (x) { msg("fail", "Couldn’t save: " + x.message); }
+    busy($("cap-go"), false, "Save capacity");
+  });
   async function loadAccess() {
+    loadCapacity();
     var r = await sb.from("cp_venue_access").select("*").eq("venue_id", S.venue).order("added_at");
     if (r.error) { msg("fail", r.error.message); return; }
     $("acc-list").innerHTML = r.data.length ? r.data.map(function (a) {
