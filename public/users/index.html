@@ -71,6 +71,20 @@ dialog h3{margin:0 0 12px;font-size:32px}
 dialog p{margin:0 0 16px;color:var(--body)}
 dialog label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px;margin-bottom:20px}
 .btnrow{display:flex;flex-wrap:wrap;gap:12px}
+.vrow{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin-top:10px;font-size:14px}
+.vrow .lbl{font-weight:700;color:var(--body)}
+.vtag{display:inline-block;padding:3px 8px;background:var(--ink);color:var(--bg);font-size:12px;font-weight:700;letter-spacing:.04em}
+.vtag.none{background:transparent;color:var(--muted);border:1px dashed var(--line);font-weight:600;letter-spacing:0}
+.linkbtn{border:0;background:none;padding:6px 2px;color:var(--ink);font:700 14px Manrope,Arial,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:32px}
+.give{border:1px solid var(--ink);background:var(--surface);padding:20px;margin-bottom:28px}
+.give h2{margin:0 0 6px;font-size:28px}.give p{margin:0 0 14px;color:var(--body);font-size:15px}
+.give form{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:12px;align-items:end}
+.give label,.vlist label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px}
+input[type=email],select{width:100%;min-height:46px;padding:10px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 16px Manrope,Arial,sans-serif}
+.waiting{margin-top:14px;font-size:14px;color:var(--muted)}
+.vlist{display:flex;flex-direction:column;gap:2px;margin:0 0 20px;max-height:50vh;overflow:auto}
+.vlist label{flex-direction:row;align-items:center;gap:12px;min-height:44px;margin:0;font-weight:600}
+.vlist input{width:20px;height:20px;accent-color:var(--ink);flex:none}
 footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-size:14px;color:var(--muted)}
 [hidden]{display:none!important}
 @media (max-width:700px){
@@ -85,6 +99,7 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
   .filters{width:100%}
   .filters button{flex:1 1 auto;padding:0 10px}
   .log li{grid-template-columns:1fr;gap:2px}
+  .give form{grid-template-columns:1fr}
   h2.sec{font-size:30px}
 }
 </style>
@@ -96,7 +111,7 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
       <p class="kicker">Fort Green tools · Admin</p>
       <h1 class="display">Users.</h1>
     </div>
-    <p class="lede">Everyone who has signed in to the tools. Removing access signs the person out everywhere and stops them signing in again.</p>
+    <p class="lede">Everyone who has signed in to the tools. Link clients to their venues here. Removing access signs the person out everywhere and stops them signing in again.</p>
   </section>
 
   <div id="state" class="loading">Loading users…</div>
@@ -110,6 +125,16 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     <div class="stats" id="stats"></div>
     <p class="okmsg" id="ok" role="status" hidden></p>
     <p class="err" id="fail" role="alert" hidden></p>
+    <section class="give" aria-labelledby="give-h">
+      <h2 class="display" id="give-h">Link a client to a venue</h2>
+      <p>Clients see that venue’s client portal and its live door count on the hub. They can be linked before they’ve signed in for the first time.</p>
+      <form id="give">
+        <label>Client email <input type="email" id="give-email" required autocomplete="off" placeholder="name@venue.co.uk"></label>
+        <label>Venue <select id="give-venue" required><option value="">Loading venues…</option></select></label>
+        <button class="btn" type="submit" id="give-go">Link venue</button>
+      </form>
+      <div class="waiting" id="waiting" hidden></div>
+    </section>
     <div class="bar">
       <div class="filters" role="group" aria-label="Show">
         <button type="button" data-f="all" aria-pressed="true">All</button>
@@ -140,6 +165,18 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
   </form>
 </dialog>
 
+<dialog id="vdlg" aria-labelledby="vdlg-h">
+  <form method="dialog" id="vdlg-form">
+    <h3 class="display" id="vdlg-h">Client venues</h3>
+    <p id="vdlg-p"></p>
+    <div class="vlist" id="vdlg-list"></div>
+    <div class="btnrow">
+      <button class="btn" type="submit" value="go">Save</button>
+      <button class="btn ghost" type="submit" value="cancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
 <footer><div class="wrap">Admins are listed in the hub_admins table in Supabase. Contact the tools owner to add another admin.</div></footer>
 
 <script>
@@ -148,7 +185,9 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
   var $ = function (id) { return document.getElementById(id); };
   if (!c.SUPABASE_URL || !window.supabase) { $("state").textContent = "Sign-in isn’t set up."; return; }
   var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
-  var users = [], me = "", filter = "all", pending = null;
+  var users = [], me = "", filter = "all", pending = null, venues = [], access = [], vFor = null;
+  function venueName(id) { var v = venues.find(function (x) { return x.venue_id === id; }); return v ? v.name : "Unknown venue"; }
+  function venuesOf(email) { return access.filter(function (a) { return a.email === email; }).map(function (a) { return a.venue_id; }); }
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]; }); }
   function day(d) { return d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"; }
@@ -182,8 +221,12 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
       var act = u.email === me ? '<span class="you">You</span>'
         : u.removed ? '<button class="btn ghost" type="button" data-act="restore" data-id="' + esc(u.user_id) + '">Restore access</button>'
         : '<button class="btn danger" type="button" data-act="remove" data-id="' + esc(u.user_id) + '">Remove access</button>';
+      var vs = venuesOf(u.email);
+      var vrow = u.is_staff ? "" : '<div class="vrow"><span class="lbl">Client of:</span>' +
+        (vs.length ? vs.map(function (id) { return '<span class="vtag">' + esc(venueName(id)) + "</span>"; }).join("") : '<span class="vtag none">No venue yet</span>') +
+        '<button class="linkbtn" type="button" data-act="venues" data-id="' + esc(u.user_id) + '">' + (vs.length ? "Change" : "Link venue") + "</button></div>";
       return '<div class="row' + (u.removed ? " removed" : "") + '"><div><div class="email">' + esc(u.email) + '</div><div class="sub">' + esc(sub) + "</div>" + note +
-        '<div class="tags">' + tags.map(function (t) { return '<span class="tag">' + t + "</span>"; }).join("") + "</div></div>" +
+        '<div class="tags">' + tags.map(function (t) { return '<span class="tag">' + t + "</span>"; }).join("") + "</div>" + vrow + "</div>" +
         '<span class="pill ' + (u.removed ? "removed" : "active") + '">' + (u.removed ? "Removed" : "Active") + '</span><div class="act">' + act + "</div></div>";
     }).join("");
   }
@@ -200,9 +243,68 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     var r = await sb.rpc("hub_list_users");
     if (r.error) { $("state").hidden = true; $("app").hidden = false; msg("fail", "Couldn’t load users: " + r.error.message); return; }
     users = r.data || [];
+    await loadVenues();
     $("state").hidden = true; $("app").hidden = false;
     renderStats(); renderList(); loadLog();
   }
+
+  async function loadVenues() {
+    if (!venues.length) {
+      var v = await sb.functions.invoke("client-portal", { body: { action: "venues" } }).catch(function () { return {}; });
+      venues = (v && v.data && v.data.venues) || [];
+      if (!venues.length) { var q = await sb.from("cp_venues").select("venue_id,name,active").order("name"); venues = q.data || []; }
+      $("give-venue").innerHTML = '<option value="">Choose a venue</option>' + venues.filter(function (x) { return x.active; }).map(function (x) {
+        return '<option value="' + esc(x.venue_id) + '">' + esc(x.name) + "</option>"; }).join("");
+    }
+    var a = await sb.from("cp_venue_access").select("venue_id,email,added_at").order("added_at");
+    access = (a.data || []).map(function (x) { x.email = (x.email || "").toLowerCase(); return x; });
+    var known = {}; users.forEach(function (u) { known[u.email] = 1; });
+    var waiting = {}; access.forEach(function (x) { if (!known[x.email]) (waiting[x.email] = waiting[x.email] || []).push(venueName(x.venue_id)); });
+    var w = Object.keys(waiting);
+    $("waiting").hidden = !w.length;
+    $("waiting").innerHTML = w.length ? "<strong>Linked but not signed in yet:</strong> " + w.map(function (e) { return esc(e) + " (" + esc(waiting[e].join(", ")) + ")"; }).join(" · ") : "";
+  }
+
+  async function setVenues(email, want) {
+    var have = venuesOf(email);
+    var add = want.filter(function (id) { return have.indexOf(id) === -1; });
+    var drop = have.filter(function (id) { return want.indexOf(id) === -1; });
+    if (add.length) {
+      var r = await sb.from("cp_venue_access").insert(add.map(function (id) { return { venue_id: id, email: email, added_by: me }; }));
+      if (r.error) throw r.error;
+    }
+    if (drop.length) {
+      var d = await sb.from("cp_venue_access").delete().eq("email", email).in("venue_id", drop);
+      if (d.error) throw d.error;
+    }
+    return { add: add.length, drop: drop.length };
+  }
+
+  $("give").addEventListener("submit", async function (e) {
+    e.preventDefault(); msg();
+    var email = $("give-email").value.trim().toLowerCase(), v = $("give-venue").value;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg("fail", "Enter the client’s email address."); return; }
+    if (!v) { msg("fail", "Choose a venue."); return; }
+    if (c.STAFF_DOMAIN && email.endsWith("@" + c.STAFF_DOMAIN.toLowerCase())) { msg("fail", "Fort Green staff already see every venue."); return; }
+    if (venuesOf(email).indexOf(v) !== -1) { msg("ok", email + " is already linked to " + venueName(v) + "."); return; }
+    var b = $("give-go"); b.disabled = true;
+    try { await setVenues(email, venuesOf(email).concat([v])); }
+    catch (er) { b.disabled = false; msg("fail", "Couldn’t link the venue: " + er.message); return; }
+    b.disabled = false; $("give-email").value = ""; $("give-venue").value = "";
+    var signedUp = users.some(function (u) { return u.email === email; });
+    msg("ok", email + " is now a client of " + venueName(v) + (signedUp ? "." : ". They’ll see it when they sign in at tools.fortgreen.co.uk with this email."));
+    await loadVenues(); renderList();
+  });
+
+  $("vdlg").addEventListener("close", async function () {
+    var email = vFor; vFor = null;
+    if ($("vdlg").returnValue !== "go" || !email) return;
+    var want = Array.prototype.map.call($("vdlg-list").querySelectorAll("input:checked"), function (i) { return i.value; });
+    try { var r = await setVenues(email, want); }
+    catch (er) { msg("fail", "Couldn’t save venues: " + er.message); return; }
+    msg("ok", r.add || r.drop ? "Venues updated for " + email + "." : "No changes for " + email + ".");
+    await loadVenues(); renderList();
+  });
 
   document.querySelector(".filters").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (!b) return;
@@ -216,6 +318,16 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     var b = e.target.closest("button[data-act]"); if (!b) return;
     var u = users.find(function (x) { return x.user_id === b.dataset.id; }); if (!u) return;
     msg();
+    if (b.dataset.act === "venues") {
+      vFor = u.email;
+      var mine = venuesOf(u.email);
+      $("vdlg-p").textContent = "Choose the venues " + u.email + " is a client of. They’ll see each venue’s client portal and live door count.";
+      $("vdlg-list").innerHTML = venues.filter(function (x) { return x.active || mine.indexOf(x.venue_id) !== -1; }).map(function (x) {
+        return '<label><input type="checkbox" value="' + esc(x.venue_id) + '"' + (mine.indexOf(x.venue_id) !== -1 ? " checked" : "") + "> " + esc(x.name) + "</label>";
+      }).join("") || "<p>No venues found. Add venues in Staff Check-In first.</p>";
+      $("vdlg").showModal();
+      return;
+    }
     if (b.dataset.act === "restore") {
       b.disabled = true; b.textContent = "Restoring…";
       var r = await sb.rpc("hub_restore_access", { p_user: u.user_id });

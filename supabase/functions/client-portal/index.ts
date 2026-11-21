@@ -85,6 +85,16 @@ Deno.serve(async (req) => {
       return json({ shifts });
     }
 
+    if (p.action === "live") {
+      // Live door count for every venue this person can see (clients: their venues; staff: all active venues)
+      const { data: vs, error } = await user.from("cp_venues").select("venue_id").eq("active", true);
+      if (error) throw error;
+      const ids = (vs ?? []).map((v) => v.venue_id);
+      if (!ids.length) return json({ staff: isStaff === true, venues: 0, shifts: [] });
+      const shifts = await checkin("portal_live", { p_key: key, p_venues: ids });
+      return json({ staff: isStaff === true, venues: ids.length, shifts, at: new Date().toISOString() });
+    }
+
     if (p.action === "request_staff") {
       if (!(await canVenue(p.venue_id))) return json({ error: "Not allowed" }, 403);
       const extra = Number(p.extra);

@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="/config.js"></script>
 <script src="/wx.js"></script>
+<script src="/live.js"></script>
 <style>
 :root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;--ghost:#ececec;
   --staff-bg:#100f10;--staff-ink:#fff;--staff-muted:#c9c9c9;--staff-line:#3d3c3d;--staff-ghost:#1f1e1f;--err:#b42318;color-scheme:light}
@@ -64,6 +65,11 @@ header .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-con
 .wx-empty{margin-top:auto;display:flex;flex-direction:column;gap:16px;align-items:flex-start}.wx-empty p{margin:0}
 .wx-issue{margin:auto 0 0;color:var(--muted)}
 .wx-foot-link{color:var(--ink)}
+.lv-slide{cursor:pointer}.lv-note{margin:0;font-size:14px;font-weight:700}
+.lv-bar{height:10px;border:1px solid var(--ink)}.lv-bar i{display:block;height:100%;background:var(--ink)}
+.lv-pct{margin:0;font-size:15px;font-weight:700}.lv-in{margin:0;font-size:15px;color:var(--body);line-height:1.4}
+.lv-caution{color:#8a5a00}.lv-bar.lv-caution{border-color:#8a5a00}.lv-bar.lv-caution i{background:#c27c00}
+.lv-stop{color:#b42318}.lv-bar.lv-stop{border-color:#b42318}.lv-bar.lv-stop i{background:#b42318}
 
 .staff{background:var(--staff-bg);color:var(--staff-ink);padding:72px 0 88px;margin-top:88px}
 .staff .sechead span{color:var(--staff-muted)}
@@ -165,6 +171,11 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
         <span class="tag">Live weather</span>
         <div data-wx-body style="display:flex;flex-direction:column;flex:1;gap:12px"><p class="wx-issue">Loading weather…</p></div>
         <div class="foot"><span data-wx-foot>Met Office forecast</span><a class="go" href="/weather/">Open weather</a></div>
+      </div>
+      <div class="card wx lv" id="card-live" hidden>
+        <span class="tag">Live capacity</span>
+        <div data-lv-body style="display:flex;flex-direction:column;flex:1;gap:12px"><p class="wx-issue">Loading door count…</p></div>
+        <div class="foot"><span data-lv-foot>Staff Check-In clicker</span><a class="go" href="/portal/#counts">Door counts</a></div>
       </div>
       <a class="card portal" href="/portal/" id="card-portal" hidden>
         <span class="tag">Your account</span>
@@ -345,7 +356,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     $("view-login").hidden = true; $("view-hub").hidden = false;
     $("who").hidden = !email; $("who-email").textContent = email || "";
     $("staff").hidden = !isStaff(email);
-    $("card-users").hidden = true; $("card-rates").hidden = true; $("card-portal").hidden = true;
+    $("card-users").hidden = true; $("card-rates").hidden = true; $("card-portal").hidden = true; $("card-live").hidden = true;
     lastEmail = email;
     if (sb && email) checkAccess();
   }
@@ -355,6 +366,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     var b = await sb.rpc("hub_is_blocked");
     if (b && b.data === true) { await sb.auth.signOut(); signedIn = false; showLogin("email"); err("email-err", REMOVED_MSG); return; }
     if (window.FGWeather) FGWeather.mountCard($("card-weather"), sb);
+    if (window.FGLive) FGLive.mountCard($("card-live"), sb);
     var a = await sb.rpc("hub_is_admin");
     $("card-users").hidden = !(a && a.data === true);
     $("card-rates").hidden = !(a && a.data === true);
