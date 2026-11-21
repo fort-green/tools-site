@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<style id="fg-guard">html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/staff-guard.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Talent Match | Fort Green</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;--hatch:#cecece;
+  --err:#b42318;--err-soft:#fbe4e1;--warn:#7a5a00;--warn-soft:#fff4cc;--ok:#1d6b3a;--ok-soft:#e3f3e8;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#100f10;--surface:#1a191a;--ink:#fff;--body:#e2e2e2;--muted:#a9a9a9;--line:#3b3a3b;--soft:#232223;--hatch:#4a494a;
+  --err:#ff7b6e;--err-soft:#2d1513;--warn:#ffd666;--warn-soft:#2e2507;--ok:#7fd69b;--ok-soft:#12271a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Manrope,Arial,sans-serif}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.display{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;text-transform:uppercase;line-height:.95;letter-spacing:.005em}
+.wrap{max-width:860px;margin:0 auto;padding:0 20px 96px}
+.hero{padding-top:40px;padding-bottom:20px}
+.hero .kicker{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--muted)}
+.hero h1{margin:0;font-size:clamp(52px,11vw,104px)}
+.who{font-size:14px;color:var(--muted);margin-top:10px} .who strong{color:var(--ink)}
+h2.display{font-size:34px;margin:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:0;font:700 14px Manrope,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.sm{min-height:40px;padding:0 14px;font-size:12px}
+.btn.danger{background:transparent;color:var(--err);border-color:var(--err)}
+.btn.block{width:100%}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.linkbtn{background:none;border:0;padding:0;font:600 15px Manrope,Arial,sans-serif;color:var(--ink);text-decoration:underline;cursor:pointer}
+.linkbtn.danger{color:var(--err)}
+.sechead{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;margin:28px 0 16px}
+.hint{margin:0;font-size:14px;color:var(--muted)}
+.err{margin:12px 0;padding:12px 14px;background:var(--err-soft);color:var(--err);font-weight:600;font-size:15px}
+.okmsg{margin:12px 0;padding:12px 14px;background:var(--ok-soft);color:var(--ok);font-weight:600;font-size:15px}
+.empty{border:1px dashed var(--line);padding:36px 20px;text-align:center;color:var(--muted)}
+.list{border-top:1px solid var(--ink)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;align-items:center;padding:16px 4px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.row:hover{background:var(--soft)}
+.row .t{font-weight:700;font-size:17px}
+.row .s{font-size:14px;color:var(--muted)}
+.pill{display:inline-block;padding:4px 10px;border:1px solid currentColor;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.pill.draft{color:var(--muted)}
+.pill.searching{color:var(--warn);background:var(--warn-soft)}
+.pill.ready{color:var(--ok);background:var(--ok-soft)}
+.pill.failed{color:var(--err);background:var(--err-soft)}
+.back{display:inline-block;margin:20px 0 4px;font-weight:600;font-size:15px}
+.panel{background:var(--surface);border:1px solid var(--line);padding:18px;margin:14px 0}
+.f{display:grid;gap:14px}
+.f label,.f .lab{display:block;font-weight:600;font-size:14px;margin-bottom:5px}
+.f input[type=text],.f input[type=date],.f input[type=number],.f input[type=url],.f input[type=email],.f input[type=tel],.f select,.f textarea{width:100%;min-height:46px;padding:9px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);font-size:16px}
+.f textarea{min-height:80px;resize:vertical}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--ink);outline:none}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.two>*,.f>*{min-width:0}
+@media (max-width:520px){.two{grid-template-columns:1fr}}
+.act{border:1px solid var(--ink);background:var(--surface);padding:16px;margin:12px 0}
+.act-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
+.act-top b{font-family:Antonio,'Arial Narrow',sans-serif;font-size:22px;font-weight:700;text-transform:uppercase}
+.saving{font-size:13px;color:var(--muted);min-height:20px;margin-top:6px}
+.search{border:1px solid var(--ink);padding:18px;margin:22px 0;background:var(--surface)}
+.search.on{border-style:dashed}
+.spin{display:inline-block;width:16px;height:16px;margin-right:8px;vertical-align:-2px;background:repeating-linear-gradient(135deg,var(--hatch) 0 4px,transparent 4px 7px);box-shadow:inset 0 0 0 1.5px var(--ink);animation:mv 1s linear infinite}
+@keyframes mv{to{background-position:14px 0}}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:14px 0}
+.stats div{background:var(--surface);padding:12px}
+.stats b{display:block;font-family:Antonio,'Arial Narrow',sans-serif;font-size:26px;font-weight:700;line-height:1.1}
+.stats span{font-size:13px;color:var(--muted)}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;background:var(--soft);padding:4px;margin:16px 0 6px;position:sticky;top:0;z-index:5}
+.tabs button{min-height:46px;border:0;background:transparent;cursor:pointer;font-weight:700;font-size:14px;color:var(--muted);padding:4px;line-height:1.2;overflow-wrap:anywhere}
+.tabs button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.check{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-size:15px}
+.check input{width:20px;height:20px;margin-top:2px;accent-color:var(--ink);flex:none}
+.cand{border:1.5px solid var(--line);background:var(--surface);padding:16px;margin:12px 0;overflow-wrap:anywhere}
+.cand.top{border-color:var(--ink)}
+.cand-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:baseline}
+.cand-head h3{margin:0;font-family:Antonio,'Arial Narrow',sans-serif;font-size:26px;font-weight:700;line-height:1.05}
+.rank{font-size:13px;color:var(--muted);font-weight:600}
+.score{font-family:Antonio,'Arial Narrow',sans-serif;font-size:36px;font-weight:700;line-height:1;text-align:right}
+.score small{font-size:15px;color:var(--muted);font-weight:400}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.badge{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;background:var(--ink);color:var(--bg)}
+.badge.web{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.badge.manual{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1.5px var(--line)}
+.fit{position:relative;height:12px;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line);margin:12px 0 4px}
+.fit i{position:absolute;left:0;top:0;bottom:0;background:var(--ink)}
+.fit.low i{background:repeating-linear-gradient(135deg,var(--hatch) 0 5px,transparent 5px 9px);box-shadow:inset 0 0 0 1px var(--hatch)}
+.fit::after{content:"";position:absolute;left:70%;top:-4px;bottom:-4px;width:2px;background:var(--muted)}
+.fit-key{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:10px}
+.cand p{font-size:15px;margin:0 0 10px}
+.flag{font-size:14px;border-left:4px solid var(--line);padding:6px 10px;background:var(--bg);margin:0 0 10px}
+.flag.warn{border-left-color:var(--err)}
+.meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:14px;margin:0}
+.meta dt{color:var(--muted)} .meta dd{margin:0}
+.cand-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.cand-actions select{min-height:40px;padding:4px 10px;border:1.5px solid var(--line);background:var(--surface)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13px;border:1.5px solid var(--line);padding:6px 10px;cursor:pointer;margin:0}
+.chips input{accent-color:var(--ink);width:16px;height:16px}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.small{font-size:13px;color:var(--muted)}
+.nav{display:flex;gap:0;border-bottom:1px solid var(--ink);margin:4px 0 8px}
+.nav a{padding:12px 16px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid transparent;border-bottom:0;margin-bottom:-1px}
+.nav a[aria-current=page]{color:var(--ink);border-color:var(--ink);background:var(--bg)}
+.pill.sent,.pill.viewed{color:var(--warn);background:var(--warn-soft)}
+.pill.accepted{color:var(--ok);background:var(--ok-soft)}
+.pill.declined,.pill.noanswer{color:var(--err);background:var(--err-soft)}
+.pill.cancelled{color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+.filters button{min-height:38px;padding:0 12px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:14px}
+.filters button[aria-pressed=true]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.actions{display:grid;gap:10px;margin:14px 0}
+.timeline{list-style:none;padding:0;margin:0;border-top:1px solid var(--line)}
+.timeline li{display:grid;grid-template-columns:112px minmax(0,1fr);gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.timeline time{color:var(--muted)}
+.readonly{background:var(--soft);padding:10px 14px;font-size:14px;margin:10px 0}
+.disclaimer{font-size:13px;color:var(--muted);margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="hero">
+    <p class="kicker">Staff tool</p>
+    <h1 class="display">Talent Match</h1>
+    <div class="who" id="who"></div>
+  </header>
+  <div id="app"><p class="hint">Loading…</p></div>
+</main>
+
+<script>
+(function () {
+  var c = window.FG_CONFIG || {};
+  var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
+  var app = document.getElementById("app");
+  var me = { email: "", admin: false };
+  var TYPES = ["Headliner or name act","Live band","DJ","Solo or acoustic","MC or host","Comedian","Dancers or performers","Walkabout or circus","Children’s entertainer","Speaker or presenter"];
+  var EVENT_TYPES = [["festival","Festival"],["club","Club night"],["venue","Venue or bar"],["corporate","Corporate"],["private","Private or wedding"],["brand","Brand activation"]];
+  var PLATFORMS = ["Web","Instagram","TikTok","Facebook","Mixcloud"];
+  var STATUSES = ["To contact","Contacted","Quoted","Not available","Booked"];
+  var state = { brief: null, cands: [], tab: null, hideOver: true, editing: null, channel: null, poll: null };
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]; }); }
+  function safeUrl(u) { u = String(u || "").trim(); return /^https?:\/\//i.test(u) ? u : ""; }
+  function host(u) { var m = String(u).match(/^https?:\/\/(?:www\.)?([^\/?#]+)/i); return m ? m[1] : u; }
+  function gbp(v) { var n = parseFloat(v); return isNaN(n) ? "No budget set" : "£" + n.toLocaleString("en-GB"); }
+  function fmtDate(d) { if (!d) return ""; var x = new Date(d + "T12:00:00"); return isNaN(x) ? d : x.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); }
+  function ago(t) { if (!t) return ""; var m = Math.round((Date.now() - new Date(t)) / 60000); return m < 1 ? "just now" : m < 60 ? m + " min ago" : new Date(t).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); }
+  function uid() { return "a" + Math.random().toString(36).slice(2, 9); }
+  function keep(fn) { var y = window.scrollY; fn(); window.scrollTo(0, y); }
+  function debounce(fn, ms) { var t; return function () { var a = arguments; clearTimeout(t); t = setTimeout(function () { fn.apply(null, a); }, ms); }; }
+  function stopLive() { if (state.channel) { sb.removeChannel(state.channel); state.channel = null; } if (state.poll) { clearInterval(state.poll); state.poll = null; } }
+  function errMsg(e) { return (e && (e.message || e.error_description)) || "Something went wrong. Try again."; }
+
+  /* ---------- Briefs list ---------- */
+  async function viewList() {
+    stopLive(); state.brief = null; state.editing = null;
+    app.innerHTML = '<p class="hint">Loading briefs…</p>';
+    var r = await sb.from("tm_briefs").select("id,name,event,acts,status,updated_at,created_by").order("updated_at", { ascending: false });
+    if (r.error) { app.innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+    var counts = {};
+    var cr = await sb.from("tm_candidates").select("brief_id,status");
+    (cr.data || []).forEach(function (x) { var k = counts[x.brief_id] = counts[x.brief_id] || { n: 0, booked: 0 }; k.n++; if (x.status === "Booked") k.booked++; });
+    var rows = r.data || [];
+    app.innerHTML =
+      TB.nav("briefs") +
+      '<div class="sechead"><h2 class="display">Briefs</h2><button class="btn" id="new">New brief</button></div>' +
+      '<p class="hint">Enter what the client wants, then find acts. The search covers the web, Instagram, TikTok, Facebook and Mixcloud and takes about two minutes. Everything here is shared with the team.</p>' +
+      (rows.length ? '<div class="list" style="margin-top:18px">' + rows.map(function (b) {
+        var k = counts[b.id] || { n: 0, booked: 0 };
+        var bits = [fmtDate((b.event || {}).date), (b.acts || []).length + " act" + ((b.acts || []).length === 1 ? "" : "s"), k.n ? k.n + " shortlisted" : "", k.booked ? k.booked + " booked" : ""].filter(Boolean).join(" · ");
+        return '<a class="row" href="#b=' + b.id + '"><div><div class="t">' + esc(b.name || "Untitled brief") + '</div><div class="s">' + esc(bits) + " · updated " + esc(ago(b.updated_at)) + '</div></div><span class="pill ' + b.status + '">' + esc(b.status) + "</span></a>";
+      }).join("") + "</div>" : '<div class="empty" style="margin-top:18px">No briefs yet. Start one with “New brief”.</div>');
+    document.getElementById("new").onclick = newBrief;
+  }
+
+  async function newBrief() {
+    var r = await sb.from("tm_briefs").insert({ name: "", event: {}, acts: [{ id: uid(), type: "DJ", label: "DJ", style: "", set: "", budget: "" }] }).select("id").single();
+    if (r.error) { alert(errMsg(r.error)); return; }
+    location.hash = "#b=" + r.data.id;
+  }
+
+  /* ---------- One brief ---------- */
+  async function viewBrief(id) {
+    stopLive();
+    app.innerHTML = '<p class="hint">Loading brief…</p>';
+    var r = await sb.from("tm_briefs").select("*").eq("id", id).maybeSingle();
+    if (r.error || !r.data) { app.innerHTML = '<a class="back" href="#">← All briefs</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This brief doesn’t exist or was deleted.") + "</p>"; return; }
+    state.brief = r.data;
+    await loadCands();
+    if (!state.tab || !state.brief.acts.some(function (a) { return a.id === state.tab; })) state.tab = state.brief.acts[0] ? state.brief.acts[0].id : null;
+    render();
+    state.channel = sb.channel("tm-" + id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tm_briefs", filter: "id=eq." + id }, function (p) { if (p.new && p.new.id) { var was = state.brief.status; state.brief = Object.assign(state.brief, { status: p.new.status, error: p.new.error, search_started_at: p.new.search_started_at, search_finished_at: p.new.search_finished_at }); if (was !== p.new.status) refreshAfterSearch(); } })
+      .on("postgres_changes", { event: "*", schema: "public", table: "tm_candidates", filter: "brief_id=eq." + id }, debounce(function () { if (!state.editing) loadCands().then(function () { keep(renderShortlist); }); }, 800))
+      .subscribe();
+    state.poll = setInterval(async function () {
+      if (!state.brief || state.brief.status !== "searching") return;
+      var x = await sb.from("tm_briefs").select("status,error,search_started_at,search_finished_at").eq("id", state.brief.id).maybeSingle();
+      if (x.data && x.data.status !== "searching") { Object.assign(state.brief, x.data); refreshAfterSearch(); } else renderSearch();
+    }, 15000);
+  }
+  async function refreshAfterSearch() { await loadCands(); keep(render); }
+  async function loadCands() {
+    var r = await sb.from("tm_candidates").select("*").eq("brief_id", state.brief.id).order("score", { ascending: false });
+    state.cands = r.data || [];
+  }
+
+  function render() {
+    var b = state.brief, e = b.event || {};
+    app.innerHTML =
+      '<a class="back" href="#">← All briefs</a>' +
+      '<div class="sechead" style="margin-top:8px"><h2 class="display">The brief</h2><span class="pill ' + b.status + '">' + esc(b.status) + "</span></div>" +
+      '<div class="panel f" id="ev">' +
+        '<div><label for="b-name">Event name</label><input type="text" id="b-name" data-top="name" value="' + esc(b.name) + '" placeholder="e.g. Client Christmas party"></div>' +
+        '<div class="two"><div><label for="e-type">Type of event</label><select id="e-type" data-ev="type"><option value="">Choose…</option>' + EVENT_TYPES.map(function (t) { return '<option value="' + t[0] + '"' + (e.type === t[0] ? " selected" : "") + ">" + t[1] + "</option>"; }).join("") + "</select></div>" +
+        '<div><label for="e-date">Date</label><input type="date" id="e-date" data-ev="date" value="' + esc(e.date) + '"></div></div>' +
+        '<div class="two"><div><label for="e-venue">Venue</label><input type="text" id="e-venue" data-ev="venue" value="' + esc(e.venue) + '"></div>' +
+        '<div><label for="e-town">Town or area</label><input type="text" id="e-town" data-ev="town" value="' + esc(e.town) + '" placeholder="Used in the search, e.g. Central London"></div></div>' +
+        '<div class="two"><div><label for="e-guests">Guests</label><input type="text" id="e-guests" data-ev="guests" value="' + esc(e.guests) + '" placeholder="e.g. 400"></div>' +
+        '<div><label for="e-age">Audience</label><input type="text" id="e-age" data-ev="age" value="' + esc(e.age) + '" placeholder="e.g. 18+, ages 22 to 65"></div></div>' +
+        '<div><label for="e-notes">Notes for the search</label><textarea id="e-notes" data-ev="notes" placeholder="Format of the night, dress code, the crowd">' + esc(e.notes) + "</textarea></div>" +
+      "</div>" +
+      '<div class="sechead"><h2 class="display">Acts wanted</h2></div>' +
+      b.acts.map(function (a, i) {
+        return '<div class="act" data-act="' + a.id + '"><div class="act-top"><b>' + (i + 1) + ". " + esc(a.label || a.type || "Act") + '</b><button type="button" class="linkbtn danger" data-rm-act="' + a.id + '">Remove</button></div><div class="f">' +
+          '<div class="two"><div><label>Type of act</label><select data-k="type">' + TYPES.map(function (t) { return "<option" + (a.type === t ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div>" +
+          '<div><label>Budget, £</label><input type="number" data-k="budget" inputmode="decimal" min="0" step="50" value="' + esc(a.budget) + '"></div></div>' +
+          '<div><label>Style, genre or theme</label><input type="text" data-k="style" value="' + esc(a.style) + '" placeholder="e.g. Soul, Motown and modern pop covers"></div>' +
+          '<div class="two"><div><label>Set</label><input type="text" data-k="set" value="' + esc(a.set) + '" placeholder="e.g. 2 hours from 21:30"></div>' +
+          '<div><label>Short name for the shortlist tab</label><input type="text" data-k="label" value="' + esc(a.label) + '" placeholder="e.g. Band"></div></div>' +
+          "</div></div>";
+      }).join("") +
+      '<button type="button" class="btn ghost block" id="add-act">Add an act</button>' +
+      '<div class="saving" id="saving" role="status"></div>' +
+      '<div id="search"></div>' +
+      '<div id="shortlist"></div>' +
+      '<div style="margin-top:36px;display:flex;gap:16px;flex-wrap:wrap"><button type="button" class="linkbtn danger" id="del-brief">Delete this brief</button></div>' +
+      '<p class="disclaimer">Shortlists come from public search listings and Claude’s judgement, and are a starting point for outreach, not confirmed bookings. Use contact details only to ask about a booking, never for marketing. Acts not marked Booked are deleted automatically 12 months after they were found. Internal only: never send this list to a client.</p>';
+    bindBrief();
+    renderSearch();
+    renderShortlist();
+  }
+
+  var saveBrief = debounce(async function () {
+    var b = state.brief, s = document.getElementById("saving");
+    var r = await sb.from("tm_briefs").update({ name: b.name, event: b.event, acts: b.acts }).eq("id", b.id);
+    if (s) s.textContent = r.error ? "Couldn’t save: " + errMsg(r.error) : "Saved";
+  }, 700);
+  function dirty() { var s = document.getElementById("saving"); if (s) s.textContent = "Saving…"; saveBrief(); if (state.brief.status !== "searching") renderSearch(); }
+
+  function bindBrief() {
+    var b = state.brief;
+    app.querySelectorAll("[data-top]").forEach(function (i) { i.oninput = function () { b.name = i.value; dirty(); }; });
+    app.querySelectorAll("[data-ev]").forEach(function (i) { i[i.tagName === "SELECT" || i.type === "date" ? "onchange" : "oninput"] = function () { b.event = Object.assign({}, b.event, {}); b.event[i.dataset.ev] = i.value; dirty(); }; });
+    app.querySelectorAll("[data-act]").forEach(function (box) {
+      var a = b.acts.find(function (x) { return x.id === box.dataset.act; });
+      box.querySelectorAll("[data-k]").forEach(function (i) {
+        i[i.tagName === "SELECT" ? "onchange" : "oninput"] = function () {
+          var k = i.dataset.k, old = a.type;
+          a[k] = i.value;
+          if (k === "type" && (!a.label || a.label === old)) { a.label = i.value; box.querySelector('[data-k="label"]').value = i.value; }
+          if (k === "type" || k === "label") { box.querySelector(".act-top b").textContent = (b.acts.indexOf(a) + 1) + ". " + (a.label || a.type); renderShortlist(); }
+          dirty();
+        };
+      });
+    });
+    app.querySelectorAll("[data-rm-act]").forEach(function (btn) {
+      btn.onclick = function () {
+        if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = "Tap again to remove"; return; }
+        b.acts = b.acts.filter(function (x) { return x.id !== btn.dataset.rmAct; });
+        sb.from("tm_candidates").delete().eq("brief_id", b.id).eq("act_id", btn.dataset.rmAct).then(function () {});
+        state.cands = state.cands.filter(function (x) { return x.act_id !== btn.dataset.rmAct; });
+        if (state.tab === btn.dataset.rmAct) state.tab = b.acts[0] ? b.acts[0].id : null;
+        dirty(); keep(render);
+      };
+    });
+    document.getElementById("add-act").onclick = function () {
+      var a = { id: uid(), type: "DJ", label: "", style: "", set: "", budget: "" };
+      b.acts.push(a); dirty(); keep(render);
+      var box = app.querySelector('[data-act="' + a.id + '"]'); if (box) { box.scrollIntoView({ block: "center" }); box.querySelector("select").focus(); }
+    };
+    var del = document.getElementById("del-brief");
+    del.onclick = async function () {
+      if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Tap again to delete the brief and its shortlist"; return; }
+      var r = await sb.from("tm_briefs").delete().eq("id", b.id);
+      if (r.error) { del.textContent = "Couldn’t delete: " + errMsg(r.error); return; }
+      location.hash = "#";
+    };
+  }
+
+  function renderSearch() {
+    var el = document.getElementById("search"); if (!el) return;
+    var b = state.brief;
+    var running = b.status === "searching";
+    var mins = b.search_started_at ? (Date.now() - new Date(b.search_started_at)) / 60000 : 0;
+    var stale = running && mins > 10;
+    var ok = b.acts.length && b.acts.every(function (a) { return (a.style || "").trim(); });
+    var html = '<div class="search ' + (running && !stale ? "on" : "") + '">';
+    if (running && !stale) {
+      html += '<p style="margin:0;font-weight:700"><span class="spin" aria-hidden="true"></span>Searching the web, Instagram, TikTok, Facebook and Mixcloud…</p><p class="hint" style="margin-top:6px">Started ' + esc(ago(b.search_started_at)) + ". Usually about two minutes. You can leave this page; the shortlist will be here when you come back.</p>";
+    } else {
+      if (stale) html += '<p class="err" style="margin-top:0">The last search is taking much longer than expected and has probably stopped. Run it again.</p>';
+      if (b.status === "failed") html += '<p class="err" style="margin-top:0">' + esc(b.error || "The last search failed.") + "</p>";
+      if (b.status === "ready" && b.search_finished_at) html += '<p class="hint" style="margin:0 0 12px">Last searched ' + esc(ago(b.search_finished_at)) + ". Searching again replaces results nobody has touched, and keeps anything the team has edited or added.</p>";
+      html += '<button type="button" class="btn block" id="go"' + (ok ? "" : " disabled") + ">" + (b.status === "ready" ? "Search again" : "Find acts") + "</button>" +
+        (ok ? "" : '<p class="hint" style="margin-top:8px">Add a style, genre or theme to every act first.</p>') +
+        '<div id="go-msg"></div>';
+    }
+    el.innerHTML = html + "</div>";
+    var go = document.getElementById("go");
+    if (go) go.onclick = async function () {
+      go.disabled = true; go.textContent = "Starting…";
+      var r = await sb.from("tm_briefs").update({ name: b.name, event: b.event, acts: b.acts }).eq("id", b.id);
+      if (!r.error) r = await sb.rpc("tm_start_search", { p_brief_id: b.id });
+      if (r.error) { go.disabled = false; go.textContent = "Find acts"; document.getElementById("go-msg").innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+      b.status = "searching"; b.search_started_at = new Date().toISOString(); b.error = null;
+      app.querySelector(".sechead .pill").outerHTML = '<span class="pill searching">searching</span>';
+      renderSearch();
+    };
+  }
+
+  /* ---------- Shortlist ---------- */
+  function viewCard(x, rank, label) {
+    var links = PLATFORMS.slice(1).filter(function (p) { return safeUrl(x[p.toLowerCase()]); }).map(function (p) { return '<a href="' + esc(safeUrl(x[p.toLowerCase()])) + '" target="_blank" rel="noopener">' + p + "</a>"; });
+    if (safeUrl(x.website)) links.unshift('<a href="' + esc(safeUrl(x.website)) + '" target="_blank" rel="noopener">' + esc(host(x.website)) + "</a>");
+    var other = (x.sources || []).filter(function (u) { return safeUrl(u) && u !== x.website && PLATFORMS.slice(1).every(function (p) { return u !== x[p.toLowerCase()]; }); });
+    other.forEach(function (u) { links.push('<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(host(u)) + "</a>"); });
+    var score = Math.max(0, Math.min(100, x.score | 0));
+    return '<div class="cand ' + (rank === 1 ? "top" : "") + '" id="card-' + x.id + '">' +
+      '<div class="cand-head"><div><div class="rank">#' + rank + " for " + esc(label.toLowerCase()) + '</div><h3>' + esc(x.name || "Unnamed act") + '</h3></div><div class="score">' + score + "<small>/100</small></div></div>" +
+      '<div class="badges">' + (x.found_on || []).map(function (p) { return '<span class="badge ' + (p === "Web" ? "web" : "") + '">' + esc(p) + "</span>"; }).join("") + (x.origin === "manual" ? '<span class="badge manual">Added by ' + esc((x.created_by || "").split("@")[0]) + "</span>" : "") + "</div>" +
+      '<div class="fit ' + (score < 70 ? "low" : "") + '" aria-hidden="true"><i style="width:' + score + '%"></i></div><div class="fit-key"><span>Fit with the brief</span><span>Strong fit from 70</span></div>' +
+      (x.why ? "<p>" + esc(x.why) + "</p>" : "") +
+      (x.concern ? '<div class="flag ' + (x.over_budget ? "warn" : "") + '">' + esc(x.concern) + "</div>" : "") +
+      '<dl class="meta"><dt>Following</dt><dd>' + esc(x.followers || "Not shown") + "</dd><dt>Based</dt><dd>" + esc(x.based || "Not shown") + "</dd><dt>Booking</dt><dd>" + esc(x.booking || "Not shown") + "</dd><dt>Links</dt><dd>" + (links.join(" · ") || "None") + "</dd>" +
+      (x.notes ? "<dt>Notes</dt><dd>" + esc(x.notes) + "</dd>" : "") + "</dl>" +
+      '<div class="cand-actions"><label class="small">Status <select data-status="' + x.id + '">' + STATUSES.map(function (s) { return "<option" + (x.status === s ? " selected" : "") + ">" + s + "</option>"; }).join("") + "</select></label>" +
+      '<button type="button" class="btn ghost sm" data-edit="' + x.id + '">Edit</button>' +
+      (me.admin ? '<button type="button" class="btn sm" data-book="' + x.id + '">Book this act</button>' : "") +
+      '<span class="small">Updated by ' + esc(x.updated_by === "system" ? "search" : (x.updated_by || "").split("@")[0]) + " " + esc(ago(x.updated_at)) + "</span></div></div>";
+  }
+
+  function editCard(x) {
+    function inp(k, label, type, ph) { return '<div><label for="x-' + k + '">' + label + '</label><input type="' + (type || "text") + '" id="x-' + k + '" data-f="' + k + '" value="' + esc(x[k]) + '"' + (ph ? ' placeholder="' + ph + '"' : "") + "></div>"; }
+    return '<div class="cand top" id="card-' + x.id + '"><div class="cand-head"><div><div class="rank">' + (x.id ? "Editing" : "New act") + "</div><h3>" + esc(x.name || "New act") + "</h3></div></div>" +
+      '<form class="f" id="edit-form" style="margin-top:12px" novalidate>' +
+      inp("name", "Name") +
+      '<div><label for="x-score">Fit score: <output id="o-score">' + (x.score | 0) + '</output>/100</label><input type="range" id="x-score" data-f="score" min="0" max="100" value="' + (x.score | 0) + '"></div>' +
+      '<div><label for="x-why">Why they fit</label><textarea id="x-why" data-f="why">' + esc(x.why) + "</textarea></div>" +
+      '<div><label for="x-concern">Concerns</label><textarea id="x-concern" data-f="concern">' + esc(x.concern) + "</textarea></div>" +
+      '<label class="check" style="margin:0"><input type="checkbox" data-f="over_budget"' + (x.over_budget ? " checked" : "") + "><span>Likely well over budget</span></label>" +
+      '<div><span class="lab">Found on</span><div class="chips">' + PLATFORMS.map(function (p) { return '<label><input type="checkbox" data-found="' + p + '"' + ((x.found_on || []).indexOf(p) > -1 ? " checked" : "") + ">" + p + "</label>"; }).join("") + "</div></div>" +
+      '<div class="two">' + inp("followers", "Following") + inp("based", "Based") + "</div>" +
+      inp("booking", "Booking contact") +
+      inp("website", "Website", "url", "https://") +
+      '<div class="two">' + inp("instagram", "Instagram", "url", "https://") + inp("tiktok", "TikTok", "url", "https://") + "</div>" +
+      '<div class="two">' + inp("facebook", "Facebook", "url", "https://") + inp("mixcloud", "Mixcloud", "url", "https://") + "</div>" +
+      '<div><label for="x-notes">Team notes</label><textarea id="x-notes" data-f="notes" placeholder="Quotes, availability, who spoke to them">' + esc(x.notes) + "</textarea></div>" +
+      '<div id="edit-msg"></div>' +
+      '<div style="display:grid;gap:10px"><button type="submit" class="btn block">Save</button><button type="button" class="btn ghost block" id="edit-cancel">Cancel</button>' +
+      (x.id ? '<button type="button" class="btn danger block" id="edit-del">Remove from shortlist</button>' : "") + "</div></form></div>";
+  }
+
+  function renderShortlist() {
+    var el = document.getElementById("shortlist"); if (!el) return;
+    var b = state.brief;
+    if (!b.acts.length) { el.innerHTML = ""; return; }
+    if (!b.acts.some(function (a) { return a.id === state.tab; })) state.tab = b.acts[0].id;
+    var act = b.acts.find(function (a) { return a.id === state.tab; });
+    var label = act.label || act.type || "act";
+    var all = state.cands.filter(function (x) { return x.act_id === state.tab; }).sort(function (p, q) { return q.score - p.score; });
+    if (state.editing && state.editing.id === null && state.editing.act_id === state.tab) all = all.concat([state.editing]);
+    var visible = all.filter(function (x) { return !(state.hideOver && x.over_budget) || (state.editing && state.editing.id === x.id); });
+    var hidden = all.length - visible.length;
+    var social = state.cands.filter(function (x) { return (x.found_on || []).some(function (p) { return p !== "Web"; }); }).length;
+    el.innerHTML =
+      '<div class="sechead"><h2 class="display">Shortlist</h2></div>' +
+      '<div class="stats"><div><b>' + state.cands.length + '</b><span>acts</span></div><div><b>' + social + '</b><span>from social</span></div><div><b>' + state.cands.filter(function (x) { return x.status === "Booked"; }).length + "</b><span>booked</span></div></div>" +
+      '<div class="tabs" role="group" aria-label="Act">' + b.acts.map(function (a) { return '<button type="button" data-tab="' + a.id + '" aria-pressed="' + (a.id === state.tab) + '">' + esc(a.label || a.type) + "</button>"; }).join("") + "</div>" +
+      '<p class="hint" style="margin-top:8px">' + esc([act.style, act.set].filter(Boolean).join(" · ")) + " · budget " + esc(gbp(act.budget)) + "</p>" +
+      '<label class="check"><input type="checkbox" id="hide"' + (state.hideOver ? " checked" : "") + "><span>Hide acts likely to be well over budget</span></label>" +
+      (all.length ? "" : '<div class="empty">' + (b.status === "searching" ? "Results will appear here when the search finishes." : "No acts on this list yet. Run a search, or add one yourself.") + "</div>") +
+      visible.map(function (x) { return state.editing && state.editing.id === x.id ? editCard(state.editing) : viewCard(x, all.indexOf(x) + 1, label); }).join("") +
+      (hidden ? '<p class="hint">' + hidden + " act" + (hidden > 1 ? "s" : "") + " hidden as likely over budget.</p>" : "") +
+      (state.editing ? "" : '<button type="button" class="btn ghost block" id="add-cand" style="margin-top:8px">Add an act to this list</button>');
+
+    el.querySelectorAll("[data-tab]").forEach(function (t) { t.onclick = function () { state.tab = t.dataset.tab; state.editing = null; renderShortlist(); }; });
+    document.getElementById("hide").onchange = function (ev) { state.hideOver = ev.target.checked; keep(renderShortlist); };
+    el.querySelectorAll("[data-status]").forEach(function (s) {
+      s.onchange = async function () {
+        var x = state.cands.find(function (y) { return y.id === s.dataset.status; });
+        var r = await sb.from("tm_candidates").update({ status: s.value }).eq("id", x.id).select().single();
+        if (r.error) { alert(errMsg(r.error)); s.value = x.status; return; }
+        Object.assign(x, r.data); keep(renderShortlist);
+      };
+    });
+    el.querySelectorAll("[data-edit]").forEach(function (btn) {
+      btn.onclick = function () { var x = state.cands.find(function (y) { return y.id === btn.dataset.edit; }); state.editing = JSON.parse(JSON.stringify(x)); keep(renderShortlist); var n = document.getElementById("x-name"); if (n) n.focus(); };
+    });
+    el.querySelectorAll("[data-book]").forEach(function (btn) {
+      btn.onclick = function () { var x = state.cands.find(function (y) { return y.id === btn.dataset.book; }); TB.bookFromCandidate(state.brief, x, btn); };
+    });
+    var add = document.getElementById("add-cand");
+    if (add) add.onclick = function () {
+      state.editing = { id: null, act_id: state.tab, name: "", score: 60, why: "", concern: "", over_budget: false, found_on: ["Web"], followers: "", based: "", booking: "", website: "", instagram: "", tiktok: "", facebook: "", mixcloud: "", notes: "", origin: "manual", status: "To contact" };
+      renderShortlist(); var n = document.getElementById("x-name"); if (n) { n.scrollIntoView({ block: "center" }); n.focus(); }
+    };
+    var form = document.getElementById("edit-form");
+    if (form) bindEdit(form);
+  }
+
+  function bindEdit(form) {
+    var x = state.editing;
+    form.querySelectorAll("[data-f]").forEach(function (i) {
+      i[i.type === "checkbox" ? "onchange" : "oninput"] = function () {
+        x[i.dataset.f] = i.type === "checkbox" ? i.checked : i.type === "range" ? parseInt(i.value, 10) : i.value;
+        if (i.dataset.f === "score") document.getElementById("o-score").textContent = i.value;
+      };
+    });
+    form.querySelectorAll("[data-found]").forEach(function (i) { i.onchange = function () { x.found_on = PLATFORMS.filter(function (p) { return form.querySelector('[data-found="' + p + '"]').checked; }); }; });
+    form.onsubmit = async function (ev) {
+      ev.preventDefault();
+      var msg = document.getElementById("edit-msg");
+      if (!String(x.name).trim()) { msg.innerHTML = '<p class="err">Enter the act’s name.</p>'; document.getElementById("x-name").focus(); return; }
+      var bad = ["website", "instagram", "tiktok", "facebook", "mixcloud"].filter(function (k) { return x[k] && !safeUrl(x[k]); });
+      if (bad.length) { msg.innerHTML = '<p class="err">Links must start with https:// (check ' + bad.join(", ") + ").</p>"; return; }
+      var row = { name: x.name.trim(), score: x.score | 0, why: x.why, concern: x.concern, over_budget: !!x.over_budget, found_on: x.found_on, followers: x.followers, based: x.based, booking: x.booking,
+        website: x.website, instagram: x.instagram, tiktok: x.tiktok, facebook: x.facebook, mixcloud: x.mixcloud, notes: x.notes };
+      var r = x.id
+        ? await sb.from("tm_candidates").update(row).eq("id", x.id).select().single()
+        : await sb.from("tm_candidates").insert(Object.assign(row, { brief_id: state.brief.id, act_id: x.act_id, origin: "manual" })).select().single();
+      if (r.error) { msg.innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+      var i = state.cands.findIndex(function (y) { return y.id === r.data.id; });
+      if (i > -1) state.cands[i] = r.data; else state.cands.push(r.data);
+      state.editing = null; renderShortlist();
+      var card = document.getElementById("card-" + r.data.id); if (card) card.scrollIntoView({ block: "center" });
+    };
+    document.getElementById("edit-cancel").onclick = function () { var id = x.id; state.editing = null; renderShortlist(); var card = id && document.getElementById("card-" + id); if (card) card.scrollIntoView({ block: "center" }); };
+    var del = document.getElementById("edit-del");
+    if (del) del.onclick = async function () {
+      if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Tap again to remove"; return; }
+      var r = await sb.from("tm_candidates").delete().eq("id", x.id);
+      if (r.error) { document.getElementById("edit-msg").innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+      state.cands = state.cands.filter(function (y) { return y.id !== x.id; }); state.editing = null; keep(renderShortlist);
+    };
+  }
+
+  /* ---------- Booking management (admins book; staff can view) ---------- */
+  var TB = (function () {
+    var CONFIRM_BASE = "https://tools.fortgreen.co.uk/talent-match/confirm/#t=";
+    var DEFAULT_TERMS = [
+      "1. This booking is between the artist named above and Fort Green Limited, on behalf of its client.",
+      "2. The artist will arrive for load-in and soundcheck at the times shown and perform the agreed set times. The licence holder's curfew and any noise limit must be kept to.",
+      "3. The fee covers the performance as described. Anything else (travel, accommodation, extra time) must be agreed in writing beforehand.",
+      "4. Payment is made as set out in the payment terms, on receipt of an invoice from the artist.",
+      "5. If the artist cancels, they will tell Fort Green as soon as possible and return any deposit. If Fort Green cancels less than 14 days before the event for reasons within its control, the deposit is kept by the artist.",
+      "6. The artist is responsible for their own equipment, including its electrical safety, and holds their own public liability insurance unless agreed otherwise.",
+      "7. Filming, recording and promotion of the performance follow what is agreed in the booking. The artist allows Fort Green and its client to use their name and image to promote the event.",
+      "8. Both sides will follow the venue's safety rules and the instructions of the event's security and production teams on the night."
+    ].join("\n");
+    var LABEL = { draft: "Draft", sent: "Sent", viewed: "Opened", accepted: "Confirmed", declined: "Declined", cancelled: "Cancelled" };
+    var LOGTEXT = { invite: "Booking request emailed", updated: "Updated details emailed", chase: "Automatic chaser emailed", manual_reminder: "Reminder emailed",
+      whatsapp: "Sent on WhatsApp", viewed: "Artist opened the booking", accepted: "Artist confirmed", declined: "Artist declined", cancelled: "Booking cancelled",
+      reopened: "Reopened as a draft", reminder_7d: "7-day reminder emailed", reminder_1d: "1-day reminder emailed", no_response: "No answer after 3 chasers: admins told" };
+    var filter = "open", cur = null, logRows = [];
+
+    function nav(active) {
+      return '<nav class="nav" aria-label="Talent Match"><a href="#"' + (active === "briefs" ? ' aria-current="page"' : "") + '>Briefs</a><a href="#bookings"' + (active === "bookings" ? ' aria-current="page"' : "") + ">Bookings</a></nav>";
+    }
+    function phone(p) {
+      var s = String(p || "").replace(/[^\d+]/g, "");
+      if (/^07\d{9}$/.test(s)) s = "+44" + s.slice(1);
+      if (/^447\d{9}$/.test(s)) s = "+" + s;
+      return /^\+\d{8,15}$/.test(s) ? s : "";
+    }
+    function pill(b) {
+      if (b.no_response_flagged_at && (b.status === "sent" || b.status === "viewed")) return '<span class="pill noanswer">No answer</span>';
+      return '<span class="pill ' + b.status + '">' + LABEL[b.status] + "</span>";
+    }
+    function money(v) { return v === null || v === undefined || v === "" ? "" : "£" + Number(v).toLocaleString("en-GB", { maximumFractionDigits: 2 }); }
+    function link(b) { return CONFIRM_BASE + b.token; }
+    function waText(b, kind) {
+      var who = (b.artist_contact || b.artist_name || "").split(" ")[0];
+      var when = fmtDate(b.event_date);
+      var lines = kind === "invite"
+        ? ["Hi " + who + ", it's Fort Green. We'd like to book " + (b.act_label || b.artist_name) + " for " + (b.event_name || b.venue_name) + " on " + when + (b.fee ? ", fee " + money(b.fee) : "") + ".",
+           "Full details, terms and to confirm: " + link(b)]
+        : b.status === "accepted"
+          ? ["Hi " + who + ", a reminder from Fort Green about your booking at " + (b.event_name || b.venue_name) + " on " + when + (b.load_in ? ", load-in " + b.load_in : "") + ".", "Details: " + link(b)]
+          : ["Hi " + who + ", Fort Green here. Could you confirm whether you can do " + (b.event_name || b.venue_name) + " on " + when + "? It only takes a minute:", link(b)];
+      return lines.join("\n\n");
+    }
+
+    /* ----- List ----- */
+    async function viewBookings() {
+      stopLive();
+      app.innerHTML = nav("bookings") + '<p class="hint">Loading bookings…</p>';
+      var r = await sb.from("tm_bookings").select("id,ref,artist_name,act_label,event_name,event_date,venue_name,fee,status,chase_count,no_response_flagged_at,sent_at,responded_at").order("event_date", { ascending: true, nullsFirst: false });
+      if (r.error) { app.innerHTML = nav("bookings") + '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+      var all = r.data || [], today = new Date().toISOString().slice(0, 10);
+      var groups = {
+        open: function (b) { return ["draft", "sent", "viewed"].indexOf(b.status) > -1; },
+        confirmed: function (b) { return b.status === "accepted" && (!b.event_date || b.event_date >= today); },
+        attention: function (b) { return !!b.no_response_flagged_at && (b.status === "sent" || b.status === "viewed") || b.status === "declined"; },
+        past: function (b) { return b.event_date && b.event_date < today || b.status === "cancelled"; },
+        all: function () { return true; }
+      };
+      var names = { open: "Waiting", confirmed: "Confirmed", attention: "Needs action", past: "Past and cancelled", all: "All" };
+      var list = all.filter(groups[filter]);
+      app.innerHTML = nav("bookings") +
+        '<div class="sechead"><h2 class="display">Bookings</h2>' + (me.admin ? '<button class="btn" id="new-bk">New booking</button>' : "") + "</div>" +
+        '<p class="hint">' + (me.admin ? "Book an act, send the request by email or WhatsApp, and track who has confirmed. Unanswered requests are chased by email every 2 days (3 times), and confirmed artists get reminders 7 days and 1 day before the event." : "You can view bookings. Only admins can create and send them.") + "</p>" +
+        '<div class="filters" role="group" aria-label="Show">' + Object.keys(names).map(function (k) { return '<button type="button" data-f="' + k + '" aria-pressed="' + (k === filter) + '">' + names[k] + " (" + all.filter(groups[k]).length + ")</button>"; }).join("") + "</div>" +
+        (list.length ? '<div class="list">' + list.map(function (b) {
+          var bits = [fmtDate(b.event_date), b.event_name || b.venue_name, money(b.fee), b.status === "sent" || b.status === "viewed" ? (b.chase_count ? b.chase_count + " chaser" + (b.chase_count > 1 ? "s" : "") + " sent" : "sent " + ago(b.sent_at)) : ""].filter(Boolean).join(" · ");
+          return '<a class="row" href="#k=' + b.id + '"><div><div class="t">' + esc(b.artist_name || "Unnamed artist") + (b.act_label ? ' <span class="small">(' + esc(b.act_label) + ")</span>" : "") + '</div><div class="s">' + esc(bits) + " · " + esc(b.ref) + "</div></div>" + pill(b) + "</a>";
+        }).join("") + "</div>" : '<div class="empty">Nothing here. ' + (me.admin ? "Use “New booking”, or “Book this act” on a shortlist." : "") + "</div>");
+      app.querySelectorAll("[data-f]").forEach(function (b) { b.onclick = function () { filter = b.dataset.f; viewBookings(); }; });
+      var nb = document.getElementById("new-bk");
+      if (nb) nb.onclick = function () { create({}, nb); };
+    }
+
+    async function create(fields, btn) {
+      if (btn) btn.disabled = true;
+      var row = Object.assign({ terms: DEFAULT_TERMS }, fields);
+      var r = await sb.from("tm_bookings").insert(row).select("id").single();
+      if (btn) btn.disabled = false;
+      if (r.error) { alert(errMsg(r.error)); return; }
+      location.hash = "#k=" + r.data.id;
+    }
+
+    function bookFromCandidate(brief, x, btn) {
+      var act = (brief.acts || []).find(function (a) { return a.id === x.act_id; }) || {};
+      var e = brief.event || {};
+      var em = String(x.booking || "").match(/[^\s@,;()]+@[^\s@,;()]+\.[a-z]{2,}/i);
+      var ph = phone((String(x.booking || "").match(/(\+?\d[\d\s]{9,14}\d)/) || [])[1]);
+      var fee = parseFloat(act.budget);
+      create({ brief_id: brief.id, candidate_id: x.id, artist_name: x.name, act_label: act.label || act.type || "", event_name: brief.name || "",
+        event_date: e.date || null, venue_name: e.venue || "", venue_address: e.town || "", set_times: act.set || "",
+        fee: isNaN(fee) ? null : fee, artist_email: em ? em[0] : "", artist_phone: ph }, btn);
+    }
+
+    /* ----- One booking ----- */
+    async function viewBooking(id) {
+      stopLive();
+      app.innerHTML = nav("bookings") + '<p class="hint">Loading booking…</p>';
+      var r = await sb.from("tm_bookings").select("*").eq("id", id).maybeSingle();
+      if (r.error || !r.data) { app.innerHTML = nav("bookings") + '<a class="back" href="#bookings">← All bookings</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This booking doesn’t exist or was deleted.") + "</p>"; return; }
+      cur = r.data;
+      await loadLog();
+      render();
+      state.channel = sb.channel("tb-" + id)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tm_bookings", filter: "id=eq." + id }, function (p) {
+          ["status", "viewed_at", "responded_at", "response_name", "response_note", "terms_agreed", "chase_count", "no_response_flagged_at", "sent_at"].forEach(function (k) { cur[k] = p.new[k]; });
+          renderStatus();
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "tm_booking_log", filter: "booking_id=eq." + id }, function () { loadLog().then(renderStatus); })
+        .subscribe();
+    }
+    async function loadLog() {
+      var l = await sb.from("tm_booking_log").select("at,kind,channel,by_email,detail").eq("booking_id", cur.id).order("at", { ascending: false });
+      logRows = l.data || [];
+    }
+
+    function field(k, label, opts) {
+      opts = opts || {};
+      var v = cur[k] == null ? "" : cur[k], ro = !me.admin ? " readonly" : "";
+      if (opts.area) return '<div><label for="k-' + k + '">' + label + '</label><textarea id="k-' + k + '" data-k="' + k + '"' + ro + (opts.rows ? ' style="min-height:' + opts.rows * 24 + 'px"' : "") + (opts.ph ? ' placeholder="' + esc(opts.ph) + '"' : "") + ">" + esc(v) + "</textarea>" + (opts.hint ? '<p class="hint" style="margin-top:4px">' + opts.hint + "</p>" : "") + "</div>";
+      return '<div><label for="k-' + k + '">' + label + '</label><input type="' + (opts.type || "text") + '" id="k-' + k + '" data-k="' + k + '" value="' + esc(v) + '"' + ro + (opts.ph ? ' placeholder="' + esc(opts.ph) + '"' : "") + (opts.extra || "") + ">" + (opts.hint ? '<p class="hint" style="margin-top:4px">' + opts.hint + "</p>" : "") + "</div>";
+    }
+
+    function render() {
+      var b = cur;
+      app.innerHTML = nav("bookings") +
+        '<a class="back" href="#bookings">← All bookings</a>' +
+        '<div class="sechead" style="margin-top:8px"><h2 class="display">' + esc(b.artist_name || "New booking") + '</h2><span id="k-pill">' + pill(b) + "</span></div>" +
+        '<p class="hint">' + esc(b.ref) + (b.brief_id ? ' · <a href="#b=' + b.brief_id + '">From brief</a>' : "") + "</p>" +
+        '<div id="k-status"></div>' +
+        (me.admin ? "" : '<p class="readonly">Only admins can change or send bookings.</p>') +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">Artist</h2></div><div class="panel f">' +
+          '<div class="two">' + field("artist_name", "Artist or act name") + field("artist_contact", "Contact name", { ph: "Who to address, e.g. the agent" }) + "</div>" +
+          '<div class="two">' + field("artist_email", "Email", { type: "email", ph: "name@example.com" }) + field("artist_phone", "Mobile for WhatsApp", { type: "tel", ph: "+44 7…", extra: ' inputmode="tel"' }) + "</div></div>" +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">The booking</h2></div><div class="panel f">' +
+          '<div class="two">' + field("act_label", "Act", { ph: "e.g. DJ" }) + field("event_name", "Event") + "</div>" +
+          '<div class="two">' + field("event_date", "Date", { type: "date" }) + field("venue_name", "Venue") + "</div>" +
+          field("venue_address", "Venue address", { ph: "Full address with postcode" }) +
+          '<div class="two">' + field("load_in", "Load-in", { ph: "e.g. 20:00" }) + field("soundcheck", "Soundcheck", { ph: "e.g. 20:30" }) + "</div>" +
+          field("set_times", "Set times", { ph: "e.g. 22:00 to 01:00" }) + "</div>" +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">Fee</h2></div><div class="panel f">' +
+          '<div class="two">' + field("fee", "Fee, £", { type: "number", extra: ' inputmode="decimal" min="0" step="10"' }) + field("fee_notes", "What the fee covers", { ph: "e.g. plus VAT, includes travel" }) + "</div>" +
+          field("payment_terms", "Payment terms", { ph: "e.g. 50% deposit on confirmation, balance 7 days after the event" }) + "</div>" +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">Rider and terms</h2></div><div class="panel f">' +
+          field("rider", "Rider and what we provide", { area: true, rows: 4, ph: "Equipment, hospitality, guest list, parking" }) +
+          field("terms", "Booking terms the artist agrees to", { area: true, rows: 9, hint: "A starting template. Have your lawyers check it before you rely on it." }) + "</div>" +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">On the night</h2></div><div class="panel f"><div class="two">' +
+          field("onsite_name", "Contact on the night") + field("onsite_phone", "Their phone", { type: "tel" }) + "</div></div>" +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">Internal notes</h2></div><div class="panel f">' +
+          field("internal_notes", "Notes for the team (never shown to the artist)", { area: true, rows: 3 }) + "</div>" +
+        '<div class="saving" id="k-saving" role="status"></div>' +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">History</h2></div><ul class="timeline" id="k-log"></ul>' +
+        (me.admin ? '<div style="margin-top:28px;display:flex;gap:18px;flex-wrap:wrap" id="k-danger"></div>' : "") +
+        '<p class="disclaimer">The artist sees everything above except internal notes, through a private link with no sign-in. Contact details are for this booking only.</p>';
+      if (me.admin) bindFields();
+      renderStatus();
+    }
+
+    async function saveNow() {
+      var s = document.getElementById("k-saving");
+      var keys = ["artist_name", "artist_contact", "artist_email", "artist_phone", "act_label", "event_name", "event_date", "venue_name", "venue_address", "load_in", "soundcheck", "set_times", "fee", "fee_notes", "payment_terms", "rider", "terms", "onsite_name", "onsite_phone", "internal_notes"];
+      var row = {}; keys.forEach(function (k) { row[k] = cur[k]; });
+      if (row.event_date === "") row.event_date = null;
+      if (row.fee === "" || row.fee === null || isNaN(parseFloat(row.fee))) row.fee = null; else row.fee = parseFloat(row.fee);
+      var r = await sb.from("tm_bookings").update(row).eq("id", cur.id);
+      if (s) s.textContent = r.error ? "Couldn’t save: " + errMsg(r.error) : (cur.status === "accepted" ? "Saved. The artist already confirmed: use “Email updated details” so they see the change." : "Saved");
+      return r;
+    }
+    var save = debounce(saveNow, 700);
+
+    function bindFields() {
+      app.querySelectorAll("[data-k]").forEach(function (i) {
+        i[i.type === "date" ? "onchange" : "oninput"] = function () {
+          cur[i.dataset.k] = i.value;
+          document.getElementById("k-saving").textContent = "Saving…";
+          if (i.dataset.k === "artist_name") app.querySelector(".sechead h2").textContent = i.value || "New booking";
+          save(); renderActions();
+        };
+      });
+      var ph = document.getElementById("k-artist_phone");
+      ph.onblur = function () { var p = phone(ph.value); if (p && p !== ph.value) { ph.value = p; cur.artist_phone = p; save(); renderActions(); } };
+    }
+
+    function renderStatus() {
+      document.getElementById("k-pill").innerHTML = pill(cur);
+      var b = cur, html = "";
+      if (b.status === "accepted") html = '<p class="okmsg">Confirmed by ' + esc(b.response_name || "the artist") + " " + esc(ago(b.responded_at)) + (b.terms_agreed ? ", terms agreed" : "") + "." + (b.response_note ? "<br>Note: " + esc(b.response_note) : "") + "</p>";
+      else if (b.status === "declined") html = '<p class="err">Declined by ' + esc(b.response_name || "the artist") + " " + esc(ago(b.responded_at)) + "." + (b.response_note ? "<br>Note: " + esc(b.response_note) : "") + "</p>";
+      else if (b.status === "cancelled") html = '<p class="readonly">This booking is cancelled.</p>';
+      else if (b.no_response_flagged_at) html = '<p class="err">No answer after 3 email chasers. Try calling or a WhatsApp, or book someone else.</p>';
+      else if (b.status === "viewed") html = '<p class="readonly">The artist opened the booking ' + esc(ago(b.viewed_at)) + " but hasn’t answered yet." + (b.chase_count ? " " + b.chase_count + " of 3 chasers sent." : "") + "</p>";
+      else if (b.status === "sent") html = '<p class="readonly">Sent ' + esc(ago(b.sent_at)) + ". Waiting for the artist to open it." + (b.chase_count ? " " + b.chase_count + " of 3 chasers sent." : " An email chaser goes automatically every 2 days.") + "</p>";
+      document.getElementById("k-status").innerHTML = html + (me.admin ? '<div class="actions" id="k-actions"></div>' : "");
+      document.getElementById("k-log").innerHTML = logRows.length ? logRows.map(function (l) {
+        return "<li><time>" + esc(new Date(l.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) + "</time><span>" + esc(LOGTEXT[l.kind] || l.kind) + (l.detail ? ' <span class="small">' + esc(l.detail) + "</span>" : "") + (l.by_email ? ' <span class="small">by ' + esc(l.by_email.split("@")[0]) + "</span>" : "") + "</span></li>";
+      }).join("") : '<li><span></span><span class="small">Nothing sent yet.</span></li>';
+      if (me.admin) { renderActions(); renderDanger(); }
+    }
+
+    function renderActions() {
+      var el = document.getElementById("k-actions"); if (!el) return;
+      var b = cur, okEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.artist_email || ""), p = phone(b.artist_phone), ready = b.artist_name && b.event_date;
+      if (b.status === "cancelled" || b.status === "declined") { el.innerHTML = '<button type="button" class="btn ghost block" id="a-reopen">Reopen as a draft</button>'; document.getElementById("a-reopen").onclick = function () { act("tm_booking_reopen", { p_id: b.id }); }; return; }
+      var first = b.status === "draft", acc = b.status === "accepted";
+      var missing = !ready ? "Add the artist name and event date to send." : (!okEmail && !p ? "Add an email or a mobile number to send." : "");
+      el.innerHTML =
+        '<div class="two">' +
+          '<button type="button" class="btn" id="a-email"' + (ready && okEmail ? "" : " disabled") + ">" + (first ? "Send by email" : acc ? "Email updated details" : "Resend by email") + "</button>" +
+          '<button type="button" class="btn ghost" id="a-wa"' + (ready && p ? "" : " disabled") + ">" + (first ? "Send on WhatsApp" : "WhatsApp again") + "</button>" +
+        "</div>" +
+        (first ? "" : '<div class="two"><button type="button" class="btn ghost" id="a-remind"' + (okEmail ? "" : " disabled") + ">Email a reminder</button><button type=\"button\" class=\"btn ghost\" id=\"a-wa-remind\"" + (p ? "" : " disabled") + ">WhatsApp a reminder</button></div>") +
+        '<button type="button" class="linkbtn" id="a-copy" style="justify-self:start">Copy the artist’s confirm link</button>' +
+        '<div id="a-msg">' + (missing ? '<p class="hint">' + missing + "</p>" : "") + "</div>";
+      document.getElementById("a-email").onclick = function () { act("tm_booking_send", { p_id: b.id, p_kind: "invite" }, "Emailed to " + b.artist_email + "."); };
+      document.getElementById("a-wa").onclick = function () { whatsapp("invite"); };
+      var r1 = document.getElementById("a-remind"); if (r1) r1.onclick = function () { act("tm_booking_send", { p_id: b.id, p_kind: "reminder" }, "Reminder emailed to " + b.artist_email + "."); };
+      var r2 = document.getElementById("a-wa-remind"); if (r2) r2.onclick = function () { whatsapp("reminder"); };
+      document.getElementById("a-copy").onclick = async function () {
+        var m = document.getElementById("a-msg");
+        if (b.status === "draft") { m.innerHTML = '<p class="hint">Send the booking first. The link only works once it’s been sent.</p>'; return; }
+        try { await navigator.clipboard.writeText(link(b)); m.innerHTML = '<p class="okmsg">Link copied.</p>'; } catch (e) { m.innerHTML = '<p class="hint">' + esc(link(b)) + "</p>"; }
+      };
+    }
+
+    function whatsapp(kind) {
+      var b = cur, p = phone(b.artist_phone).replace("+", "");
+      // Open WhatsApp straight from the click (so the browser allows it), then record it.
+      var url = "https://wa.me/" + p + "?text=" + encodeURIComponent(waText(b, b.status === "draft" ? "invite" : kind));
+      window.open(url, "_blank", "noopener");
+      act("tm_booking_whatsapp", { p_id: b.id, p_kind: kind }, "WhatsApp opened with the message ready. Press send in WhatsApp.");
+    }
+
+    async function act(fn, args, okText) {
+      var m = document.getElementById("a-msg");
+      app.querySelectorAll("#k-actions button").forEach(function (x) { x.disabled = true; });
+      var sv = await saveNow();
+      if (sv && sv.error) { m.innerHTML = '<p class="err">Couldn’t save the booking first: ' + esc(errMsg(sv.error)) + "</p>"; renderActions(); return; }
+      var r = await sb.rpc(fn, args);
+      var fresh = await sb.from("tm_bookings").select("*").eq("id", cur.id).maybeSingle();
+      if (fresh.data) cur = fresh.data;
+      await loadLog(); renderStatus();
+      m = document.getElementById("a-msg");
+      if (m) m.innerHTML = r.error ? '<p class="err">' + esc(errMsg(r.error)) + "</p>" : okText ? '<p class="okmsg">' + esc(okText) + "</p>" : "";
+    }
+
+    function renderDanger() {
+      var el = document.getElementById("k-danger"); if (!el) return;
+      var b = cur;
+      if (b.status === "draft") el.innerHTML = '<button type="button" class="linkbtn danger" id="d-del">Delete this draft</button>';
+      else if (b.status !== "cancelled") el.innerHTML = '<button type="button" class="linkbtn danger" id="d-cancel">Cancel this booking and email the artist</button><button type="button" class="linkbtn" id="d-cancel-quiet">Cancel without emailing</button>';
+      else el.innerHTML = "";
+      function arm(btn, text, go) { btn.onclick = function () { if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = text; return; } go(); }; }
+      var d = document.getElementById("d-del");
+      if (d) arm(d, "Tap again to delete", async function () { var r = await sb.from("tm_bookings").delete().eq("id", b.id); if (!r.error) location.hash = "#bookings"; else d.textContent = errMsg(r.error); });
+      var c1 = document.getElementById("d-cancel"); if (c1) arm(c1, "Tap again to cancel and email the artist", function () { act("tm_booking_cancel", { p_id: b.id, p_tell_artist: true }, "Cancelled and the artist emailed."); });
+      var c2 = document.getElementById("d-cancel-quiet"); if (c2) arm(c2, "Tap again to cancel", function () { act("tm_booking_cancel", { p_id: b.id, p_tell_artist: false }, "Cancelled. The artist hasn’t been told."); });
+    }
+
+    return { nav: nav, viewBookings: viewBookings, viewBooking: viewBooking, bookFromCandidate: bookFromCandidate };
+  })();
+
+
+  /* ---------- Routing and sign-in ---------- */
+  function route() {
+    var m = location.hash.match(/^#b=([0-9a-f-]{36})$/);
+    var k = location.hash.match(/^#k=([0-9a-f-]{36})$/);
+    if (m) viewBrief(m[1]);
+    else if (k) TB.viewBooking(k[1]);
+    else if (/^#bookings/.test(location.hash)) TB.viewBookings();
+    else viewList();
+  }
+
+  (async function start() {
+    var s = await sb.auth.getSession();
+    var user = s.data && s.data.session && s.data.session.user;
+    if (!user) return;
+    me.email = (user.email || "").toLowerCase();
+    var st = await sb.rpc("tm_is_staff");
+    var ad = await sb.rpc("hub_is_admin");
+    me.admin = ad.data === true;
+    document.getElementById("who").innerHTML = "Signed in as <strong>" + esc(me.email) + "</strong>";
+    if (st.error || st.data !== true) {
+      app.innerHTML = '<div class="empty"><strong>Staff only.</strong><br>This tool is for Fort Green staff. Sign in with your @fortgreen.co.uk email to use it.</div>";
+      return;
+    }
+    window.addEventListener("hashchange", route);
+    route();
+  })();
+})();
+</script>
+</body>
+</html>

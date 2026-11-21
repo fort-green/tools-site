@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Confirm your booking | Fort Green</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;
+  --err:#b42318;--err-soft:#fbe4e1;--ok:#1d6b3a;--ok-soft:#e3f3e8;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#100f10;--surface:#1a191a;--ink:#fff;--body:#e2e2e2;--muted:#a9a9a9;--line:#3b3a3b;--soft:#232223;
+  --err:#ff7b6e;--err-soft:#2d1513;--ok:#7fd69b;--ok-soft:#12271a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Manrope,Arial,sans-serif}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.bar{background:#100f10;color:#fff;padding:14px 20px;font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;font-size:20px;letter-spacing:.02em;text-transform:uppercase}
+.wrap{max-width:680px;margin:0 auto;padding:0 20px 80px}
+.display{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;text-transform:uppercase;line-height:.95}
+h1{font-size:clamp(44px,11vw,76px);margin:32px 0 6px}
+h2{font-size:28px;margin:30px 0 10px}
+.hint{color:var(--muted);font-size:15px;margin:0}
+table{width:100%;border-collapse:collapse;border-top:1px solid var(--ink)}
+td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:top;font-size:15px}
+td:first-child{color:var(--muted);width:36%}
+.box{background:var(--surface);border:1px solid var(--line);padding:16px;white-space:pre-wrap;font-size:15px}
+.f{display:grid;gap:14px;margin-top:14px}
+.f label{display:block;font-weight:600;font-size:14px;margin-bottom:5px}
+.f input[type=text],.f textarea{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);font-size:16px}
+.f textarea{min-height:90px;resize:vertical}
+.f input:focus,.f textarea:focus{border-color:var(--ink);outline:none}
+.check{display:flex;gap:12px;align-items:flex-start;font-size:15px}
+.check input{width:22px;height:22px;margin-top:1px;accent-color:var(--ink);flex:none}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:440px){.btns{grid-template-columns:1fr}}
+.btn{min-height:54px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);font:700 14px Manrope,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn[disabled]{opacity:.5;cursor:wait}
+.err{padding:12px 14px;background:var(--err-soft);color:var(--err);font-weight:600}
+.ok{padding:16px;background:var(--ok-soft);color:var(--ok);font-weight:600}
+.done{border:1px solid var(--line);padding:16px;background:var(--surface)}
+.foot{margin-top:40px;border-top:1px solid var(--line);padding-top:14px;font-size:13px;color:var(--muted)}
+.foot a{color:inherit}
+</style>
+</head>
+<body>
+<div class="bar">Fort Green Bookings</div>
+<main class="wrap" id="app"><p class="hint" style="margin-top:32px">Loading your booking…</p></main>
+<script>
+(function () {
+  var c = window.FG_CONFIG || {};
+  var app = document.getElementById("app");
+  var token = (location.hash.match(/t=([0-9a-f]{48})/) || [])[1];
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]; }); }
+  function fmt(d) { if (!d) return ""; var x = new Date(d + "T12:00:00"); return x.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }
+  function money(v) { return v === null || v === undefined || v === "" ? "" : "£" + Number(v).toLocaleString("en-GB", { maximumFractionDigits: 2 }); }
+  var foot = '<p class="foot">Questions? Email <a href="mailto:info@fortgreen.co.uk">info@fortgreen.co.uk</a> or WhatsApp <a href="https://wa.me/447399232855">+44 7399 232855</a> (24/7). Fort Green Limited.</p>';
+  function fail(msg) { app.innerHTML = '<h1 class="display">Booking</h1><p class="err">' + esc(msg) + "</p>" + foot; }
+  if (!token || !window.supabase || !c.SUPABASE_URL) { fail("This link isn’t complete. Open it again from your email or WhatsApp message."); return; }
+  var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+
+  function render(b) {
+    var rows = [["Booking ref", b.ref], ["Act", b.act || b.artist_name], ["Event", b.event_name], ["Date", fmt(b.event_date)], ["Venue", [b.venue_name, b.venue_address].filter(Boolean).join(", ")],
+      ["Load-in", b.load_in], ["Soundcheck", b.soundcheck], ["Set times", b.set_times], ["Fee", [money(b.fee), b.fee_notes].filter(Boolean).join(" · ")], ["Payment", b.payment_terms],
+      ["On the night", [b.onsite_name, b.onsite_phone].filter(Boolean).join(", ")]].filter(function (r) { return r[1]; });
+    var who = (b.artist_contact || b.artist_name || "").split(" ")[0];
+    var top = b.status === "accepted" ? '<p class="ok">You confirmed this booking' + (b.response_name ? " as " + esc(b.response_name) : "") + ". Thank you. Keep this page for the details.</p>"
+      : b.status === "declined" ? '<div class="done">You declined this booking. If that’s changed, contact us using the details below.</div>'
+      : b.status === "cancelled" ? '<p class="err">This booking has been cancelled.</p>'
+      : '<p class="hint">' + (who ? "Hi " + esc(who) + ". " : "") + "Fort Green would like to book you. Please check the details, rider and terms, then accept or decline below.</p>";
+    app.innerHTML =
+      '<h1 class="display">' + (b.status === "accepted" ? "You’re booked" : b.status === "cancelled" ? "Booking cancelled" : "Your booking") + "</h1>" + top +
+      '<h2 class="display">Details</h2><table>' + rows.map(function (r) { return "<tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td></tr>"; }).join("") + "</table>" +
+      (b.rider ? '<h2 class="display">Rider and what we provide</h2><div class="box">' + esc(b.rider) + "</div>" : "") +
+      (b.terms ? '<h2 class="display">Booking terms</h2><div class="box">' + esc(b.terms) + "</div>" : "") +
+      (b.status === "sent" || b.status === "viewed" ? form() : "") + foot;
+    var f = document.getElementById("resp");
+    if (f) bind(f);
+  }
+
+  function form() {
+    return '<h2 class="display">Your answer</h2><form class="f" id="resp" novalidate>' +
+      '<div><label for="r-name">Your full name</label><input type="text" id="r-name" autocomplete="name" maxlength="120"></div>' +
+      '<div><label for="r-note">Anything we should know? (optional)</label><textarea id="r-note" maxlength="2000" placeholder="Line-up, equipment, travel, questions"></textarea></div>' +
+      '<label class="check"><input type="checkbox" id="r-agree"><span>I have read the details and booking terms above and agree to them on behalf of the act.</span></label>' +
+      '<div id="r-msg" role="alert"></div>' +
+      '<div class="btns"><button type="button" class="btn" id="r-yes">Accept booking</button><button type="button" class="btn ghost" id="r-no">Decline</button></div></form>';
+  }
+
+  function bind(f) {
+    async function send(accept) {
+      var name = document.getElementById("r-name").value.trim(), agree = document.getElementById("r-agree").checked, msg = document.getElementById("r-msg");
+      if (name.length < 2) { msg.innerHTML = '<p class="err">Enter your full name.</p>'; document.getElementById("r-name").focus(); return; }
+      if (accept && !agree) { msg.innerHTML = '<p class="err">Tick the box to agree to the booking terms, then accept.</p>'; return; }
+      f.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+      var r = await sb.rpc("tm_booking_respond", { p_token: token, p_accept: accept, p_name: name, p_note: document.getElementById("r-note").value, p_agree: agree });
+      if (r.error) { msg.innerHTML = '<p class="err">' + esc(r.error.message || "Something went wrong. Please try again.") + "</p>"; f.querySelectorAll("button").forEach(function (b) { b.disabled = false; }); return; }
+      load();
+      window.scrollTo(0, 0);
+    }
+    document.getElementById("r-yes").onclick = function () { send(true); };
+    document.getElementById("r-no").onclick = function () { send(false); };
+  }
+
+  async function load() {
+    var r = await sb.rpc("tm_booking_view", { p_token: token });
+    if (r.error) { fail("We couldn’t load this booking. Check your connection and try again."); return; }
+    if (!r.data) { fail("This booking link isn’t valid any more. Please contact Fort Green."); return; }
+    render(r.data);
+  }
+  load();
+})();
+</script>
+</body>
+</html>

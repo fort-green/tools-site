@@ -35,6 +35,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/results/` | My Results: everyone's saved results from the free tools, with open, duplicate and delete. Admins can switch to all clients' results |
 | `public/results.js` | Include on free tool pages (after auth-guard.js): autosaves the tool's work to `hub_results` and reopens it from `?result=<id>`. Tool settings (which localStorage key, title, summary) are in its `TOOLS` list |
 | `public/users/` | Users (admins only): everyone who has signed in, with remove and restore access |
+| `public/talent-match/` | Talent Match (staff, @fortgreen.co.uk): client briefs to scored shortlists of acts, and booking management (admins book acts, send by email or WhatsApp, track confirmations) |
+| `public/talent-match/confirm/` | Public artist page (`#t=<token>`, no sign-in): the artist reviews a booking, agrees the terms and accepts or declines |
 | `public/staff-guard.js` | Like auth-guard, but also sends non-staff back to the hub |
 
 ## Adding a tool
@@ -125,3 +127,13 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Rate card:** table `qe_rates` (excluding VAT). Only admins (`hub_is_admin()`) can read or change it, on `/quote/rates/`; a trigger records who changed what. Blank rates are left out of estimates and listed as "not priced".
 - **Estimates:** `qe_estimate(jsonb)` (security definer, signed-in users only) works out the total and per-service subtotals on the server, so clients never see unit rates. Staff and crew pay at least the minimum shift (`sec_min_hours`, `crew_min_hours`) per person per day; generators are per day plus delivery once each; the booking fee is added once.
 - **Firm quote requests** post (with sign-in proof) to the n8n workflow "Quote estimator: firm quote request" (webhook `quote-request`): emails info@fortgreen.co.uk (reply goes to the client), sends the client a confirmation with the "estimate, not a quote" box at the top, logs to the "Quote requests" tab, adds opted-in people to the Email list.
+
+## Talent Match: what lives outside this repo
+
+- **Who can use it:** every signed-in @fortgreen.co.uk account that hasn't had its access removed (`tm_is_staff()`) sees briefs, shortlists and bookings. Only admins (`hub_admins`) can create, change and send bookings.
+- **Briefs and shortlists:** tables `tm_briefs` and `tm_candidates`. "Find acts" calls `tm_start_search`, which posts the brief to the n8n workflow "Talent match: brief to artist shortlist" (sierra-six, webhook `talent-match`, header from vault secret `tm_n8n_secret`). n8n searches the web, Instagram, TikTok, Facebook and Mixcloud through Brave Search, Claude scores the results, and the shortlist comes back through `tm_save_results`. A copy also goes to the Google Sheet "Fort Green – Talent Match Shortlists". Unbooked shortlisted acts are deleted after 12 months (`tm-purge-stale-candidates`).
+- **Bookings:** tables `tm_bookings` and `tm_booking_log`. Admins send with `tm_booking_send` (email) or `tm_booking_whatsapp` (records a one-tap WhatsApp: the page opens wa.me with the message and link written, the admin presses send). `tm_booking_cancel` and `tm_booking_reopen` change status; nothing else can change status, token or tracking columns.
+- **Artist link:** `https://tools.fortgreen.co.uk/talent-match/confirm/#t=<token>`. The page calls `tm_booking_view` (marks it opened) and `tm_booking_respond` (accept with terms agreed, or decline). Internal notes are never returned. When an artist confirms a booking made from a shortlist, the act is marked Booked there.
+- **Emails:** n8n workflow "FG Talent – booking emails" (webhook `fg-talent-booking`, header from vault secret `tm_booking_n8n_secret`), sent from Gmail as "Fort Green Bookings": booking request, updated details, reminders, cancellations to the artist; accepted, declined and no-answer alerts to admins.
+- **Automatic reminders:** daily job `tm-booking-daily` (09:05 UTC, `tm_private.daily()`): chases unanswered requests by email every 2 days, 3 times, then emails admins; reminds confirmed artists 7 days and 1 day before the event.
+- **Automatic WhatsApp (later):** once Meta approves the WhatsApp Business Platform account and a message template, add a WhatsApp Business Cloud node to "FG Talent – booking emails". Its "Build booking email" step already outputs `artist_phone` and `whatsapp_text`.
