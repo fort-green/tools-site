@@ -55,7 +55,7 @@ h2.display{font-size:34px;margin:0}
 .panel{background:var(--surface);border:1px solid var(--line);padding:18px;margin:14px 0}
 .f{display:grid;gap:14px}
 .f label,.f .lab{display:block;font-weight:600;font-size:14px;margin-bottom:5px}
-.f input[type=text],.f input[type=date],.f input[type=number],.f input[type=url],.f input[type=email],.f input[type=tel],.f select,.f textarea{width:100%;min-height:46px;padding:9px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);font-size:16px}
+.f input[type=text],.f input[type=date],.f input[type=time],.f input[type=number],.f input[type=url],.f input[type=email],.f input[type=tel],.f select,.f textarea{width:100%;min-height:46px;padding:9px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);font-size:16px}
 .f textarea{min-height:80px;resize:vertical}
 .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--ink);outline:none}
 .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
@@ -69,7 +69,7 @@ h2.display{font-size:34px;margin:0}
 .search.on{border-style:dashed}
 .spin{display:inline-block;width:16px;height:16px;margin-right:8px;vertical-align:-2px;background:repeating-linear-gradient(135deg,var(--hatch) 0 4px,transparent 4px 7px);box-shadow:inset 0 0 0 1.5px var(--ink);animation:mv 1s linear infinite}
 @keyframes mv{to{background-position:14px 0}}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:14px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:14px 0}
 .stats div{background:var(--surface);padding:12px}
 .stats b{display:block;font-family:Antonio,'Arial Narrow',sans-serif;font-size:26px;font-weight:700;line-height:1.1}
 .stats span{font-size:13px;color:var(--muted)}
@@ -113,6 +113,14 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .pill.accepted{color:var(--ok);background:var(--ok-soft)}
 .pill.declined,.pill.noanswer{color:var(--err);background:var(--err-soft)}
 .pill.cancelled{color:var(--muted)}
+.pill.performed{color:var(--ink);background:var(--soft)}
+.pill.invoiced{color:var(--warn);background:var(--warn-soft)}
+.pill.paid{color:var(--ok);background:var(--ok-soft)}
+.steps{font-size:14px;color:var(--muted);margin:4px 0 0}
+.steps b{display:inline-grid;place-items:center;width:20px;height:20px;background:var(--ink);color:var(--bg);font-size:12px;margin-right:4px}
+.row>.btn,.row>.pill{justify-self:end}
+.nav{overflow-x:auto}
+.nav a{white-space:nowrap}
 .filters{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
 .filters button{min-height:38px;padding:0 12px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;font-size:14px}
 .filters button[aria-pressed=true]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
@@ -145,7 +153,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
   var EVENT_TYPES = [["festival","Festival"],["club","Club night"],["venue","Venue or bar"],["corporate","Corporate"],["private","Private or wedding"],["brand","Brand activation"]];
   var PLATFORMS = ["Web","Instagram","TikTok","Facebook","Mixcloud"];
   var STATUSES = ["To contact","Contacted","Quoted","Not available","Booked"];
-  var state = { brief: null, cands: [], tab: null, hideOver: true, editing: null, channel: null, poll: null };
+  var state = { brief: null, cands: [], bookings: [], tab: null, hideOver: true, editing: null, channel: null, poll: null, mode: "list", gigFilter: "upcoming" };
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]; }); }
   function safeUrl(u) { u = String(u || "").trim(); return /^https?:\/\//i.test(u) ? u : ""; }
@@ -158,48 +166,152 @@ input[type=range]{width:100%;accent-color:var(--ink)}
   function debounce(fn, ms) { var t; return function () { var a = arguments; clearTimeout(t); t = setTimeout(function () { fn.apply(null, a); }, ms); }; }
   function stopLive() { if (state.channel) { sb.removeChannel(state.channel); state.channel = null; } if (state.poll) { clearInterval(state.poll); state.poll = null; } }
   function errMsg(e) { return (e && (e.message || e.error_description)) || "Something went wrong. Try again."; }
+  function today() { return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" }); }
 
-  /* ---------- Briefs list ---------- */
+  /* ---------- Venues: client-portal venues plus any added here ---------- */
+  var VN = (function () {
+    var list = null;
+    async function load(force) {
+      if (list && !force) return list;
+      var r = await sb.from("tm_venue_list").select("*").order("name");
+      if (r.error) throw r.error;
+      list = r.data || []; return list;
+    }
+    function byId(id) { return (list || []).find(function (v) { return v.id === id; }) || null; }
+    function where(v) { return v ? [v.address, v.town].filter(Boolean).join(", ") : ""; }
+    function options(sel) {
+      return '<option value="">Choose a venue…</option>' + (list || []).map(function (v) { return '<option value="' + v.id + '"' + (v.id === sel ? " selected" : "") + ">" + esc(v.name) + "</option>"; }).join("") +
+        (sel && !byId(sel) ? '<option value="' + esc(sel) + '" selected>Venue no longer on the list</option>' : "") +
+        '<option value="__new">+ Add a new venue…</option>';
+    }
+    // Inline "add a venue" form. done(venue) gets the new row, or null if cancelled.
+    function addForm(el, done) {
+      el.innerHTML = '<div class="panel f" style="border-color:var(--ink)"><div class="sechead" style="margin:0"><h2 class="display" style="font-size:22px">New venue</h2><button type="button" class="linkbtn" id="nv-x">Cancel</button></div>' +
+        '<div><label for="nv-name">Venue name</label><input type="text" id="nv-name" placeholder="e.g. Victoria Park, East Stage"></div>' +
+        '<div class="two"><div><label for="nv-addr">Address</label><input type="text" id="nv-addr" placeholder="Street and postcode"></div><div><label for="nv-town">Town or area</label><input type="text" id="nv-town" placeholder="e.g. Hackney, London"></div></div>' +
+        '<div id="nv-msg"></div><button type="button" class="btn block" id="nv-save">Add venue</button>' +
+        '<p class="hint">Added to the venue list for Talent Match. Client-portal venues come from Staff Check-In.</p></div>';
+      document.getElementById("nv-name").focus();
+      document.getElementById("nv-x").onclick = function () { el.innerHTML = ""; done(null); };
+      document.getElementById("nv-save").onclick = async function () {
+        var name = document.getElementById("nv-name").value.trim();
+        if (!name) { document.getElementById("nv-msg").innerHTML = '<p class="err">Enter the venue name.</p>'; return; }
+        this.disabled = true;
+        var r = await sb.from("tm_venues").insert({ name: name, address: document.getElementById("nv-addr").value.trim(), town: document.getElementById("nv-town").value.trim() }).select().single();
+        if (r.error) { this.disabled = false; document.getElementById("nv-msg").innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+        await load(true);
+        el.innerHTML = ""; done(byId(r.data.id) || Object.assign({ source: "talent" }, r.data));
+      };
+    }
+
+    async function viewVenues() {
+      stopLive();
+      app.innerHTML = TB.nav("venues") + '<p class="hint">Loading venues…</p>';
+      var bk;
+      try { await load(true); bk = await sb.from("tm_bookings").select("venue_id,status,event_date"); } catch (e) { app.innerHTML = TB.nav("venues") + '<p class="err">' + esc(errMsg(e)) + "</p>"; return; }
+      var t = today(), counts = {};
+      (bk.data || []).forEach(function (b) { if (!b.venue_id) return; var c = counts[b.venue_id] = counts[b.venue_id] || { up: 0, all: 0 }; c.all++; if (b.event_date >= t && ["declined", "cancelled"].indexOf(b.status) < 0) c.up++; });
+      app.innerHTML = TB.nav("venues") +
+        '<div class="sechead"><h2 class="display">Venues</h2><button class="btn" id="add-v">Add venue</button></div>' +
+        '<p class="hint">Every booking sits against one of these venues. Client-portal venues come from Staff Check-In; add one-off venues (festivals, private sites) here.</p><div id="v-new"></div>' +
+        ((list || []).length ? '<div class="list" style="margin-top:14px">' + list.map(function (v) {
+          var c = counts[v.id] || { up: 0, all: 0 };
+          return '<a class="row" href="#v=' + v.id + '"><div><div class="t">' + esc(v.name) + '</div><div class="s">' + esc([where(v), c.up + " upcoming booking" + (c.up === 1 ? "" : "s"), c.all + " in total"].filter(Boolean).join(" · ")) + "</div></div>" +
+            '<span class="pill ' + (v.source === "portal" ? "ready" : "draft") + '">' + (v.source === "portal" ? "Client portal" : "Added here") + "</span></a>";
+        }).join("") + "</div>" : '<div class="empty" style="margin-top:14px">No venues yet.</div>');
+      document.getElementById("add-v").onclick = function () { addForm(document.getElementById("v-new"), function (v) { if (v) location.hash = "#v=" + v.id; }); };
+    }
+
+    async function viewVenue(id) {
+      stopLive();
+      app.innerHTML = TB.nav("venues") + '<p class="hint">Loading venue…</p>';
+      try { await load(true); } catch (e) { app.innerHTML = TB.nav("venues") + '<p class="err">' + esc(errMsg(e)) + "</p>"; return; }
+      var v = byId(id);
+      if (!v) { app.innerHTML = TB.nav("venues") + '<a class="back" href="#venues">← Venues</a><p class="err">This venue isn’t on the list any more.</p>'; return; }
+      var g = await sb.from("tm_briefs").select("id,name,event").eq("venue_id", id);
+      var b = await sb.from("tm_bookings").select("id,ref,artist_name,act_label,event_name,event_date,fee,status,no_response_flagged_at").eq("venue_id", id).order("event_date", { ascending: false });
+      var gigs = (g.data || []).sort(function (p, q) { return String((q.event || {}).date || "").localeCompare(String((p.event || {}).date || "")); });
+      var bks = b.data || [];
+      app.innerHTML = TB.nav("venues") + '<a class="back" href="#venues">← Venues</a>' +
+        '<div class="sechead" style="margin-top:8px"><h2 class="display">' + esc(v.name) + '</h2><span class="pill ' + (v.source === "portal" ? "ready" : "draft") + '">' + (v.source === "portal" ? "Client portal" : "Added here") + "</span></div>" +
+        (where(v) ? '<p class="hint">' + esc(where(v)) + "</p>" : "") +
+        TB.statsHtml(bks) +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">Bookings</h2>' + (me.admin ? '<button class="btn sm" id="v-gig">New gig here</button>' : "") + "</div>" +
+        (bks.length ? '<div class="list">' + bks.map(TB.rowHtml).join("") + "</div>" : '<div class="empty">No bookings at this venue yet.</div>') +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">Gigs</h2></div>' +
+        (gigs.length ? '<div class="list">' + gigs.map(function (x) { return '<a class="row" href="#b=' + x.id + '"><div><div class="t">' + esc(x.name || "Untitled gig") + '</div><div class="s">' + esc(fmtDate((x.event || {}).date) || "No date") + "</div></div></a>"; }).join("") + "</div>" : '<div class="empty">No gigs at this venue yet.</div>') +
+        (v.source === "talent" ? '<div style="margin-top:28px"><button type="button" class="linkbtn danger" id="v-del">Remove this venue from the list</button></div>' : "") +
+        '<p class="disclaimer">' + (v.source === "portal" ? "This venue comes from Staff Check-In; change its name or address there." : "Removing a venue keeps its gigs and bookings; they just no longer show it on the list.") + "</p>";
+      var ng = document.getElementById("v-gig"); if (ng) ng.onclick = function () { newGig(id); };
+      var del = document.getElementById("v-del");
+      if (del) del.onclick = async function () {
+        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Tap again to remove " + v.name; return; }
+        var r = await sb.from("tm_venues").update({ active: false }).eq("id", id);
+        if (r.error) { del.textContent = errMsg(r.error); return; }
+        location.hash = "#venues";
+      };
+    }
+    return { load: load, byId: byId, where: where, options: options, addForm: addForm, viewVenues: viewVenues, viewVenue: viewVenue };
+  })();
+
+  /* ---------- Gigs list ---------- */
   async function viewList() {
     stopLive(); state.brief = null; state.editing = null;
-    app.innerHTML = '<p class="hint">Loading briefs…</p>';
-    var r = await sb.from("tm_briefs").select("id,name,event,acts,status,updated_at,created_by").order("updated_at", { ascending: false });
-    if (r.error) { app.innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+    app.innerHTML = TB.nav("gigs") + '<p class="hint">Loading gigs…</p>';
+    try { await VN.load(); } catch (e) { /* venue names just won't show */ }
+    var r = await sb.from("tm_briefs").select("id,name,event,venue_id,status,updated_at").order("updated_at", { ascending: false });
+    if (r.error) { app.innerHTML = TB.nav("gigs") + '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
     var counts = {};
-    var cr = await sb.from("tm_candidates").select("brief_id,status");
-    (cr.data || []).forEach(function (x) { var k = counts[x.brief_id] = counts[x.brief_id] || { n: 0, booked: 0 }; k.n++; if (x.status === "Booked") k.booked++; });
-    var rows = r.data || [];
-    app.innerHTML =
-      TB.nav("briefs") +
-      '<div class="sechead"><h2 class="display">Briefs</h2><button class="btn" id="new">New brief</button></div>' +
-      '<p class="hint">Enter what the client wants, then find acts. The search covers the web, Instagram, TikTok, Facebook and Mixcloud and takes about two minutes. Everything here is shared with the team.</p>' +
-      (rows.length ? '<div class="list" style="margin-top:18px">' + rows.map(function (b) {
-        var k = counts[b.id] || { n: 0, booked: 0 };
-        var bits = [fmtDate((b.event || {}).date), (b.acts || []).length + " act" + ((b.acts || []).length === 1 ? "" : "s"), k.n ? k.n + " shortlisted" : "", k.booked ? k.booked + " booked" : ""].filter(Boolean).join(" · ");
-        return '<a class="row" href="#b=' + b.id + '"><div><div class="t">' + esc(b.name || "Untitled brief") + '</div><div class="s">' + esc(bits) + " · updated " + esc(ago(b.updated_at)) + '</div></div><span class="pill ' + b.status + '">' + esc(b.status) + "</span></a>";
-      }).join("") + "</div>" : '<div class="empty" style="margin-top:18px">No briefs yet. Start one with “New brief”.</div>');
-    document.getElementById("new").onclick = newBrief;
+    var br = await sb.from("tm_bookings").select("brief_id,status");
+    (br.data || []).forEach(function (x) { if (!x.brief_id) return; var k = counts[x.brief_id] = counts[x.brief_id] || { n: 0, ok: 0 }; if (["declined", "cancelled"].indexOf(x.status) < 0) k.n++; if (["accepted", "performed", "invoiced", "paid"].indexOf(x.status) > -1) k.ok++; });
+    var t = today(), all = r.data || [];
+    var up = function (g) { var d = (g.event || {}).date; return !d || d >= t; };
+    var rows = all.filter(function (g) { return state.gigFilter === "all" || (state.gigFilter === "upcoming" ? up(g) : !up(g)); });
+    rows.sort(function (p, q) {
+      var a = (p.event || {}).date || "9999", b = (q.event || {}).date || "9999";
+      return state.gigFilter === "past" ? b.localeCompare(a) : a.localeCompare(b);
+    });
+    app.innerHTML = TB.nav("gigs") +
+      '<div class="sechead"><h2 class="display">Gigs</h2><button class="btn" id="new">New gig</button></div>' +
+      '<p class="hint">Start with the gig details, then add talent from our list or search the internet. Everything you add goes to Bookings, against the gig’s venue.</p>' +
+      '<div class="filters" role="group" aria-label="Show">' + [["upcoming", "Upcoming"], ["past", "Past"], ["all", "All"]].map(function (f) {
+        return '<button type="button" data-gf="' + f[0] + '" aria-pressed="' + (state.gigFilter === f[0]) + '">' + f[1] + " (" + all.filter(function (g) { return f[0] === "all" || (f[0] === "upcoming" ? up(g) : !up(g)); }).length + ")</button>";
+      }).join("") + "</div>" +
+      (rows.length ? '<div class="list">' + rows.map(function (g) {
+        var k = counts[g.id] || { n: 0, ok: 0 }, v = VN.byId(g.venue_id);
+        var bits = [fmtDate((g.event || {}).date) || "No date", v ? v.name : "No venue", k.n ? k.n + " booking" + (k.n === 1 ? "" : "s") : "No talent yet", k.ok ? k.ok + " confirmed" : ""].filter(Boolean).join(" · ");
+        return '<a class="row" href="#b=' + g.id + '"><div><div class="t">' + esc(g.name || "Untitled gig") + '</div><div class="s">' + esc(bits) + "</div></div>" +
+          (g.status === "searching" ? '<span class="pill searching">Searching</span>' : "") + "</a>";
+      }).join("") + "</div>" : '<div class="empty">' + (all.length ? "Nothing here." : "No gigs yet. Start one with “New gig”.") + "</div>");
+    document.getElementById("new").onclick = function () { newGig(null); };
+    app.querySelectorAll("[data-gf]").forEach(function (b) { b.onclick = function () { state.gigFilter = b.dataset.gf; viewList(); }; });
   }
 
-  async function newBrief() {
-    var r = await sb.from("tm_briefs").insert({ name: "", event: {}, acts: [{ id: uid(), type: "DJ", label: "DJ", style: "", set: "", budget: "" }] }).select("id").single();
+  async function newGig(venueId) {
+    var v = venueId ? VN.byId(venueId) : null;
+    var r = await sb.from("tm_briefs").insert({ name: "", venue_id: venueId || null, event: v ? { venue: v.name, town: v.town || v.address || "" } : {}, acts: [{ id: uid(), type: "DJ", label: "DJ", style: "", set: "", budget: "" }] }).select("id").single();
     if (r.error) { alert(errMsg(r.error)); return; }
+    state.mode = "list";
     location.hash = "#b=" + r.data.id;
   }
 
-  /* ---------- One brief ---------- */
+  /* ---------- One gig ---------- */
   async function viewBrief(id) {
     stopLive();
-    app.innerHTML = '<p class="hint">Loading brief…</p>';
+    app.innerHTML = TB.nav("gigs") + '<p class="hint">Loading gig…</p>';
+    try { await VN.load(true); } catch (e) { /* handled in the select */ }
     var r = await sb.from("tm_briefs").select("*").eq("id", id).maybeSingle();
-    if (r.error || !r.data) { app.innerHTML = '<a class="back" href="#">← All briefs</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This brief doesn’t exist or was deleted.") + "</p>"; return; }
+    if (r.error || !r.data) { app.innerHTML = TB.nav("gigs") + '<a class="back" href="#">← All gigs</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This gig doesn’t exist or was deleted.") + "</p>"; return; }
     state.brief = r.data;
-    await loadCands();
+    if (!Array.isArray(state.brief.acts)) state.brief.acts = [];
+    await Promise.all([loadCands(), loadGigBookings()]);
     if (!state.tab || !state.brief.acts.some(function (a) { return a.id === state.tab; })) state.tab = state.brief.acts[0] ? state.brief.acts[0].id : null;
+    state.mode = state.brief.status === "searching" || state.cands.length ? "search" : "list";
     render();
     state.channel = sb.channel("tm-" + id)
       .on("postgres_changes", { event: "*", schema: "public", table: "tm_briefs", filter: "id=eq." + id }, function (p) { if (p.new && p.new.id) { var was = state.brief.status; state.brief = Object.assign(state.brief, { status: p.new.status, error: p.new.error, search_started_at: p.new.search_started_at, search_finished_at: p.new.search_finished_at }); if (was !== p.new.status) refreshAfterSearch(); } })
-      .on("postgres_changes", { event: "*", schema: "public", table: "tm_candidates", filter: "brief_id=eq." + id }, debounce(function () { if (!state.editing) loadCands().then(function () { keep(renderShortlist); }); }, 800))
+      .on("postgres_changes", { event: "*", schema: "public", table: "tm_candidates", filter: "brief_id=eq." + id }, debounce(function () { if (!state.editing) loadCands().then(function () { if (state.mode === "search") keep(renderShortlist); }); }, 800))
+      .on("postgres_changes", { event: "*", schema: "public", table: "tm_bookings", filter: "brief_id=eq." + id }, debounce(function () { loadGigBookings().then(function () { keep(renderGigBookings); }); }, 800))
       .subscribe();
     state.poll = setInterval(async function () {
       if (!state.brief || state.brief.status !== "searching") return;
@@ -207,60 +319,152 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       if (x.data && x.data.status !== "searching") { Object.assign(state.brief, x.data); refreshAfterSearch(); } else renderSearch();
     }, 15000);
   }
-  async function refreshAfterSearch() { await loadCands(); keep(render); }
+  async function refreshAfterSearch() { await loadCands(); if (state.mode === "search") keep(renderFind); }
   async function loadCands() {
-    var r = await sb.from("tm_candidates").select("*").eq("brief_id", state.brief.id).order("score", { ascending: false });
+    var r = await sb.from("tm_candidates").select("*").eq("brief_id", state.brief.id).or("origin.is.null,origin.neq.roster").order("score", { ascending: false });
     state.cands = r.data || [];
   }
+  async function loadGigBookings() {
+    var r = await sb.from("tm_bookings").select("id,ref,artist_name,act_label,event_name,event_date,venue_name,fee,status,roster_id,candidate_id,no_response_flagged_at,chase_count,sent_at").eq("brief_id", state.brief.id).order("created_at");
+    state.bookings = r.data || [];
+  }
+  function live(b) { return ["declined", "cancelled"].indexOf(b.status) < 0; }
 
   function render() {
     var b = state.brief, e = b.event || {};
-    app.innerHTML =
-      '<a class="back" href="#">← All briefs</a>' +
-      '<div class="sechead" style="margin-top:8px"><h2 class="display">The brief</h2><span class="pill ' + b.status + '">' + esc(b.status) + "</span></div>" +
+    function ev(k, label, type, ph) { return '<div><label for="e-' + k + '">' + label + '</label><input type="' + (type || "text") + '" id="e-' + k + '" data-ev="' + k + '" value="' + esc(e[k]) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : "") + "></div>"; }
+    app.innerHTML = TB.nav("gigs") +
+      '<a class="back" href="#">← All gigs</a>' +
+      '<div class="sechead" style="margin-top:8px"><h2 class="display">' + esc(b.name || "New gig") + "</h2></div>" +
+      '<p class="steps"><b>1</b> Gig details <span aria-hidden="true">→</span> <b>2</b> Add talent <span aria-hidden="true">→</span> <b>3</b> Manage in Bookings</p>' +
+      '<div class="sechead"><h2 class="display" style="font-size:26px">1. Gig details</h2></div>' +
       '<div class="panel f" id="ev">' +
-        '<div><label for="b-name">Event name</label><input type="text" id="b-name" data-top="name" value="' + esc(b.name) + '" placeholder="e.g. Client Christmas party"></div>' +
+        '<div><label for="b-name">Gig name</label><input type="text" id="b-name" data-top="name" value="' + esc(b.name) + '" placeholder="e.g. Saturday Soul Night"></div>' +
+        '<div class="two"><div><label for="b-venue">Venue</label><select id="b-venue">' + VN.options(b.venue_id) + "</select></div>" + ev("date", "Date", "date") + "</div>" +
+        '<div id="venue-new"></div>' +
+        '<div class="two">' + ev("start", "Doors or start", "time") + ev("finish", "Finish or curfew", "time") + "</div>" +
         '<div class="two"><div><label for="e-type">Type of event</label><select id="e-type" data-ev="type"><option value="">Choose…</option>' + EVENT_TYPES.map(function (t) { return '<option value="' + t[0] + '"' + (e.type === t[0] ? " selected" : "") + ">" + t[1] + "</option>"; }).join("") + "</select></div>" +
-        '<div><label for="e-date">Date</label><input type="date" id="e-date" data-ev="date" value="' + esc(e.date) + '"></div></div>' +
-        '<div class="two"><div><label for="e-venue">Venue</label><input type="text" id="e-venue" data-ev="venue" value="' + esc(e.venue) + '"></div>' +
-        '<div><label for="e-town">Town or area</label><input type="text" id="e-town" data-ev="town" value="' + esc(e.town) + '" placeholder="Used in the search, e.g. Central London"></div></div>' +
-        '<div class="two"><div><label for="e-guests">Guests</label><input type="text" id="e-guests" data-ev="guests" value="' + esc(e.guests) + '" placeholder="e.g. 400"></div>' +
-        '<div><label for="e-age">Audience</label><input type="text" id="e-age" data-ev="age" value="' + esc(e.age) + '" placeholder="e.g. 18+, ages 22 to 65"></div></div>' +
-        '<div><label for="e-notes">Notes for the search</label><textarea id="e-notes" data-ev="notes" placeholder="Format of the night, dress code, the crowd">' + esc(e.notes) + "</textarea></div>" +
+        ev("guests", "Expected guests", "text", "e.g. 400") + "</div>" +
+        ev("age", "Audience", "text", "e.g. 18+, mostly 25 to 40") +
+        '<div><label for="e-notes">Notes</label><textarea id="e-notes" data-ev="notes" placeholder="Format of the night, dress code, the crowd, production on site">' + esc(e.notes) + "</textarea></div>" +
       "</div>" +
-      '<div class="sechead"><h2 class="display">Acts wanted</h2></div>' +
-      b.acts.map(function (a, i) {
-        return '<div class="act" data-act="' + a.id + '"><div class="act-top"><b>' + (i + 1) + ". " + esc(a.label || a.type || "Act") + '</b><button type="button" class="linkbtn danger" data-rm-act="' + a.id + '">Remove</button></div><div class="f">' +
-          '<div class="two"><div><label>Type of act</label><select data-k="type">' + TYPES.map(function (t) { return "<option" + (a.type === t ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div>" +
-          '<div><label>Budget, £</label><input type="number" data-k="budget" inputmode="decimal" min="0" step="50" value="' + esc(a.budget) + '"></div></div>' +
-          '<div><label>Style, genre or theme</label><input type="text" data-k="style" value="' + esc(a.style) + '" placeholder="e.g. Soul, Motown and modern pop covers"></div>' +
-          '<div class="two"><div><label>Set</label><input type="text" data-k="set" value="' + esc(a.set) + '" placeholder="e.g. 2 hours from 21:30"></div>' +
-          '<div><label>Short name for the shortlist tab</label><input type="text" data-k="label" value="' + esc(a.label) + '" placeholder="e.g. Band"></div></div>' +
-          "</div></div>";
-      }).join("") +
-      '<button type="button" class="btn ghost block" id="add-act">Add an act</button>' +
       '<div class="saving" id="saving" role="status"></div>' +
-      '<div id="search"></div>' +
-      '<div id="shortlist"></div>' +
-      '<div style="margin-top:36px;display:flex;gap:16px;flex-wrap:wrap"><button type="button" class="linkbtn danger" id="del-brief">Delete this brief</button></div>' +
-      '<p class="disclaimer">Shortlists come from public search listings and Claude’s judgement, and are a starting point for outreach, not confirmed bookings. Use contact details only to ask about a booking, never for marketing. Acts not marked Booked are deleted automatically 12 months after they were found. Internal only: never send this list to a client.</p>';
+      '<div class="sechead"><h2 class="display" style="font-size:26px">2. Add talent</h2></div>' +
+      '<div class="tabs" role="group" aria-label="Add talent from"><button type="button" data-mode="list" aria-pressed="' + (state.mode === "list") + '">From our list</button><button type="button" data-mode="search" aria-pressed="' + (state.mode === "search") + '">Search the internet</button></div>' +
+      '<div id="find"></div>' +
+      '<div class="sechead"><h2 class="display" style="font-size:26px">3. Bookings for this gig</h2><a class="linkbtn" href="#bookings">Open Bookings</a></div>' +
+      '<div id="gig-bookings"></div>' +
+      '<div style="margin-top:36px;display:flex;gap:16px;flex-wrap:wrap"><button type="button" class="linkbtn danger" id="del-brief">Delete this gig</button></div>' +
+      '<p class="disclaimer">Search results come from public listings and Claude’s judgement, and are a starting point for outreach, not confirmed bookings. Use contact details only to ask about a booking, never for marketing. Search results not booked are deleted automatically 12 months after they were found. Internal only: never send search results to a client.</p>';
     bindBrief();
-    renderSearch();
-    renderShortlist();
+    renderFind();
+    renderGigBookings();
   }
 
   var saveBrief = debounce(async function () {
     var b = state.brief, s = document.getElementById("saving");
-    var r = await sb.from("tm_briefs").update({ name: b.name, event: b.event, acts: b.acts }).eq("id", b.id);
+    var r = await sb.from("tm_briefs").update({ name: b.name, venue_id: b.venue_id || null, event: b.event, acts: b.acts }).eq("id", b.id);
     if (s) s.textContent = r.error ? "Couldn’t save: " + errMsg(r.error) : "Saved";
   }, 700);
-  function dirty() { var s = document.getElementById("saving"); if (s) s.textContent = "Saving…"; saveBrief(); if (state.brief.status !== "searching") renderSearch(); }
+  function dirty() { var s = document.getElementById("saving"); if (s) s.textContent = "Saving…"; saveBrief(); }
+
+  function setVenue(v) {
+    var b = state.brief, e = b.event = Object.assign({}, b.event);
+    var oldV = VN.byId(b.venue_id);
+    b.venue_id = v ? v.id : null;
+    e.venue = v ? v.name : "";
+    // Default the search area to the venue's area unless someone typed their own.
+    if (!e.town || (oldV && e.town === (oldV.town || oldV.address || ""))) e.town = v ? (v.town || v.address || "") : "";
+    dirty();
+    var t = document.getElementById("s-town"); if (t) t.value = e.town || "";
+  }
 
   function bindBrief() {
     var b = state.brief;
-    app.querySelectorAll("[data-top]").forEach(function (i) { i.oninput = function () { b.name = i.value; dirty(); }; });
-    app.querySelectorAll("[data-ev]").forEach(function (i) { i[i.tagName === "SELECT" || i.type === "date" ? "onchange" : "oninput"] = function () { b.event = Object.assign({}, b.event, {}); b.event[i.dataset.ev] = i.value; dirty(); }; });
-    app.querySelectorAll("[data-act]").forEach(function (box) {
+    app.querySelectorAll("[data-top]").forEach(function (i) { i.oninput = function () { b.name = i.value; app.querySelector(".sechead h2").textContent = i.value || "New gig"; dirty(); }; });
+    app.querySelectorAll("#ev [data-ev]").forEach(function (i) { i[i.tagName === "SELECT" || i.type === "date" || i.type === "time" ? "onchange" : "oninput"] = function () { b.event = Object.assign({}, b.event); b.event[i.dataset.ev] = i.value; dirty(); }; });
+    var vs = document.getElementById("b-venue");
+    vs.onchange = function () {
+      if (vs.value === "__new") {
+        vs.value = b.venue_id || "";
+        VN.addForm(document.getElementById("venue-new"), function (v) { if (v) { setVenue(v); vs.innerHTML = VN.options(v.id); } });
+        return;
+      }
+      setVenue(VN.byId(vs.value));
+    };
+    app.querySelectorAll("[data-mode]").forEach(function (t) {
+      t.onclick = function () { state.mode = t.dataset.mode; state.editing = null; app.querySelectorAll("[data-mode]").forEach(function (x) { x.setAttribute("aria-pressed", x === t); }); renderFind(); };
+    });
+    var del = document.getElementById("del-brief");
+    del.onclick = async function () {
+      if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Tap again to delete the gig and its search results (bookings are kept)"; return; }
+      var r = await sb.from("tm_briefs").delete().eq("id", b.id);
+      if (r.error) { del.textContent = "Couldn’t delete: " + errMsg(r.error); return; }
+      location.hash = "#";
+    };
+  }
+
+  function renderFind() {
+    var el = document.getElementById("find"); if (!el) return;
+    if (state.mode === "list") { renderListPick(el); return; }
+    el.innerHTML = '<div id="params"></div><div id="search"></div><div id="shortlist"></div>';
+    renderParams(); renderSearch(); renderShortlist();
+  }
+
+  /* ----- From our list ----- */
+  var pick = { q: "", type: "" };
+  async function renderListPick(el) {
+    el.innerHTML = '<p class="hint">Loading our talent…</p>';
+    var list;
+    try { list = (await RS.load()).filter(function (a) { return a.active; }); } catch (e) { el.innerHTML = '<p class="err">' + esc(errMsg(e)) + "</p>"; return; }
+    if (!list.length) { el.innerHTML = '<div class="empty">Nobody on our talent list yet. <a href="#r=new">Add talent</a>, or search the internet.</div>'; return; }
+    var types = list.map(function (a) { return a.act_type; }).filter(function (t, i, s) { return t && s.indexOf(t) === i; }).sort();
+    el.innerHTML = '<div class="f two" style="margin:6px 0 4px"><div><label for="lp-q">Search our talent</label><input type="text" id="lp-q" value="' + esc(pick.q) + '" placeholder="Name, style, area"></div>' +
+      '<div><label for="lp-t">Type of act</label><select id="lp-t"><option value="">All types</option>' + types.map(function (t) { return "<option" + (t === pick.type ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div></div>" +
+      (me.admin ? "" : '<p class="readonly">Only admins can add bookings. You can browse the list.</p>') +
+      '<div id="lp-list"></div><div id="lp-msg"></div><p class="hint" style="margin-top:10px"><a href="#r=new">Add someone to our talent list</a></p>';
+    var draw = function () {
+      var s = pick.q.toLowerCase();
+      var rows = list.filter(function (a) { return (!pick.type || a.act_type === pick.type) && (!s || [a.name, a.style, a.based, a.act_type].join(" ").toLowerCase().indexOf(s) > -1); });
+      document.getElementById("lp-list").innerHTML = rows.length ? '<div class="list">' + rows.map(function (a) {
+        var on = state.bookings.find(function (k) { return k.roster_id === a.id && live(k); });
+        return '<div class="row"><div><div class="t">' + esc(a.name) + '</div><div class="s">' + esc([a.act_type, a.style, a.based, a.fee_guide].filter(Boolean).join(" · ") || "No details yet") + "</div></div>" +
+          (on ? '<a class="pill accepted" href="#k=' + on.id + '">Added</a>' : me.admin ? '<button type="button" class="btn sm" data-add-r="' + a.id + '">Add to bookings</button>' : "") + "</div>";
+      }).join("") + "</div>" : '<div class="empty">Nobody matches.</div>';
+      document.querySelectorAll("[data-add-r]").forEach(function (btn) {
+        btn.onclick = async function () {
+          var a = list.find(function (x) { return x.id === btn.dataset.addR; });
+          btn.disabled = true; btn.textContent = "Adding…";
+          var r = await TB.addForGig(state.brief, { roster_id: a.id, artist_name: a.name, artist_contact: a.contact_name, artist_email: a.email, artist_phone: a.phone, act_label: a.act_type });
+          if (r.error) { btn.disabled = false; btn.textContent = "Add to bookings"; document.getElementById("lp-msg").innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+          await loadGigBookings(); renderGigBookings(); draw();
+        };
+      });
+    };
+    draw();
+    document.getElementById("lp-q").oninput = function (e) { pick.q = e.target.value; draw(); };
+    document.getElementById("lp-t").onchange = function (e) { pick.type = e.target.value; draw(); };
+  }
+
+  /* ----- Search the internet: parameters ----- */
+  function renderParams() {
+    var el = document.getElementById("params"); if (!el) return;
+    var b = state.brief, e = b.event || {};
+    el.innerHTML =
+      '<p class="hint" style="margin-top:6px">Searches the web, Instagram, TikTok, Facebook and Mixcloud and scores each act against these details and the gig. Takes about two minutes.</p>' +
+      '<div class="panel f"><div><label for="s-town">Search area</label><input type="text" id="s-town" value="' + esc(e.town) + '" placeholder="e.g. Central London, or Bristol and the South West"></div></div>' +
+      b.acts.map(function (a, i) {
+        return '<div class="act" data-act="' + a.id + '"><div class="act-top"><b>' + (i + 1) + ". " + esc(a.label || a.type || "Act") + '</b>' + (b.acts.length > 1 ? '<button type="button" class="linkbtn danger" data-rm-act="' + a.id + '">Remove</button>' : "") + '</div><div class="f">' +
+          '<div class="two"><div><label>Type of act</label><select data-k="type">' + TYPES.map(function (t) { return "<option" + (a.type === t ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div>" +
+          '<div><label>Budget, £</label><input type="number" data-k="budget" inputmode="decimal" min="0" step="50" value="' + esc(a.budget) + '"></div></div>' +
+          '<div><label>Style, genre or theme</label><input type="text" data-k="style" value="' + esc(a.style) + '" placeholder="e.g. Soul, Motown and modern pop covers"></div>' +
+          '<div class="two"><div><label>Set</label><input type="text" data-k="set" value="' + esc(a.set) + '" placeholder="e.g. 2 hours from 21:30"></div>' +
+          '<div><label>Short name</label><input type="text" data-k="label" value="' + esc(a.label) + '" placeholder="e.g. Band"></div></div>' +
+          "</div></div>";
+      }).join("") +
+      '<button type="button" class="btn ghost block" id="add-act">Search for another act too</button>';
+    document.getElementById("s-town").oninput = function () { b.event = Object.assign({}, b.event, { town: this.value }); dirty(); };
+    el.querySelectorAll("[data-act]").forEach(function (box) {
       var a = b.acts.find(function (x) { return x.id === box.dataset.act; });
       box.querySelectorAll("[data-k]").forEach(function (i) {
         i[i.tagName === "SELECT" ? "onchange" : "oninput"] = function () {
@@ -268,31 +472,24 @@ input[type=range]{width:100%;accent-color:var(--ink)}
           a[k] = i.value;
           if (k === "type" && (!a.label || a.label === old)) { a.label = i.value; box.querySelector('[data-k="label"]').value = i.value; }
           if (k === "type" || k === "label") { box.querySelector(".act-top b").textContent = (b.acts.indexOf(a) + 1) + ". " + (a.label || a.type); renderShortlist(); }
-          dirty();
+          dirty(); if (b.status !== "searching") renderSearch();
         };
       });
     });
-    app.querySelectorAll("[data-rm-act]").forEach(function (btn) {
+    el.querySelectorAll("[data-rm-act]").forEach(function (btn) {
       btn.onclick = function () {
         if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = "Tap again to remove"; return; }
         b.acts = b.acts.filter(function (x) { return x.id !== btn.dataset.rmAct; });
         sb.from("tm_candidates").delete().eq("brief_id", b.id).eq("act_id", btn.dataset.rmAct).then(function () {});
         state.cands = state.cands.filter(function (x) { return x.act_id !== btn.dataset.rmAct; });
         if (state.tab === btn.dataset.rmAct) state.tab = b.acts[0] ? b.acts[0].id : null;
-        dirty(); keep(render);
+        dirty(); keep(renderFind);
       };
     });
     document.getElementById("add-act").onclick = function () {
       var a = { id: uid(), type: "DJ", label: "", style: "", set: "", budget: "" };
-      b.acts.push(a); dirty(); keep(render);
+      b.acts.push(a); dirty(); keep(renderFind);
       var box = app.querySelector('[data-act="' + a.id + '"]'); if (box) { box.scrollIntoView({ block: "center" }); box.querySelector("select").focus(); }
-    };
-    var del = document.getElementById("del-brief");
-    del.onclick = async function () {
-      if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Tap again to delete the brief and its shortlist"; return; }
-      var r = await sb.from("tm_briefs").delete().eq("id", b.id);
-      if (r.error) { del.textContent = "Couldn’t delete: " + errMsg(r.error); return; }
-      location.hash = "#";
     };
   }
 
@@ -305,12 +502,12 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     var ok = b.acts.length && b.acts.every(function (a) { return (a.style || "").trim(); });
     var html = '<div class="search ' + (running && !stale ? "on" : "") + '">';
     if (running && !stale) {
-      html += '<p style="margin:0;font-weight:700"><span class="spin" aria-hidden="true"></span>Searching the web, Instagram, TikTok, Facebook and Mixcloud…</p><p class="hint" style="margin-top:6px">Started ' + esc(ago(b.search_started_at)) + ". Usually about two minutes. You can leave this page; the shortlist will be here when you come back.</p>";
+      html += '<p style="margin:0;font-weight:700"><span class="spin" aria-hidden="true"></span>Searching the web, Instagram, TikTok, Facebook and Mixcloud…</p><p class="hint" style="margin-top:6px">Started ' + esc(ago(b.search_started_at)) + ". Usually about two minutes. You can leave this page; results will be here when you come back.</p>";
     } else {
       if (stale) html += '<p class="err" style="margin-top:0">The last search is taking much longer than expected and has probably stopped. Run it again.</p>';
       if (b.status === "failed") html += '<p class="err" style="margin-top:0">' + esc(b.error || "The last search failed.") + "</p>";
       if (b.status === "ready" && b.search_finished_at) html += '<p class="hint" style="margin:0 0 12px">Last searched ' + esc(ago(b.search_finished_at)) + ". Searching again replaces results nobody has touched, and keeps anything the team has edited or added.</p>";
-      html += '<button type="button" class="btn block" id="go"' + (ok ? "" : " disabled") + ">" + (b.status === "ready" ? "Search again" : "Find acts") + "</button>" +
+      html += '<button type="button" class="btn block" id="go"' + (ok ? "" : " disabled") + ">" + (b.status === "ready" ? "Search again" : "Search the internet") + "</button>" +
         (ok ? "" : '<p class="hint" style="margin-top:8px">Add a style, genre or theme to every act first.</p>') +
         '<div id="go-msg"></div>';
     }
@@ -318,34 +515,35 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     var go = document.getElementById("go");
     if (go) go.onclick = async function () {
       go.disabled = true; go.textContent = "Starting…";
-      var r = await sb.from("tm_briefs").update({ name: b.name, event: b.event, acts: b.acts }).eq("id", b.id);
+      var r = await sb.from("tm_briefs").update({ name: b.name, venue_id: b.venue_id || null, event: b.event, acts: b.acts }).eq("id", b.id);
       if (!r.error) r = await sb.rpc("tm_start_search", { p_brief_id: b.id });
-      if (r.error) { go.disabled = false; go.textContent = "Find acts"; document.getElementById("go-msg").innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
+      if (r.error) { go.disabled = false; go.textContent = "Search the internet"; document.getElementById("go-msg").innerHTML = '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
       b.status = "searching"; b.search_started_at = new Date().toISOString(); b.error = null;
-      app.querySelector(".sechead .pill").outerHTML = '<span class="pill searching">searching</span>';
-      renderSearch();
+      renderSearch(); renderShortlist();
     };
   }
 
-  /* ---------- Shortlist ---------- */
+  /* ----- Search results ----- */
   function viewCard(x, rank, label) {
     var links = PLATFORMS.slice(1).filter(function (p) { return safeUrl(x[p.toLowerCase()]); }).map(function (p) { return '<a href="' + esc(safeUrl(x[p.toLowerCase()])) + '" target="_blank" rel="noopener">' + p + "</a>"; });
     if (safeUrl(x.website)) links.unshift('<a href="' + esc(safeUrl(x.website)) + '" target="_blank" rel="noopener">' + esc(host(x.website)) + "</a>");
     var other = (x.sources || []).filter(function (u) { return safeUrl(u) && u !== x.website && PLATFORMS.slice(1).every(function (p) { return u !== x[p.toLowerCase()]; }); });
     other.forEach(function (u) { links.push('<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(host(u)) + "</a>"); });
     var score = Math.max(0, Math.min(100, x.score | 0));
+    var bk = state.bookings.find(function (k) { return k.candidate_id === x.id && live(k); });
     return '<div class="cand ' + (rank === 1 ? "top" : "") + '" id="card-' + x.id + '">' +
       '<div class="cand-head"><div><div class="rank">#' + rank + " for " + esc(label.toLowerCase()) + '</div><h3>' + esc(x.name || "Unnamed act") + '</h3></div><div class="score">' + score + "<small>/100</small></div></div>" +
-      '<div class="badges">' + (x.found_on || []).map(function (p) { return '<span class="badge ' + (p === "Web" ? "web" : "") + '">' + esc(p) + "</span>"; }).join("") + (x.origin === "roster" || x.roster_id ? '<span class="badge">Our roster</span>' : "") + (x.origin === "manual" ? '<span class="badge manual">Added by ' + esc((x.created_by || "").split("@")[0]) + "</span>" : "") + "</div>" +
-      '<div class="fit ' + (score < 70 ? "low" : "") + '" aria-hidden="true"><i style="width:' + score + '%"></i></div><div class="fit-key"><span>Fit with the brief</span><span>Strong fit from 70</span></div>' +
+      '<div class="badges">' + (x.found_on || []).map(function (p) { return '<span class="badge ' + (p === "Web" ? "web" : "") + '">' + esc(p) + "</span>"; }).join("") + (x.roster_id ? '<span class="badge">On our list</span>' : "") + (x.origin === "manual" ? '<span class="badge manual">Added by ' + esc((x.created_by || "").split("@")[0]) + "</span>" : "") + "</div>" +
+      '<div class="fit ' + (score < 70 ? "low" : "") + '" aria-hidden="true"><i style="width:' + score + '%"></i></div><div class="fit-key"><span>Fit with the gig</span><span>Strong fit from 70</span></div>' +
       (x.why ? "<p>" + esc(x.why) + "</p>" : "") +
       (x.concern ? '<div class="flag ' + (x.over_budget ? "warn" : "") + '">' + esc(x.concern) + "</div>" : "") +
       '<dl class="meta"><dt>Following</dt><dd>' + esc(x.followers || "Not shown") + "</dd><dt>Based</dt><dd>" + esc(x.based || "Not shown") + "</dd><dt>Booking</dt><dd>" + esc(x.booking || "Not shown") + "</dd><dt>Links</dt><dd>" + (links.join(" · ") || "None") + "</dd>" +
       (x.notes ? "<dt>Notes</dt><dd>" + esc(x.notes) + "</dd>" : "") + "</dl>" +
-      '<div class="cand-actions"><label class="small">Status <select data-status="' + x.id + '">' + STATUSES.map(function (s) { return "<option" + (x.status === s ? " selected" : "") + ">" + s + "</option>"; }).join("") + "</select></label>" +
+      '<div class="cand-actions">' +
+      (bk ? '<a class="btn sm" href="#k=' + bk.id + '">In bookings: ' + esc(TB.label(bk)) + "</a>" : me.admin ? '<button type="button" class="btn sm" data-book="' + x.id + '">Add to bookings</button>' : "") +
       '<button type="button" class="btn ghost sm" data-edit="' + x.id + '">Edit</button>' +
-      (x.roster_id ? "" : '<button type="button" class="btn ghost sm" data-to-roster="' + x.id + '">Add to roster</button>') +
-      (me.admin ? '<button type="button" class="btn sm" data-book="' + x.id + '">Book this act</button>' : "") +
+      (x.roster_id ? "" : '<button type="button" class="btn ghost sm" data-to-roster="' + x.id + '">Save to our list</button>') +
+      '<button type="button" class="linkbtn" data-hide="' + x.id + '">Not for this gig</button>' +
       '<span class="small">Updated by ' + esc(x.updated_by === "system" ? "search" : (x.updated_by || "").split("@")[0]) + " " + esc(ago(x.updated_at)) + "</span></div></div>";
   }
 
@@ -367,7 +565,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       '<div><label for="x-notes">Team notes</label><textarea id="x-notes" data-f="notes" placeholder="Quotes, availability, who spoke to them">' + esc(x.notes) + "</textarea></div>" +
       '<div id="edit-msg"></div>' +
       '<div style="display:grid;gap:10px"><button type="submit" class="btn block">Save</button><button type="button" class="btn ghost block" id="edit-cancel">Cancel</button>' +
-      (x.id ? '<button type="button" class="btn danger block" id="edit-del">Remove from shortlist</button>' : "") + "</div></form></div>";
+      (x.id ? '<button type="button" class="btn danger block" id="edit-del">Remove from results</button>' : "") + "</div></form></div>";
   }
 
   function renderShortlist() {
@@ -377,29 +575,31 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     if (!b.acts.some(function (a) { return a.id === state.tab; })) state.tab = b.acts[0].id;
     var act = b.acts.find(function (a) { return a.id === state.tab; });
     var label = act.label || act.type || "act";
-    var all = state.cands.filter(function (x) { return x.act_id === state.tab; }).sort(function (p, q) { return q.score - p.score; });
+    var all = state.cands.filter(function (x) { return x.act_id === state.tab && x.status !== "Not available"; }).sort(function (p, q) { return q.score - p.score; });
     if (state.editing && state.editing.id === null && state.editing.act_id === state.tab) all = all.concat([state.editing]);
     var visible = all.filter(function (x) { return !(state.hideOver && x.over_budget) || (state.editing && state.editing.id === x.id); });
     var hidden = all.length - visible.length;
-    var social = state.cands.filter(function (x) { return (x.found_on || []).some(function (p) { return p !== "Web"; }); }).length;
+    if (!state.cands.length && b.status !== "searching" && !state.editing) { el.innerHTML = '<button type="button" class="linkbtn" id="add-cand" style="margin-top:10px">Or add an act you found yourself</button>'; bindShortlist(el); return; }
     el.innerHTML =
-      '<div class="sechead"><h2 class="display">Shortlist</h2></div>' +
-      '<div class="stats"><div><b>' + state.cands.length + '</b><span>acts</span></div><div><b>' + social + '</b><span>from social</span></div><div><b>' + state.cands.filter(function (x) { return x.status === "Booked"; }).length + "</b><span>booked</span></div></div>" +
-      '<div class="tabs" role="group" aria-label="Act">' + b.acts.map(function (a) { return '<button type="button" data-tab="' + a.id + '" aria-pressed="' + (a.id === state.tab) + '">' + esc(a.label || a.type) + "</button>"; }).join("") + "</div>" +
+      '<div class="sechead"><h2 class="display" style="font-size:26px">Results</h2></div>' +
+      (b.acts.length > 1 ? '<div class="tabs" role="group" aria-label="Act">' + b.acts.map(function (a) { return '<button type="button" data-tab="' + a.id + '" aria-pressed="' + (a.id === state.tab) + '">' + esc(a.label || a.type) + "</button>"; }).join("") + "</div>" : "") +
       '<p class="hint" style="margin-top:8px">' + esc([act.style, act.set].filter(Boolean).join(" · ")) + " · budget " + esc(gbp(act.budget)) + "</p>" +
       '<label class="check"><input type="checkbox" id="hide"' + (state.hideOver ? " checked" : "") + "><span>Hide acts likely to be well over budget</span></label>" +
-      (all.length ? "" : '<div class="empty">' + (b.status === "searching" ? "Results will appear here when the search finishes." : "No acts on this list yet. Run a search, or add one yourself.") + "</div>") +
+      (all.length ? "" : '<div class="empty">' + (b.status === "searching" ? "Results will appear here when the search finishes." : "No results for this act yet.") + "</div>") +
       visible.map(function (x) { return state.editing && state.editing.id === x.id ? editCard(state.editing) : viewCard(x, all.indexOf(x) + 1, label); }).join("") +
       (hidden ? '<p class="hint">' + hidden + " act" + (hidden > 1 ? "s" : "") + " hidden as likely over budget.</p>" : "") +
-      (state.editing ? "" : '<div id="roster-pick"></div><div class="two" style="margin-top:8px"><button type="button" class="btn ghost" id="add-roster">Add from our roster</button><button type="button" class="btn ghost" id="add-cand">Add a new act</button></div>');
+      (state.editing ? "" : '<button type="button" class="btn ghost block" id="add-cand" style="margin-top:8px">Add an act you found yourself</button>');
+    bindShortlist(el);
+  }
 
+  function bindShortlist(el) {
     el.querySelectorAll("[data-tab]").forEach(function (t) { t.onclick = function () { state.tab = t.dataset.tab; state.editing = null; renderShortlist(); }; });
-    document.getElementById("hide").onchange = function (ev) { state.hideOver = ev.target.checked; keep(renderShortlist); };
-    el.querySelectorAll("[data-status]").forEach(function (s) {
-      s.onchange = async function () {
-        var x = state.cands.find(function (y) { return y.id === s.dataset.status; });
-        var r = await sb.from("tm_candidates").update({ status: s.value }).eq("id", x.id).select().single();
-        if (r.error) { alert(errMsg(r.error)); s.value = x.status; return; }
+    var h = document.getElementById("hide"); if (h) h.onchange = function (ev) { state.hideOver = ev.target.checked; keep(renderShortlist); };
+    el.querySelectorAll("[data-hide]").forEach(function (btn) {
+      btn.onclick = async function () {
+        var x = state.cands.find(function (y) { return y.id === btn.dataset.hide; });
+        var r = await sb.from("tm_candidates").update({ status: "Not available" }).eq("id", x.id).select().single();
+        if (r.error) { alert(errMsg(r.error)); return; }
         Object.assign(x, r.data); keep(renderShortlist);
       };
     });
@@ -407,10 +607,14 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       btn.onclick = function () { var x = state.cands.find(function (y) { return y.id === btn.dataset.edit; }); state.editing = JSON.parse(JSON.stringify(x)); keep(renderShortlist); var n = document.getElementById("x-name"); if (n) n.focus(); };
     });
     el.querySelectorAll("[data-book]").forEach(function (btn) {
-      btn.onclick = function () { var x = state.cands.find(function (y) { return y.id === btn.dataset.book; }); TB.bookFromCandidate(state.brief, x, btn); };
+      btn.onclick = async function () {
+        var x = state.cands.find(function (y) { return y.id === btn.dataset.book; });
+        btn.disabled = true; btn.textContent = "Adding…";
+        var r = await TB.bookFromCandidate(state.brief, x);
+        if (r.error) { btn.disabled = false; btn.textContent = "Add to bookings"; alert(errMsg(r.error)); return; }
+        await loadGigBookings(); renderGigBookings(); keep(renderShortlist);
+      };
     });
-    var ar = document.getElementById("add-roster");
-    if (ar) ar.onclick = function () { ar.disabled = true; RS.picker(state.brief, state.tab, function () { keep(renderShortlist); }); };
     el.querySelectorAll("[data-to-roster]").forEach(function (btn) {
       btn.onclick = function () { RS.fromCandidate(state.cands.find(function (y) { return y.id === btn.dataset.toRoster; })); };
     });
@@ -422,7 +626,6 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     var form = document.getElementById("edit-form");
     if (form) bindEdit(form);
   }
-
   function bindEdit(form) {
     var x = state.editing;
     form.querySelectorAll("[data-f]").forEach(function (i) {
@@ -459,6 +662,15 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     };
   }
 
+  /* ----- This gig's bookings ----- */
+  function renderGigBookings() {
+    var el = document.getElementById("gig-bookings"); if (!el) return;
+    var rows = state.bookings;
+    el.innerHTML = rows.length ? '<div class="list">' + rows.map(TB.rowHtml).join("") + "</div>" +
+      '<p class="hint" style="margin-top:10px">Open a booking to set the fee and times, then send it to the artist by email or WhatsApp.</p>'
+      : '<div class="empty">Nothing booked yet. Add talent from our list or from the search results and it appears here, and in Bookings.</div>';
+  }
+
   /* ---------- Booking management (admins book; staff can view) ---------- */
   var TB = (function () {
     var CONFIRM_BASE = "https://tools.fortgreen.co.uk/talent-match/confirm/#t=";
@@ -472,14 +684,25 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       "7. Filming, recording and promotion of the performance follow what is agreed in the booking. The artist allows Fort Green and its client to use their name and image to promote the event.",
       "8. Both sides will follow the venue's safety rules and the instructions of the event's security and production teams on the night."
     ].join("\n");
-    var LABEL = { draft: "Draft", sent: "Sent", viewed: "Opened", accepted: "Confirmed", declined: "Declined", cancelled: "Cancelled" };
+    var LABEL = { draft: "Shortlisted", sent: "Offer sent", viewed: "Offer opened", accepted: "Confirmed", performed: "Performed", invoiced: "Invoiced", paid: "Paid", declined: "Declined", cancelled: "Cancelled" };
     var LOGTEXT = { invite: "Booking request emailed", updated: "Updated details emailed", chase: "Automatic chaser emailed", manual_reminder: "Reminder emailed",
       whatsapp: "Sent on WhatsApp", viewed: "Artist opened the booking", accepted: "Artist confirmed", declined: "Artist declined", cancelled: "Booking cancelled",
-      reopened: "Reopened as a draft", reminder_7d: "7-day reminder emailed", reminder_1d: "1-day reminder emailed", no_response: "No answer after 3 chasers: admins told" };
-    var filter = "open", cur = null, logRows = [], prefs = null;
+      reopened: "Reopened as shortlisted", reminder_7d: "7-day reminder emailed", reminder_1d: "1-day reminder emailed", no_response: "No answer after 3 chasers: admins told" };
+    // CRM stages, in order. Each covers one or more booking statuses.
+    var STAGES = [
+      ["shortlisted", "Shortlisted", ["draft"]],
+      ["offer", "Offer sent", ["sent", "viewed"]],
+      ["confirmed", "Confirmed", ["accepted"]],
+      ["performed", "Performed", ["performed"]],
+      ["invoiced", "Invoiced", ["invoiced"]],
+      ["paid", "Paid", ["paid"]],
+      ["closed", "Declined or cancelled", ["declined", "cancelled"]]
+    ];
+    var crm = { stage: "active", venue: "", q: "" }, cur = null, logRows = [], prefs = null;
 
     function nav(active) {
-      return '<nav class="nav" aria-label="Talent Match"><a href="#"' + (active === "briefs" ? ' aria-current="page"' : "") + '>Briefs</a><a href="#bookings"' + (active === "bookings" ? ' aria-current="page"' : "") + '>Bookings</a><a href="#roster"' + (active === "roster" ? ' aria-current="page"' : "") + ">Roster</a></nav>";
+      var items = [["gigs", "#", "Gigs"], ["bookings", "#bookings", "Bookings"], ["venues", "#venues", "Venues"], ["roster", "#roster", "Our talent"]];
+      return '<nav class="nav" aria-label="Talent Match">' + items.map(function (i) { return '<a href="' + i[1] + '"' + (active === i[0] ? ' aria-current="page"' : "") + ">" + i[2] + "</a>"; }).join("") + "</nav>";
     }
     function phone(p) {
       var s = String(p || "").replace(/[^\d+]/g, "");
@@ -487,49 +710,81 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       if (/^447\d{9}$/.test(s)) s = "+" + s;
       return /^\+\d{8,15}$/.test(s) ? s : "";
     }
-    function pill(b) {
-      if (b.no_response_flagged_at && (b.status === "sent" || b.status === "viewed")) return '<span class="pill noanswer">No answer</span>';
-      return '<span class="pill ' + b.status + '">' + LABEL[b.status] + "</span>";
-    }
+    function noAnswer(b) { return b.no_response_flagged_at && (b.status === "sent" || b.status === "viewed"); }
+    function label(b) { return noAnswer(b) ? "No answer" : LABEL[b.status] || b.status; }
+    function pill(b) { return '<span class="pill ' + (noAnswer(b) ? "noanswer" : b.status) + '">' + esc(label(b)) + "</span>"; }
     function money(v) { return v === null || v === undefined || v === "" ? "" : "£" + Number(v).toLocaleString("en-GB", { maximumFractionDigits: 2 }); }
     function link(b) { return CONFIRM_BASE + b.token; }
     function waText(b, kind) {
       var who = (b.artist_contact || b.artist_name || "").split(" ")[0];
       var when = fmtDate(b.event_date);
       var lines = kind === "invite"
-        ? ["Hi " + who + ", it's Fort Green. We'd like to book " + (b.act_label || b.artist_name) + " for " + (b.event_name || b.venue_name) + " on " + when + (b.fee ? ", fee " + money(b.fee) : "") + ".",
+        ? ["Hi " + who + ", it's Fort Green. We'd like to book " + (b.act_label || b.artist_name) + " for " + (b.event_name || b.venue_name) + (b.venue_name && b.event_name ? " at " + b.venue_name : "") + " on " + when + (b.fee ? ", fee " + money(b.fee) : "") + ".",
            "Full details, terms and to confirm: " + link(b)]
         : b.status === "accepted"
-          ? ["Hi " + who + ", a reminder from Fort Green about your booking at " + (b.event_name || b.venue_name) + " on " + when + (b.load_in ? ", load-in " + b.load_in : "") + ".", "Details: " + link(b)]
+          ? ["Hi " + who + ", a reminder from Fort Green about your booking at " + (b.venue_name || b.event_name) + " on " + when + (b.load_in ? ", load-in " + b.load_in : "") + ".", "Details: " + link(b)]
           : ["Hi " + who + ", Fort Green here. Could you confirm whether you can do " + (b.event_name || b.venue_name) + " on " + when + "? It only takes a minute:", link(b)];
       return lines.join("\n\n");
     }
+    // Needs someone to do something: no answer, declined, or a past gig not yet marked performed / invoiced.
+    function needsAction(b, t) {
+      return noAnswer(b) || (b.status === "accepted" && b.event_date && b.event_date < t) || b.status === "performed";
+    }
+    function rowHtml(b) {
+      var bits = [fmtDate(b.event_date), b.venue_name, b.event_name && b.event_name !== b.venue_name ? b.event_name : "", money(b.fee),
+        b.status === "sent" || b.status === "viewed" ? (b.chase_count ? b.chase_count + " chaser" + (b.chase_count > 1 ? "s" : "") + " sent" : "sent " + ago(b.sent_at)) : ""].filter(Boolean).join(" · ");
+      return '<a class="row" href="#k=' + b.id + '"><div><div class="t">' + esc(b.artist_name || "Unnamed artist") + (b.act_label ? ' <span class="small">(' + esc(b.act_label) + ")</span>" : "") + '</div><div class="s">' + esc(bits) + (b.ref ? " · " + esc(b.ref) : "") + "</div></div>" + pill(b) + "</a>";
+    }
+    function sum(rows, sts) { return rows.filter(function (b) { return sts.indexOf(b.status) > -1; }).reduce(function (n, b) { return n + (parseFloat(b.fee) || 0); }, 0); }
+    function statsHtml(rows) {
+      return '<div class="stats four"><div><b>' + money(sum(rows, ["accepted"])) + '</b><span>confirmed, not yet played</span></div><div><b>' + money(sum(rows, ["performed"])) +
+        '</b><span>played, to invoice</span></div><div><b>' + money(sum(rows, ["invoiced"])) + '</b><span>invoiced, unpaid</span></div><div><b>' + money(sum(rows, ["paid"])) + "</b><span>paid</span></div></div>";
+    }
 
-    /* ----- List ----- */
+    /* ----- Bookings CRM ----- */
     async function viewBookings() {
       stopLive();
       app.innerHTML = nav("bookings") + '<p class="hint">Loading bookings…</p>';
-      var r = await sb.from("tm_bookings").select("id,ref,artist_name,act_label,event_name,event_date,venue_name,fee,status,chase_count,no_response_flagged_at,sent_at,responded_at").order("event_date", { ascending: true, nullsFirst: false });
+      try { await VN.load(); } catch (e) { /* filter just won't list venues */ }
+      var r = await sb.from("tm_bookings").select("id,ref,brief_id,venue_id,artist_name,act_label,event_name,event_date,venue_name,fee,status,chase_count,no_response_flagged_at,sent_at,responded_at").order("event_date", { ascending: true, nullsFirst: false });
       if (r.error) { app.innerHTML = nav("bookings") + '<p class="err">' + esc(errMsg(r.error)) + "</p>"; return; }
-      var all = r.data || [], today = new Date().toISOString().slice(0, 10);
-      var groups = {
-        open: function (b) { return ["draft", "sent", "viewed"].indexOf(b.status) > -1; },
-        confirmed: function (b) { return b.status === "accepted" && (!b.event_date || b.event_date >= today); },
-        attention: function (b) { return !!b.no_response_flagged_at && (b.status === "sent" || b.status === "viewed") || b.status === "declined"; },
-        past: function (b) { return b.event_date && b.event_date < today || b.status === "cancelled"; },
-        all: function () { return true; }
-      };
-      var names = { open: "Waiting", confirmed: "Confirmed", attention: "Needs action", past: "Past and cancelled", all: "All" };
-      var list = all.filter(groups[filter]);
+      var all = r.data || [], t = today();
+      var usedVenues = all.map(function (b) { return b.venue_id; }).filter(function (v, i, s) { return v && s.indexOf(v) === i; });
       app.innerHTML = nav("bookings") +
         '<div class="sechead"><h2 class="display">Bookings</h2>' + (me.admin ? '<button class="btn" id="new-bk">New booking</button>' : "") + "</div>" +
-        '<p class="hint">' + (me.admin ? "Book an act, send the request by email or WhatsApp, and track who has confirmed. Unanswered requests are chased by email every 2 days (3 times), and confirmed artists get reminders 7 days and 1 day before the event." : "You can view bookings. Only admins can create and send them.") + "</p>" +
-        '<div class="filters" role="group" aria-label="Show">' + Object.keys(names).map(function (k) { return '<button type="button" data-f="' + k + '" aria-pressed="' + (k === filter) + '">' + names[k] + " (" + all.filter(groups[k]).length + ")</button>"; }).join("") + "</div>" +
-        (list.length ? '<div class="list">' + list.map(function (b) {
-          var bits = [fmtDate(b.event_date), b.event_name || b.venue_name, money(b.fee), b.status === "sent" || b.status === "viewed" ? (b.chase_count ? b.chase_count + " chaser" + (b.chase_count > 1 ? "s" : "") + " sent" : "sent " + ago(b.sent_at)) : ""].filter(Boolean).join(" · ");
-          return '<a class="row" href="#k=' + b.id + '"><div><div class="t">' + esc(b.artist_name || "Unnamed artist") + (b.act_label ? ' <span class="small">(' + esc(b.act_label) + ")</span>" : "") + '</div><div class="s">' + esc(bits) + " · " + esc(b.ref) + "</div></div>" + pill(b) + "</a>";
-        }).join("") + "</div>" : '<div class="empty">Nothing here. ' + (me.admin ? "Use “New booking”, or “Book this act” on a shortlist." : "") + "</div>");
-      app.querySelectorAll("[data-f]").forEach(function (b) { b.onclick = function () { filter = b.dataset.f; viewBookings(); }; });
+        '<p class="hint">' + (me.admin ? "Every act added to a gig lands here as Shortlisted. Send the offer by email or WhatsApp; unanswered offers are chased by email every 2 days (3 times) and confirmed artists get reminders 7 days and 1 day before. After the gig, mark it performed, invoiced and paid." : "You can view bookings. Only admins can create and send them.") + "</p>" +
+        '<div class="f two" style="margin:14px 0 0"><div><label for="c-v">Venue</label><select id="c-v"><option value="">All venues</option>' +
+          (usedVenues.map(function (id) { var v = VN.byId(id); return '<option value="' + id + '"' + (crm.venue === id ? " selected" : "") + ">" + esc(v ? v.name : "Removed venue") + "</option>"; }).join("")) +
+          '<option value="none"' + (crm.venue === "none" ? " selected" : "") + ">No venue set</option></select></div>" +
+          '<div><label for="c-q">Search</label><input type="text" id="c-q" value="' + esc(crm.q) + '" placeholder="Artist, gig or reference"></div></div>' +
+        '<div id="c-body"></div>';
+      var draw = function () {
+        var s = crm.q.toLowerCase();
+        var base = all.filter(function (b) {
+          return (!crm.venue || (crm.venue === "none" ? !b.venue_id : b.venue_id === crm.venue)) &&
+            (!s || [b.artist_name, b.act_label, b.event_name, b.venue_name, b.ref].join(" ").toLowerCase().indexOf(s) > -1);
+        });
+        var groups = { active: function (b) { return ["declined", "cancelled", "paid"].indexOf(b.status) < 0; }, attention: function (b) { return needsAction(b, t); } };
+        STAGES.forEach(function (st) { groups[st[0]] = function (b) { return st[2].indexOf(b.status) > -1; }; });
+        groups.all = function () { return true; };
+        var names = [["active", "Open"], ["attention", "Needs action"]].concat(STAGES.map(function (st) { return [st[0], st[1]]; })).concat([["all", "All"]]);
+        var list = base.filter(groups[crm.stage] || groups.active);
+        if (crm.stage === "paid" || crm.stage === "closed") list.reverse();
+        document.getElementById("c-body").innerHTML = statsHtml(base) +
+          '<div class="filters" role="group" aria-label="Stage">' + names.map(function (n) { return '<button type="button" data-st="' + n[0] + '" aria-pressed="' + (n[0] === crm.stage) + '">' + n[1] + " (" + base.filter(groups[n[0]]).length + ")</button>"; }).join("") + "</div>" +
+          (list.length ? '<div class="list">' + list.map(function (b) {
+            var html = rowHtml(b);
+            if (crm.stage === "attention") {
+              var why = noAnswer(b) ? "No answer after 3 chasers" : b.status === "accepted" ? "Gig has passed: mark as performed" : "Played: invoice it";
+              html = html.replace('</div></div><span class="pill', ' · <strong>' + esc(why) + '</strong></div></div><span class="pill');
+            }
+            return html;
+          }).join("") + "</div>" : '<div class="empty">Nothing here.' + (me.admin && !all.length ? " Start with a gig, then add talent from our list or the search." : "") + "</div>");
+        document.querySelectorAll("[data-st]").forEach(function (b) { b.onclick = function () { crm.stage = b.dataset.st; draw(); }; });
+      };
+      draw();
+      document.getElementById("c-v").onchange = function (e) { crm.venue = e.target.value; draw(); };
+      document.getElementById("c-q").oninput = function (e) { crm.q = e.target.value; draw(); };
       var nb = document.getElementById("new-bk");
       if (nb) nb.onclick = function () { create({}, nb); };
     }
@@ -543,24 +798,32 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       location.hash = "#k=" + r.data.id;
     }
 
-    async function bookFromCandidate(brief, x, btn) {
+    // Add a booking against a gig (stays on the gig page). Returns the insert result.
+    function gigFields(gig) {
+      var e = gig.event || {}, v = VN.byId(gig.venue_id);
+      return { brief_id: gig.id, event_name: gig.name || "", event_date: e.date || null, venue_id: gig.venue_id || null,
+        venue_name: v ? v.name : (e.venue || ""), venue_address: v ? VN.where(v) : "" };
+    }
+    function addForGig(gig, fields) {
+      return sb.from("tm_bookings").insert(Object.assign({ terms: DEFAULT_TERMS }, gigFields(gig), fields)).select("id").single();
+    }
+    async function bookFromCandidate(gig, x) {
       var ro = null;
       if (x.roster_id) { var rr = await sb.from("tm_roster").select("*").eq("id", x.roster_id).maybeSingle(); ro = rr.data; }
-      var act = (brief.acts || []).find(function (a) { return a.id === x.act_id; }) || {};
-      var e = brief.event || {};
+      var act = (gig.acts || []).find(function (a) { return a.id === x.act_id; }) || {};
       var em = String(x.booking || "").match(/[^\s@,;()]+@[^\s@,;()]+\.[a-z]{2,}/i);
       var ph = phone((String(x.booking || "").match(/(\+?\d[\d\s]{9,14}\d)/) || [])[1]);
       var fee = parseFloat(act.budget);
-      create({ brief_id: brief.id, candidate_id: x.id, artist_name: x.name, act_label: act.label || act.type || "", event_name: brief.name || "",
-        event_date: e.date || null, venue_name: e.venue || "", venue_address: e.town || "", set_times: act.set || "",
+      return addForGig(gig, { candidate_id: x.id, artist_name: x.name, act_label: act.label || act.type || "", set_times: act.set || "",
         fee: isNaN(fee) ? null : fee, artist_email: ro ? ro.email : em ? em[0] : "", artist_phone: ro ? ro.phone : ph,
-        artist_contact: ro ? ro.contact_name : "", roster_id: ro ? ro.id : null }, btn);
+        artist_contact: ro ? ro.contact_name : "", roster_id: ro ? ro.id : null });
     }
 
     /* ----- One booking ----- */
     async function viewBooking(id) {
       stopLive();
       app.innerHTML = nav("bookings") + '<p class="hint">Loading booking…</p>';
+      try { await VN.load(); } catch (e) { /* select falls back */ }
       var r = await sb.from("tm_bookings").select("*").eq("id", id).maybeSingle();
       if (r.error || !r.data) { app.innerHTML = nav("bookings") + '<a class="back" href="#bookings">← All bookings</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This booking doesn’t exist or was deleted.") + "</p>"; return; }
       cur = r.data;
@@ -570,7 +833,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       render();
       state.channel = sb.channel("tb-" + id)
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tm_bookings", filter: "id=eq." + id }, function (p) {
-          ["status", "viewed_at", "responded_at", "response_name", "response_note", "terms_agreed", "chase_count", "no_response_flagged_at", "sent_at"].forEach(function (k) { cur[k] = p.new[k]; });
+          ["status", "viewed_at", "responded_at", "response_name", "response_note", "terms_agreed", "chase_count", "no_response_flagged_at", "sent_at", "performed_at", "invoiced_at", "paid_at"].forEach(function (k) { cur[k] = p.new[k]; });
           renderStatus();
         })
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "tm_booking_log", filter: "booking_id=eq." + id }, function () { loadLog().then(renderStatus); })
@@ -593,7 +856,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       app.innerHTML = nav("bookings") +
         '<a class="back" href="#bookings">← All bookings</a>' +
         '<div class="sechead" style="margin-top:8px"><h2 class="display">' + esc(b.artist_name || "New booking") + '</h2><span id="k-pill">' + pill(b) + "</span></div>" +
-        '<p class="hint">' + esc(b.ref) + (b.brief_id ? ' · <a href="#b=' + b.brief_id + '">From brief</a>' : "") + "</p>" +
+        '<p class="hint">' + esc(b.ref) + (b.brief_id ? ' · <a href="#b=' + b.brief_id + '">Open the gig</a>' : "") + (b.venue_id ? ' · <a href="#v=' + b.venue_id + '">Venue’s bookings</a>' : "") + "</p>" +
         '<div id="k-status"></div>' +
         (me.admin ? "" : '<p class="readonly">Only admins can change or send bookings.</p>') +
         '<div class="sechead"><h2 class="display" style="font-size:26px">Artist</h2></div><div class="panel f">' +
@@ -601,13 +864,16 @@ input[type=range]{width:100%;accent-color:var(--ink)}
           '<div class="two">' + field("artist_email", "Email", { type: "email", ph: "name@example.com" }) + field("artist_phone", "Mobile for WhatsApp", { type: "tel", ph: "+44 7…", extra: ' inputmode="tel"' }) + "</div></div>" +
         '<div class="sechead"><h2 class="display" style="font-size:26px">The booking</h2></div><div class="panel f">' +
           '<div class="two">' + field("act_label", "Act", { ph: "e.g. DJ" }) + field("event_name", "Event") + "</div>" +
-          '<div class="two">' + field("event_date", "Date", { type: "date" }) + field("venue_name", "Venue") + "</div>" +
-          field("venue_address", "Venue address", { ph: "Full address with postcode" }) +
+          '<div class="two">' + field("event_date", "Date", { type: "date" }) + '<div><label for="k-venue">Venue</label>' +
+            (me.admin ? '<select id="k-venue">' + VN.options(b.venue_id) + "</select>" : '<input type="text" readonly value="' + esc(b.venue_name) + '">') + "</div></div>" +
+          '<div id="k-venue-new"></div>' +
+          field("venue_address", "Venue address", { ph: "Full address with postcode", hint: "Filled in from the venue list. The artist sees this." }) +
           '<div class="two">' + field("load_in", "Load-in", { ph: "e.g. 20:00" }) + field("soundcheck", "Soundcheck", { ph: "e.g. 20:30" }) + "</div>" +
           field("set_times", "Set times", { ph: "e.g. 22:00 to 01:00" }) + "</div>" +
         '<div class="sechead"><h2 class="display" style="font-size:26px">Fee</h2></div><div class="panel f">' +
           '<div class="two">' + field("fee", "Fee, £", { type: "number", extra: ' inputmode="decimal" min="0" step="10"' }) + field("fee_notes", "What the fee covers", { ph: "e.g. plus VAT, includes travel" }) + "</div>" +
-          field("payment_terms", "Payment terms", { ph: "e.g. 50% deposit on confirmation, balance 7 days after the event" }) + "</div>" +
+          field("payment_terms", "Payment terms", { ph: "e.g. 50% deposit on confirmation, balance 7 days after the event" }) +
+          field("invoice_ref", "Artist’s invoice reference", { ph: "Fill in when their invoice arrives" }) + "</div>" +
         '<div class="sechead"><h2 class="display" style="font-size:26px">Rider and terms</h2></div><div class="panel f">' +
           field("rider", "Rider and what we provide", { area: true, rows: 4, ph: "Equipment, hospitality, guest list, parking" }) +
           field("terms", "Booking terms the artist agrees to", { area: true, rows: 9, hint: "A starting template. Have your lawyers check it before you rely on it." }) + "</div>" +
@@ -625,7 +891,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 
     async function saveNow() {
       var s = document.getElementById("k-saving");
-      var keys = ["artist_name", "artist_contact", "artist_email", "artist_phone", "act_label", "event_name", "event_date", "venue_name", "venue_address", "load_in", "soundcheck", "set_times", "fee", "fee_notes", "payment_terms", "rider", "terms", "onsite_name", "onsite_phone", "internal_notes"];
+      var keys = ["artist_name", "artist_contact", "artist_email", "artist_phone", "act_label", "event_name", "event_date", "venue_id", "venue_name", "venue_address", "invoice_ref", "load_in", "soundcheck", "set_times", "fee", "fee_notes", "payment_terms", "rider", "terms", "onsite_name", "onsite_phone", "internal_notes"];
       var row = {}; keys.forEach(function (k) { row[k] = cur[k]; });
       if (row.event_date === "") row.event_date = null;
       if (row.fee === "" || row.fee === null || isNaN(parseFloat(row.fee))) row.fee = null; else row.fee = parseFloat(row.fee);
@@ -644,6 +910,16 @@ input[type=range]{width:100%;accent-color:var(--ink)}
           save(); renderActions();
         };
       });
+      var vs = document.getElementById("k-venue");
+      vs.onchange = function () {
+        var pickV = function (v) {
+          cur.venue_id = v ? v.id : null; cur.venue_name = v ? v.name : ""; cur.venue_address = v ? VN.where(v) : "";
+          document.getElementById("k-venue_address").value = cur.venue_address;
+          document.getElementById("k-saving").textContent = "Saving…"; save();
+        };
+        if (vs.value === "__new") { vs.value = cur.venue_id || ""; VN.addForm(document.getElementById("k-venue-new"), function (v) { if (v) { vs.innerHTML = VN.options(v.id); pickV(v); } }); return; }
+        pickV(VN.byId(vs.value));
+      };
       var ph = document.getElementById("k-artist_phone");
       ph.onblur = function () { var p = phone(ph.value); if (p && p !== ph.value) { ph.value = p; cur.artist_phone = p; save(); renderActions(); } };
     }
@@ -654,12 +930,17 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       if (b.status === "accepted") html = '<p class="okmsg">Confirmed by ' + esc(b.response_name || "the artist") + " " + esc(ago(b.responded_at)) + (b.terms_agreed ? ", terms agreed" : "") + "." + (b.response_note ? "<br>Note: " + esc(b.response_note) : "") + "</p>";
       else if (b.status === "declined") html = '<p class="err">Declined by ' + esc(b.response_name || "the artist") + " " + esc(ago(b.responded_at)) + "." + (b.response_note ? "<br>Note: " + esc(b.response_note) : "") + "</p>";
       else if (b.status === "cancelled") html = '<p class="readonly">This booking is cancelled.</p>';
+      else if (b.status === "performed") html = '<p class="okmsg">Played ' + esc(fmtDate(b.event_date)) + ". Next: the artist’s invoice.</p>";
+      else if (b.status === "invoiced") html = '<p class="readonly">Invoiced' + (b.invoice_ref ? " (" + esc(b.invoice_ref) + ")" : "") + " " + esc(ago(b.invoiced_at)) + ". Waiting for payment.</p>";
+      else if (b.status === "paid") html = '<p class="okmsg">Paid ' + esc(ago(b.paid_at)) + (b.invoice_ref ? ", invoice " + esc(b.invoice_ref) : "") + ". Done.</p>";
       else if (b.no_response_flagged_at) html = '<p class="err">No answer after 3 email chasers. Try calling or a WhatsApp, or book someone else.</p>';
       else if (b.status === "viewed") html = '<p class="readonly">The artist opened the booking ' + esc(ago(b.viewed_at)) + " but hasn’t answered yet." + (b.chase_count ? " " + b.chase_count + " of 3 chasers sent." : "") + "</p>";
       else if (b.status === "sent") html = '<p class="readonly">Sent ' + esc(ago(b.sent_at)) + ". Waiting for the artist to open it." + (b.chase_count ? " " + b.chase_count + " of 3 chasers sent." : " An email chaser goes automatically every 2 days.") + "</p>";
       document.getElementById("k-status").innerHTML = html + (me.admin ? '<div class="actions" id="k-actions"></div>' : "");
       document.getElementById("k-log").innerHTML = logRows.length ? logRows.map(function (l) {
-        return "<li><time>" + esc(new Date(l.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) + "</time><span>" + esc(LOGTEXT[l.kind] || l.kind) + (l.detail ? ' <span class="small">' + esc(l.detail) + "</span>" : "") + (l.by_email ? ' <span class="small">by ' + esc(l.by_email.split("@")[0]) + "</span>" : "") + "</span></li>";
+        var st = l.kind === "stage" ? String(l.detail || "").split(">") : null;
+        if (st) l = Object.assign({}, l, { detail: "" });
+        return "<li><time>" + esc(new Date(l.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) + "</time><span>" + esc(st ? "Moved to " + (LABEL[st[1]] || st[1]) + " (was " + (LABEL[st[0]] || st[0]) + ")" : LOGTEXT[l.kind] || l.kind) + (l.detail ? ' <span class="small">' + esc(l.detail) + "</span>" : "") + (l.by_email ? ' <span class="small">by ' + esc(l.by_email.split("@")[0]) + "</span>" : "") + "</span></li>";
       }).join("") : '<li><span></span><span class="small">Nothing sent yet.</span></li>';
       if (me.admin) { renderActions(); renderDanger(); }
     }
@@ -668,6 +949,16 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       var el = document.getElementById("k-actions"); if (!el) return;
       var b = cur, okEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.artist_email || ""), p = phone(b.artist_phone), ready = b.artist_name && b.event_date;
       if (b.status === "cancelled" || b.status === "declined") { el.innerHTML = '<button type="button" class="btn ghost block" id="a-reopen">Reopen as a draft</button>'; document.getElementById("a-reopen").onclick = function () { act("tm_booking_reopen", { p_id: b.id }); }; return; }
+      var NEXT = { accepted: ["performed", "Mark as performed"], performed: ["invoiced", "Mark as invoiced"], invoiced: ["paid", "Mark as paid"] };
+      var BACK = { performed: "accepted", invoiced: "performed", paid: "invoiced" };
+      if (["performed", "invoiced", "paid"].indexOf(b.status) > -1) {
+        el.innerHTML = (NEXT[b.status] ? '<button type="button" class="btn block" id="a-next">' + NEXT[b.status][1] + "</button>" : "") +
+          (b.status === "performed" && !b.invoice_ref ? '<p class="hint">Add the artist’s invoice reference in Fee below when it arrives.</p>' : "") +
+          '<button type="button" class="linkbtn" id="a-back" style="justify-self:start">Move back to ' + LABEL[BACK[b.status]] + "</button><div id=\"a-msg\"></div>";
+        var nx = document.getElementById("a-next"); if (nx) nx.onclick = function () { act("tm_booking_stage", { p_id: b.id, p_stage: NEXT[b.status][0] }, "Moved to " + NEXT[b.status][0] + "."); };
+        document.getElementById("a-back").onclick = function () { act("tm_booking_stage", { p_id: b.id, p_stage: BACK[b.status] }); };
+        return;
+      }
       var first = b.status === "draft", acc = b.status === "accepted";
       var missing = !ready ? "Add the artist name and event date to send." : (!okEmail && !p ? "Add an email or a mobile number to send." : "");
       el.innerHTML =
@@ -677,8 +968,10 @@ input[type=range]{width:100%;accent-color:var(--ink)}
         "</div>" +
         (first ? "" : '<div class="two"><button type="button" class="btn ghost" id="a-remind"' + (okEmail ? "" : " disabled") + ">Email a reminder</button><button type=\"button\" class=\"btn ghost\" id=\"a-wa-remind\"" + (p ? "" : " disabled") + ">WhatsApp a reminder</button></div>") +
         '<button type="button" class="linkbtn" id="a-copy" style="justify-self:start">Copy the artist’s confirm link</button>' +
-        (prefs ? '<p class="hint">From the roster: ' + esc(prefs.name) + " prefers " + esc(RS.channels(prefs).join(" and ") || "no channel set") + ' · <a href="#r=' + b.roster_id + '">Edit roster details</a></p>' : "") +
+        (prefs ? '<p class="hint">From our talent list: ' + esc(prefs.name) + " prefers " + esc(RS.channels(prefs).join(" and ") || "no channel set") + ' · <a href="#r=' + b.roster_id + '">Edit their details</a></p>' : "") +
+        (acc ? '<button type="button" class="btn ghost block" id="a-next">' + (b.event_date && b.event_date <= today() ? "The gig happened: mark as performed" : "Mark as performed") + "</button>" : "") +
         '<div id="a-msg">' + (missing ? '<p class="hint">' + missing + "</p>" : "") + "</div>";
+      var pf = document.getElementById("a-next"); if (pf) pf.onclick = function () { act("tm_booking_stage", { p_id: b.id, p_stage: "performed" }, "Marked as performed."); };
       document.getElementById("a-email").onclick = function () { act("tm_booking_send", { p_id: b.id, p_kind: "invite" }, "Emailed to " + b.artist_email + "."); };
       document.getElementById("a-wa").onclick = function () { whatsapp("invite"); };
       var r1 = document.getElementById("a-remind"); if (r1) r1.onclick = function () { act("tm_booking_send", { p_id: b.id, p_kind: "reminder" }, "Reminder emailed to " + b.artist_email + "."); };
@@ -715,7 +1008,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       var el = document.getElementById("k-danger"); if (!el) return;
       var b = cur;
       if (b.status === "draft") el.innerHTML = '<button type="button" class="linkbtn danger" id="d-del">Delete this draft</button>';
-      else if (b.status !== "cancelled") el.innerHTML = '<button type="button" class="linkbtn danger" id="d-cancel">Cancel this booking and email the artist</button><button type="button" class="linkbtn" id="d-cancel-quiet">Cancel without emailing</button>';
+      else if (["sent", "viewed", "accepted"].indexOf(b.status) > -1) el.innerHTML = '<button type="button" class="linkbtn danger" id="d-cancel">Cancel this booking and email the artist</button><button type="button" class="linkbtn" id="d-cancel-quiet">Cancel without emailing</button>';
       else el.innerHTML = "";
       function arm(btn, text, go) { btn.onclick = function () { if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.textContent = text; return; } go(); }; }
       var d = document.getElementById("d-del");
@@ -724,7 +1017,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       var c2 = document.getElementById("d-cancel-quiet"); if (c2) arm(c2, "Tap again to cancel", function () { act("tm_booking_cancel", { p_id: b.id, p_tell_artist: false }, "Cancelled. The artist hasn’t been told."); });
     }
 
-    return { nav: nav, viewBookings: viewBookings, viewBooking: viewBooking, bookFromCandidate: bookFromCandidate, create: create, phone: phone };
+    return { nav: nav, viewBookings: viewBookings, viewBooking: viewBooking, bookFromCandidate: bookFromCandidate, addForGig: addForGig, create: create, phone: phone, label: label, rowHtml: rowHtml, statsHtml: statsHtml };
   })();
 
 
@@ -750,8 +1043,8 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       try { await load(); } catch (e) { app.innerHTML = TB.nav("roster") + '<p class="err">' + esc(errMsg(e)) + "</p>"; return; }
       var types = list.map(function (a) { return a.act_type; }).filter(function (t, i, s) { return t && s.indexOf(t) === i; }).sort();
       app.innerHTML = TB.nav("roster") +
-        '<div class="sechead"><h2 class="display">Roster</h2><a class="btn" href="#r=new">Add talent</a></div>' +
-        '<p class="hint">Acts we already work with. Their email and WhatsApp are used when you book them, and you can add them to any brief’s shortlist alongside the search results.</p>' +
+        '<div class="sechead"><h2 class="display">Our talent</h2><a class="btn" href="#r=new">Add talent</a></div>' +
+        '<p class="hint">Acts we already work with. Add them to any gig from “From our list”; their email and WhatsApp are used when you send the booking.</p>' +
         '<div class="f two" style="margin:14px 0"><div><label for="rs-q">Search</label><input type="text" id="rs-q" value="' + esc(q) + '" placeholder="Name, style, area"></div>' +
         '<div><label for="rs-t">Type of act</label><select id="rs-t"><option value="">All types</option>' + types.map(function (t) { return "<option" + (t === typeF ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div></div>" +
         '<div id="rs-list"></div>';
@@ -765,7 +1058,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
           var bits = [a.act_type, a.style, a.based, a.fee_guide].filter(Boolean).join(" · ");
           return '<a class="row" href="#r=' + a.id + '"><div><div class="t">' + esc(a.name) + (a.active ? "" : ' <span class="small">(not active)</span>') + '</div><div class="s">' + esc(bits || "No details yet") + "</div></div>" +
             '<span class="pill ' + (ch.length ? "ready" : "draft") + '">' + esc(ch.length ? ch.join(" + ") : "No contact") + "</span></a>";
-        }).join("") + "</div>" : '<div class="empty">' + (list.length ? "No acts match." : "No acts on the roster yet. Use “Add talent” to add the acts you already book.") + "</div>";
+        }).join("") + "</div>" : '<div class="empty">' + (list.length ? "No acts match." : "Nobody on our talent list yet. Use “Add talent” to add the acts you already book.") + "</div>";
       };
       draw();
       document.getElementById("rs-q").oninput = function (e) { q = e.target.value; draw(); };
@@ -779,13 +1072,13 @@ input[type=range]{width:100%;accent-color:var(--ink)}
         based: "", fee_guide: "", website: "", instagram: "", tiktok: "", facebook: "", mixcloud: "", notes: "", active: true }, prefill || {});
       else {
         var r = await sb.from("tm_roster").select("*").eq("id", id).maybeSingle();
-        if (r.error || !r.data) { app.innerHTML = TB.nav("roster") + '<a class="back" href="#roster">← Roster</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This act isn’t on the roster any more.") + "</p>"; return; }
+        if (r.error || !r.data) { app.innerHTML = TB.nav("roster") + '<a class="back" href="#roster">← Our talent</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This act isn’t on our talent list any more.") + "</p>"; return; }
         a = r.data;
       }
       function inp(k, label, type, ph, extra) { return '<div><label for="r-' + k + '">' + label + '</label><input type="' + (type || "text") + '" id="r-' + k + '" data-r="' + k + '" value="' + esc(a[k]) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : "") + (extra || "") + "></div>"; }
       var bookings = [];
-      if (a.id) { var b = await sb.from("tm_bookings").select("id,ref,event_name,event_date,status").eq("roster_id", a.id).order("event_date", { ascending: false }); bookings = b.data || []; }
-      app.innerHTML = TB.nav("roster") + '<a class="back" href="#roster">← Roster</a>' +
+      if (a.id) { var b = await sb.from("tm_bookings").select("id,ref,event_name,event_date,venue_name,status,no_response_flagged_at").eq("roster_id", a.id).order("event_date", { ascending: false }); bookings = b.data || []; }
+      app.innerHTML = TB.nav("roster") + '<a class="back" href="#roster">← Our talent</a>' +
         '<div class="sechead" style="margin-top:8px"><h2 class="display">' + esc(a.name || "Add talent") + "</h2></div>" +
         '<form class="f" id="r-form" novalidate>' +
         '<div class="panel f">' + inp("name", "Act or artist name") +
@@ -803,14 +1096,14 @@ input[type=range]{width:100%;accent-color:var(--ink)}
           '<div class="two">' + inp("instagram", "Instagram", "url", "https://") + inp("tiktok", "TikTok", "url", "https://") + "</div>" +
           '<div class="two">' + inp("facebook", "Facebook", "url", "https://") + inp("mixcloud", "Mixcloud", "url", "https://") + "</div>" +
           '<div><label for="r-notes">Notes for the team</label><textarea id="r-notes" data-r="notes" placeholder="Rider, how they like to be booked, past gigs">' + esc(a.notes) + "</textarea></div>" +
-          '<label class="check" style="margin:0"><input type="checkbox" data-r="active"' + (a.active ? " checked" : "") + "><span>Active (show when adding acts to a shortlist)</span></label></div>" +
+          '<label class="check" style="margin:0"><input type="checkbox" data-r="active"' + (a.active ? " checked" : "") + "><span>Active (show in “From our list” when adding talent to a gig)</span></label></div>" +
         '<div id="r-msg"></div>' +
-        '<div style="display:grid;gap:10px"><button type="submit" class="btn block">' + (a.id ? "Save" : "Add to roster") + "</button>" +
+        '<div style="display:grid;gap:10px"><button type="submit" class="btn block">' + (a.id ? "Save" : "Add to our talent") + "</button>" +
           (a.id && me.admin ? '<button type="button" class="btn ghost block" id="r-book">Book this act</button>' : "") + "</div></form>" +
         (bookings.length ? '<div class="sechead"><h2 class="display" style="font-size:26px">Bookings</h2></div><div class="list">' + bookings.map(function (k) {
-          return '<a class="row" href="#k=' + k.id + '"><div><div class="t">' + esc(k.event_name || "Booking") + '</div><div class="s">' + esc([fmtDate(k.event_date), k.ref].filter(Boolean).join(" · ")) + '</div></div><span class="pill ' + k.status + '">' + esc(k.status) + "</span></a>";
+          return '<a class="row" href="#k=' + k.id + '"><div><div class="t">' + esc(k.event_name || "Booking") + '</div><div class="s">' + esc([fmtDate(k.event_date), k.venue_name, k.ref].filter(Boolean).join(" · ")) + '</div></div><span class="pill ' + k.status + '">' + esc(TB.label(k)) + "</span></a>";
         }).join("") + "</div>" : "") +
-        (a.id ? '<div style="margin-top:28px"><button type="button" class="linkbtn danger" id="r-del">Remove from roster</button></div>' : "") +
+        (a.id ? '<div style="margin-top:28px"><button type="button" class="linkbtn danger" id="r-del">Remove from our talent</button></div>' : "") +
         '<p class="disclaimer">Contact details are for booking this act only, never for marketing. Removing an act keeps its past bookings.</p>';
 
       var form = document.getElementById("r-form");
@@ -837,7 +1130,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
           tiktok: a.tiktok, facebook: a.facebook, mixcloud: a.mixcloud, notes: a.notes, active: !!a.active };
         var r = a.id ? await sb.from("tm_roster").update(row).eq("id", a.id).select().single() : await sb.from("tm_roster").insert(row).select().single();
         if (r.error) {
-          msg.innerHTML = '<p class="err">' + esc(/duplicate|unique/i.test(r.error.message) ? "There’s already an act called “" + row.name + "” on the roster." : errMsg(r.error)) + "</p>"; return;
+          msg.innerHTML = '<p class="err">' + esc(/duplicate|unique/i.test(r.error.message) ? "There’s already an act called “" + row.name + "” on our talent list." : errMsg(r.error)) + "</p>"; return;
         }
         if (a.fromCandidate) await sb.from("tm_candidates").update({ roster_id: r.data.id }).eq("id", a.fromCandidate);
         if (a.back) { location.hash = a.back; return; }
@@ -857,45 +1150,6 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       };
     }
 
-    // Shortlist: pick acts from the roster and add them to the current act's list
-    async function picker(brief, actId, done) {
-      var el = document.getElementById("roster-pick");
-      el.innerHTML = '<p class="hint">Loading roster…</p>';
-      try { await load(); } catch (e) { el.innerHTML = '<p class="err">' + esc(errMsg(e)) + "</p>"; return; }
-      var act = (brief.acts || []).find(function (x) { return x.id === actId; }) || {};
-      var already = state.cands.filter(function (x) { return x.act_id === actId && x.roster_id; }).map(function (x) { return x.roster_id; });
-      var pool = list.filter(function (a) { return a.active && already.indexOf(a.id) === -1; });
-      pool.sort(function (p, q2) { return (q2.act_type === act.type) - (p.act_type === act.type) || p.name.localeCompare(q2.name); });
-      if (!pool.length) { el.innerHTML = '<div class="panel"><p class="hint" style="margin:0 0 10px">' + (list.length ? "Every active roster act is already on this list." : "The roster is empty.") + '</p><a class="btn ghost sm" href="#r=new">Add talent to the roster</a> <button type="button" class="btn ghost sm" id="rp-close">Close</button></div>'; document.getElementById("rp-close").onclick = done; return; }
-      el.innerHTML = '<div class="panel"><div class="sechead" style="margin:0 0 8px"><h2 class="display" style="font-size:24px">From our roster</h2><button type="button" class="linkbtn" id="rp-close">Close</button></div>' +
-        '<input type="text" id="rp-q" placeholder="Search the roster" style="width:100%;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);background:var(--surface);margin-bottom:8px">' +
-        '<div id="rp-list" class="list"></div><div style="margin-top:12px"><button type="button" class="btn block" id="rp-add" disabled>Add to the shortlist</button></div></div>';
-      var chosen = {};
-      var draw = function (s) {
-        s = (s || "").toLowerCase();
-        document.getElementById("rp-list").innerHTML = pool.filter(function (a) { return !s || [a.name, a.style, a.act_type, a.based].join(" ").toLowerCase().indexOf(s) > -1; }).map(function (a) {
-          return '<label class="check" style="margin:0;padding:10px 4px;border-bottom:1px solid var(--line)"><input type="checkbox" value="' + a.id + '"' + (chosen[a.id] ? " checked" : "") + '><span><strong>' + esc(a.name) + "</strong><br><span class=\"small\">" +
-            esc([a.act_type, a.style, a.based, a.fee_guide].filter(Boolean).join(" · ")) + "</span></span></label>";
-        }).join("") || '<p class="hint" style="padding:10px 0">No roster acts match.</p>';
-        document.querySelectorAll("#rp-list input").forEach(function (i) { i.onchange = function () { chosen[i.value] = i.checked; document.getElementById("rp-add").disabled = !Object.keys(chosen).some(function (k) { return chosen[k]; }); }; });
-      };
-      draw("");
-      document.getElementById("rp-q").oninput = function (e) { draw(e.target.value); };
-      document.getElementById("rp-close").onclick = done;
-      document.getElementById("rp-add").onclick = async function () {
-        var btn = this; btn.disabled = true; btn.textContent = "Adding…";
-        var rows = pool.filter(function (a) { return chosen[a.id]; }).map(function (a) {
-          return { brief_id: brief.id, act_id: actId, roster_id: a.id, origin: "roster", name: a.name, score: 75, status: "To contact",
-            why: "On the Fort Green roster" + (a.style ? ": " + a.style : "") + ".", based: a.based, booking: contactLine(a),
-            website: a.website, instagram: a.instagram, tiktok: a.tiktok, facebook: a.facebook, mixcloud: a.mixcloud, notes: [a.fee_guide ? "Usual fee: " + a.fee_guide : "", a.notes].filter(Boolean).join("\n"), found_on: [] };
-        });
-        var r = await sb.from("tm_candidates").insert(rows).select();
-        if (r.error) { btn.disabled = false; btn.textContent = "Add to the shortlist"; el.insertAdjacentHTML("beforeend", '<p class="err">' + esc(errMsg(r.error)) + "</p>"); return; }
-        state.cands = state.cands.concat(r.data || []);
-        done();
-      };
-    }
-
     function fromCandidate(x) {
       var em = String(x.booking || "").match(/[^\s@,;()]+@[^\s@,;()]+\.[a-z]{2,}/i);
       var ph = phone((String(x.booking || "").match(/(\+?\d[\d\s]{9,14}\d)/) || [])[1]);
@@ -909,7 +1163,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       try { var p = sessionStorage.getItem("tm-roster-prefill"); sessionStorage.removeItem("tm-roster-prefill"); return p ? JSON.parse(p) : null; } catch (e) { return null; }
     }
 
-    return { viewRoster: viewRoster, viewAct: viewAct, picker: picker, fromCandidate: fromCandidate, takePrefill: takePrefill, channels: channels };
+    return { load: load, viewRoster: viewRoster, viewAct: viewAct, fromCandidate: fromCandidate, takePrefill: takePrefill, channels: channels };
   })();
 
   /* ---------- Routing and sign-in ---------- */
@@ -919,6 +1173,8 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     if (m) viewBrief(m[1]);
     else if (k) TB.viewBooking(k[1]);
     else if (/^#bookings/.test(location.hash)) TB.viewBookings();
+    else if (/^#venues/.test(location.hash)) VN.viewVenues();
+    else if (/^#v=[0-9a-f-]{36}$/.test(location.hash)) VN.viewVenue(location.hash.slice(3));
     else if (/^#roster/.test(location.hash)) RS.viewRoster();
     else if (/^#r=new$/.test(location.hash)) RS.viewAct("new", RS.takePrefill());
     else if (/^#r=[0-9a-f-]{36}$/.test(location.hash)) RS.viewAct(location.hash.slice(3));
