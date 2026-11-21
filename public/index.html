@@ -12,6 +12,7 @@
 <script src="/config.js"></script>
 <script src="/wx.js"></script>
 <script src="/live.js"></script>
+<script src="/journey.js"></script>
 <style>
 :root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;--ghost:#ececec;
   --staff-bg:#100f10;--staff-ink:#fff;--staff-muted:#c9c9c9;--staff-line:#3d3c3d;--staff-ghost:#1f1e1f;--err:#b42318;color-scheme:light}
@@ -174,6 +175,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
 
   <section class="wrap" aria-labelledby="h-public">
     <div class="sechead"><h2 class="display" id="h-public">Available to you</h2><span>11 tools</span></div>
+    <div id="journey" hidden></div>
     <div class="grid">
       <div class="card wx" id="card-weather">
         <span class="tag">Live weather</span>
@@ -197,74 +199,74 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
         <p>Every report, plan and check you’ve made with our tools, saved automatically. Open one to change it or print it again.</p>
         <div class="foot"><span>Saved to your account</span><span class="go">Open</span></div>
       </a>
-      <a class="card" href="/martyns-law/">
-        <span class="num display" aria-hidden="true">01</span>
-        <span class="tag">Compliance</span>
-        <h3 class="display">Martyn’s Law Readiness Checker</h3>
-        <p>See where your venue stands on Martyn’s Law and what to put in place next.</p>
-        <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
-      </a>
-      <a class="card" href="/risk-assessment/">
-        <span class="num display" aria-hidden="true">02</span>
-        <span class="tag">Health and safety</span>
-        <h3 class="display">Risk Assessment Generator</h3>
-        <p>Build a risk assessment for your venue or event, referencing UK health and safety guidance and the Purple Guide.</p>
-        <div class="foot"><span>Free, PDF or Word download</span><span class="go">Open tool</span></div>
-      </a>
       <a class="card" href="/licensing/">
-        <span class="num display" aria-hidden="true">03</span>
+        <span class="num display" aria-hidden="true">01</span>
         <span class="tag">Guidance</span>
         <h3 class="display">Licensing</h3>
         <p>Licensing &amp; Temporary Event Notice Guidance</p>
         <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
       </a>
-      <a class="card" href="/power-planner/">
-        <span class="num display" aria-hidden="true">04</span>
-        <span class="tag">Event power</span>
-        <h3 class="display">Power Planner</h3>
-        <p>Plan your power usage.</p>
-        <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
-      </a>
       <a class="card" href="/capacity/">
-        <span class="num display" aria-hidden="true">05</span>
+        <span class="num display" aria-hidden="true">02</span>
         <span class="tag">Crowd safety</span>
         <h3 class="display">Capacity Calculator</h3>
         <p>Work out a safe capacity for your venue or event site from its floor space and exits.</p>
         <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
       </a>
-      <a class="card" href="/run-sheet/">
-        <span class="num display" aria-hidden="true">06</span>
-        <span class="tag">Event production</span>
-        <h3 class="display">Run Sheet &amp; Call Sheet</h3>
-        <p>Build your running order and crew call times, then share one link your crew can open on their phones.</p>
-        <div class="foot"><span>Free, crew link and PDF</span><span class="go">Open tool</span></div>
-      </a>
       <a class="card" href="/staffing/">
-        <span class="num display" aria-hidden="true">07</span>
+        <span class="num display" aria-hidden="true">03</span>
         <span class="tag">Security</span>
         <h3 class="display">Staffing Calculator</h3>
         <p>How many door supervisors, stewards and supervisors your venue or event needs, with the reasoning.</p>
         <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
       </a>
-      <a class="card" href="/quote/">
-        <span class="num display" aria-hidden="true">08</span>
-        <span class="tag">Budget</span>
-        <h3 class="display">Event Quote Estimator</h3>
-        <p>An instant estimate for security, power, crew and equipment, then a firm quote in one tap.</p>
-        <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
-      </a>
       <a class="card" href="/welfare/">
-        <span class="num display" aria-hidden="true">09</span>
+        <span class="num display" aria-hidden="true">04</span>
         <span class="tag">Event production</span>
         <h3 class="display">Welfare &amp; Provisions</h3>
         <p>Toilets, hand washing, drinking water, first aid and bins for your crowd, from UK event guidance.</p>
         <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
       </a>
+      <a class="card" href="/power-planner/">
+        <span class="num display" aria-hidden="true">05</span>
+        <span class="tag">Event power</span>
+        <h3 class="display">Power Planner</h3>
+        <p>Plan your power usage.</p>
+        <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
+      </a>
+      <a class="card" href="/risk-assessment/">
+        <span class="num display" aria-hidden="true">06</span>
+        <span class="tag">Health and safety</span>
+        <h3 class="display">Risk Assessment Generator</h3>
+        <p>Build a risk assessment for your venue or event, referencing UK health and safety guidance and the Purple Guide.</p>
+        <div class="foot"><span>Free, PDF or Word download</span><span class="go">Open tool</span></div>
+      </a>
+      <a class="card" href="/martyns-law/">
+        <span class="num display" aria-hidden="true">07</span>
+        <span class="tag">Compliance</span>
+        <h3 class="display">Martyn’s Law Readiness Checker</h3>
+        <p>See where your venue stands on Martyn’s Law and what to put in place next.</p>
+        <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
+      </a>
+      <a class="card" href="/run-sheet/">
+        <span class="num display" aria-hidden="true">08</span>
+        <span class="tag">Event production</span>
+        <h3 class="display">Run Sheet &amp; Call Sheet</h3>
+        <p>Build your running order and crew call times, then share one link your crew can open on their phones.</p>
+        <div class="foot"><span>Free, crew link and PDF</span><span class="go">Open tool</span></div>
+      </a>
       <a class="card" href="/event-plan/">
-        <span class="num display" aria-hidden="true">10</span>
+        <span class="num display" aria-hidden="true">09</span>
         <span class="tag">Event production</span>
         <h3 class="display">Event Management Plan</h3>
         <p>Build a plan under the headings a Safety Advisory Group expects, using figures from your other results, with every gap flagged.</p>
+        <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
+      </a>
+      <a class="card" href="/quote/">
+        <span class="num display" aria-hidden="true">10</span>
+        <span class="tag">Budget</span>
+        <h3 class="display">Event Quote Estimator</h3>
+        <p>An instant estimate for security, power, crew and equipment, then a firm quote in one tap.</p>
         <div class="foot"><span>Free</span><span class="go">Open tool</span></div>
       </a>
       <a class="card ask" href="https://wa.me/447399232855" target="_blank" rel="noopener">
@@ -381,6 +383,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     var b = await sb.rpc("hub_is_blocked");
     if (b && b.data === true) { await sb.auth.signOut(); signedIn = false; showLogin("email"); err("email-err", REMOVED_MSG); return; }
     if (window.FGWeather) FGWeather.mountCard($("card-weather"), sb);
+    if (window.FGJourney) FGJourney.mount($("journey"), sb, { hideable: true });
     if (window.FGLive && isStaff(lastEmail)) FGLive.mountCard($("card-live"), sb);  // Fort Green staff only
     var a = await sb.rpc("hub_is_admin");
     $("card-users").hidden = !(a && a.data === true);

@@ -7,6 +7,7 @@
 <script src="/auth-guard.js"></script>
 <script src="/results.js"></script>
 <script src="/lead.js"></script>
+<script src="/journey.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Event management plan builder | Fort Green</title>
@@ -527,7 +528,8 @@ function renderStart(){
       <button class="btn btn-primary btn-block" id="go-start" ${state.agreed ? "" : "disabled"}>${started ? "Continue" : "Start"}</button>
       ${started ? `<button class="btn btn-ghost btn-block" id="reset">Start a new plan</button>` : ""}
     </div>
-    <div class="panel"><h3>Do these first for a fuller plan</h3><p class="muted small" style="margin:0">Results you save in the <a href="/capacity/" style="color:var(--ink);font-weight:600">Capacity</a>, <a href="/staffing/" style="color:var(--ink);font-weight:600">Staffing</a>, <a href="/welfare/" style="color:var(--ink);font-weight:600">Welfare</a>, <a href="/risk-assessment/" style="color:var(--ink);font-weight:600">Risk Assessment</a> and <a href="/run-sheet/" style="color:var(--ink);font-weight:600">Run Sheet</a> tools can be added to your plan. You can add them later too.</p></div>`;
+    <div style="margin-top:24px"><p class="muted small" style="margin:0 0 10px">Results you save in the other tools are added to your plan. Do them first for a fuller plan, or add them later.</p><div id="journey-ep"></div></div>`;
+  if(window.FGJourney && !viewing()){ const c = window.FG_CONFIG || {}; if(!sb && window.supabase && c.SUPABASE_URL) sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY); FGJourney.mount($("#journey-ep"), sb, { title: "Do these first", here: "event-plan" }); }
   $("#agree").onchange = e => { state.agreed = e.target.checked; save(); $("#go-start").disabled = !state.agreed; };
   $("#go-start").onclick = () => go("event");
   const r = $("#reset");
