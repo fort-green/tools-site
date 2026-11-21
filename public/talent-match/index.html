@@ -736,7 +736,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     me.admin = ad.data === true;
     document.getElementById("who").innerHTML = "Signed in as <strong>" + esc(me.email) + "</strong>";
     if (st.error || st.data !== true) {
-      app.innerHTML = '<div class="empty"><strong>Staff only.</strong><br>This tool is for Fort Green staff. Sign in with your @fortgreen.co.uk email to use it.</div>";
+      app.innerHTML = '<div class="empty"><strong>Staff only.</strong><br>This tool is for Fort Green staff. Sign in with your @fortgreen.co.uk email to use it.</div>';
       return;
     }
     window.addEventListener("hashchange", route);
