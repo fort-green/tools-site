@@ -151,8 +151,6 @@ Deno.serve(async (req) => {
       return json({ staff: isStaff === true, venues: ids.length, shifts, at: new Date().toISOString() });
     }
 
-<<<<<<< Updated upstream
-=======
     if (p.action === "venue_live") {
       // Live view for one venue: shifts running now (or starting within the hour) plus the venue capacity set in the portal.
       if (!(await canVenue(p.venue_id))) return json({ error: "Not allowed" }, 403);
@@ -174,7 +172,6 @@ Deno.serve(async (req) => {
       return json({ venue: data });
     }
 
->>>>>>> Stashed changes
     if (p.action === "request_staff") {
       if (!(await canVenue(p.venue_id))) return json({ error: "Not allowed" }, 403);
       const extra = Number(p.extra);
