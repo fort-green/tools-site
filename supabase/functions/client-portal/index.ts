@@ -148,6 +148,10 @@ Deno.serve(async (req) => {
       const ids = (vs ?? []).map((v) => v.venue_id);
       if (!ids.length) return json({ staff: isStaff === true, venues: 0, shifts: [] });
       const shifts = await checkin("portal_live", { p_key: key, p_venues: ids });
+      // Use the venue capacity set in the portal when there is one, so the hub tile matches the portal's Live now tab.
+      const { data: caps } = await admin.from("cp_venues").select("venue_id,capacity").in("venue_id", ids).not("capacity", "is", null);
+      const capOf = new Map((caps ?? []).map((c) => [c.venue_id, c.capacity]));
+      for (const s of shifts ?? []) if (capOf.has(s.venue_id)) s.capacity = capOf.get(s.venue_id);
       return json({ staff: isStaff === true, venues: ids.length, shifts, at: new Date().toISOString() });
     }
 
