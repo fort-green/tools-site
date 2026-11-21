@@ -142,7 +142,9 @@ Deno.serve(async (req) => {
     }
 
     if (p.action === "live") {
-      // Live door count for every venue this person can see (clients: their venues; staff: all active venues)
+      // Hub "Live capacity" tile: every venue's live door count. Fort Green staff only
+      // (clients see their own venue in the portal's Live now tab via "venue_live").
+      if (isStaff !== true) return json({ staff: false, venues: 0, shifts: [] });
       const { data: vs, error } = await user.from("cp_venues").select("venue_id").eq("active", true);
       if (error) throw error;
       const ids = (vs ?? []).map((v) => v.venue_id);

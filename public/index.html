@@ -65,7 +65,15 @@ header .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-con
 .wx-empty{margin-top:auto;display:flex;flex-direction:column;gap:16px;align-items:flex-start}.wx-empty p{margin:0}
 .wx-issue{margin:auto 0 0;color:var(--muted)}
 .wx-foot-link{color:var(--ink)}
-.lv-slide{cursor:pointer}.lv-note{margin:0;font-size:14px;font-weight:700}
+.lv-slide{cursor:pointer}
+.card.lv.lv-multi{grid-column:span 2}
+@media (max-width:760px){.card.lv.lv-multi{grid-column:auto}}
+.lv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:10px;flex:1;align-content:start}
+.lv-cell{display:flex;flex-direction:column;gap:6px;padding:12px;border:1px solid var(--line);text-decoration:none;color:var(--ink);min-width:0}
+.lv-cell:hover{border-color:var(--ink)}
+.lv-cell .v{font-weight:700;font-size:15px;overflow-wrap:anywhere}.lv-cell .s{font-size:13px;color:var(--muted)}
+.lv-cell .n{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;font-size:44px;line-height:1}.lv-cell .n small{font-family:Manrope,Arial,sans-serif;font-size:14px;font-weight:600;color:var(--muted);margin-left:6px}
+.lv-cell .lv-bar{height:8px}.lv-note{margin:0;font-size:14px;font-weight:700}
 .lv-bar{height:10px;border:1px solid var(--ink)}.lv-bar i{display:block;height:100%;background:var(--ink)}
 .lv-pct{margin:0;font-size:15px;font-weight:700}.lv-in{margin:0;font-size:15px;color:var(--body);line-height:1.4}
 .lv-caution{color:#8a5a00}.lv-bar.lv-caution{border-color:#8a5a00}.lv-bar.lv-caution i{background:#c27c00}
@@ -373,7 +381,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     var b = await sb.rpc("hub_is_blocked");
     if (b && b.data === true) { await sb.auth.signOut(); signedIn = false; showLogin("email"); err("email-err", REMOVED_MSG); return; }
     if (window.FGWeather) FGWeather.mountCard($("card-weather"), sb);
-    if (window.FGLive) FGLive.mountCard($("card-live"), sb);
+    if (window.FGLive && isStaff(lastEmail)) FGLive.mountCard($("card-live"), sb);  // Fort Green staff only
     var a = await sb.rpc("hub_is_admin");
     $("card-users").hidden = !(a && a.data === true);
     $("card-rates").hidden = !(a && a.data === true);
