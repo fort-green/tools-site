@@ -73,6 +73,11 @@ p{margin:0 0 12px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .btn-row{display:grid;gap:10px;margin-top:18px}
 .link-btn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.fix{font:inherit;text-align:left;color:inherit;font-weight:600}
+.fix::after{content:" \2192";text-decoration:none;display:inline-block;margin-left:4px}
+.chip.todo.go{cursor:pointer;font:inherit}
+.flash{outline:3px solid var(--red);outline-offset:4px;transition:outline-color .6s}
+@media print{.fix{text-decoration:none;font-weight:400}.fix::after{content:""}}
 
 /* Forms */
 .field{margin:0 0 18px}
@@ -412,10 +417,10 @@ function seg(name, list, val, cls){ return `<div class="seg ${cls||""}" role="gr
 
 /* ---------- Progress ---------- */
 function sectionState(sec){
-  const done = [], todo = [], na = [], figures = [];
+  const done = [], todo = [], na = [], figures = [], fix = [];
   if(sec.id === "overview"){
-    const need = [["type","the type of event"],["date","the event date"],["venue","the venue or site"],["capacity","the expected crowd size"]];
-    need.forEach(([k, t]) => { if(!state[k]) todo.push("Add " + t); });
+    const need = [["type","the type of event",'[data-k="type"]'],["date","the event date","#e-date"],["venue","the venue or site","#e-venue"],["capacity","the expected crowd size","#e-cap"]];
+    need.forEach(([k, t, sel]) => { if(!state[k]){ todo.push("Add " + t); fix.push({tab:"event", sel}); } });
     figures.push(["Event type", label(TYPES, state.type)], ["Date", fmtDate(state.date) + (state.endDate && state.endDate !== state.date ? " to " + fmtDate(state.endDate) : "")],
       ["Venue or site", [state.venue, state.address].filter(Boolean).join(", ")], ["Indoors or outdoors", label(SETTING, state.setting)],
       ["Expected crowd", state.capacity ? (+state.capacity).toLocaleString("en-GB") + " people" : ""], ["Audience", label(AUDIENCE, state.audience)],
@@ -424,16 +429,16 @@ function sectionState(sec){
     ROLES.forEach(([k, l, w, req]) => {
       const p = state.team[k] || {};
       if(p.name) figures.push([l, p.name + (p.phone ? ", " + p.phone : "")]);
-      else if(req) todo.push("Name the " + l.toLowerCase());
+      else if(req){ todo.push("Name the " + l.toLowerCase()); fix.push({tab:"event", sel:`[data-team="${k}"][data-f="name"]`}); }
     });
   } else {
     (sec.qs || []).forEach(([id, t, cond]) => {
       if(cond && !cond(state)) return;
       const a = state.ans[id];
-      if(a === "yes") done.push(t); else if(a === "na") na.push(t); else todo.push(t);
+      if(a === "yes") done.push(t); else if(a === "na") na.push(t); else { todo.push(t); fix.push({tab:"check", sec:sec.id, sel:`[data-q="${id}"]`}); }
     });
   }
-  return {sec, done, todo, na, figures: figures.filter(f => f[1]), link: sec.link ? state.links[sec.link] : null, notes: (state.notes[sec.id] || "").trim()};
+  return {sec, done, todo, fix, na, figures: figures.filter(f => f[1]), link: sec.link ? state.links[sec.link] : null, notes: (state.notes[sec.id] || "").trim()};
 }
 function progress(){
   const list = SECTIONS.map(sectionState);
@@ -441,6 +446,22 @@ function progress(){
   return {list, done, total: list.length, gaps: list.reduce((n, x) => n + x.todo.length, 0)};
 }
 function chip(x){ return x.todo.length ? `<span class="chip todo">${x.todo.length} to do</span>` : `<span class="chip ok">Ready</span>`; }
+// A to-do item is a link straight to the field or question that fills it in.
+function fixAttrs(f){ return `data-fix-tab="${f.tab}" data-fix-sel="${esc(f.sel)}"${f.sec ? ` data-fix-sec="${f.sec}"` : ""}`; }
+function todoList(x, cls){ return `<ul class="${cls || ""}">${x.todo.map((t, i) => `<li><button type="button" class="link-btn fix" ${fixAttrs(x.fix[i])}>${esc(t)}</button></li>`).join("")}</ul>`; }
+function jump(tab, sel, sec){
+  if(sec) OPEN.add(sec);
+  go(tab);
+  requestAnimationFrame(() => {
+    const el = document.querySelector("#screen-" + tab + " " + sel); if(!el) return;
+    const box = el.closest(".q, .field, tr") || el;
+    box.scrollIntoView({block:"center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+    box.classList.add("flash"); setTimeout(() => box.classList.remove("flash"), 2200);
+    const f = el.matches("input, textarea, select, button") ? el : el.querySelector("input, textarea, select, button");
+    if(f) f.focus({preventScroll:true});
+  });
+}
+function bindFix(root){ root.querySelectorAll("[data-fix-tab]").forEach(b => b.onclick = () => jump(b.dataset.fixTab, b.dataset.fixSel, b.dataset.fixSec)); }
 
 /* ---------- My Results ---------- */
 let RESULTS = null, sb = null, uid = null;
@@ -554,12 +575,12 @@ function renderCheck(){
     <p class="small muted">${p.done} of ${p.total} sections ready, ${p.gaps} thing${p.gaps === 1 ? "" : "s"} to do. Anything not marked “In place” goes on your to-do list.</p>
     ${p.list.map((x, i) => { const s = x.sec; if(s.id === "overview" || s.id === "team") return `
       <details class="sec" data-sec="${s.id}"><summary><span class="n">${pad(i + 1)}</span><span>${esc(s.h)}</span>${chip(x)}</summary>
-        <div class="body"><p class="small muted">${esc(s.why)} Fill this in on the Event tab.</p>${x.todo.length ? `<ul class="small">${x.todo.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}<button class="link-btn" data-go="event">Edit event and team</button></div></details>`;
+        <div class="body"><p class="small muted">${esc(s.why)} Fill this in on the Event tab.</p>${x.todo.length ? todoList(x, "small") : ""}<button class="link-btn" data-go="event">Edit event and team</button></div></details>`;
       const qs = (s.qs || []).filter(q => !q[2] || q[2](state));
       return `<details class="sec" data-sec="${s.id}" ${OPEN.has(s.id) ? "open" : ""}><summary><span class="n">${pad(i + 1)}</span><span>${esc(s.h)}</span>${chip(x)}</summary>
         <div class="body"><p class="small muted" style="margin-bottom:4px">${esc(s.why)}</p>
           ${s.link ? linkBlock(s) : ""}
-          ${qs.map(([id, t]) => `<div class="q"><p>${esc(t)}</p>${seg(id, YN, state.ans[id], "yn")}</div>`).join("")}
+          ${qs.map(([id, t]) => `<div class="q" data-q="${id}"><p>${esc(t)}</p>${seg(id, YN, state.ans[id], "yn")}</div>`).join("")}
           <div class="field" style="margin-top:12px"><label for="n-${s.id}">Notes for this section</label><textarea id="n-${s.id}" data-note="${s.id}" placeholder="Details, names, suppliers or arrangements to include in the plan.">${esc(state.notes[s.id] || "")}</textarea></div>
         </div></details>`; }).join("")}
     <div class="btn-row"><button class="btn btn-primary btn-block" data-go="plan">See my plan</button></div>`;
@@ -569,7 +590,7 @@ function renderCheck(){
   el.querySelectorAll("[data-link]").forEach(b => b.onclick = () => { const tool = b.dataset.link; linkResult(tool, b.closest(".lk").querySelector("select").value); keep(renderCheck); });
   el.querySelectorAll("[data-unlink]").forEach(b => b.onclick = () => { delete state.links[b.dataset.unlink]; save(); keep(renderCheck); });
   el.querySelectorAll("[data-refresh]").forEach(b => b.onclick = () => { b.textContent = "Updating…"; refreshLink(b.dataset.refresh).then(r => { if(r === "gone"){ alertGone(b.dataset.refresh); } keep(renderCheck); }); });
-  bindGo(el);
+  bindGo(el); bindFix(el);
 }
 function alertGone(tool){ delete state.links[tool]; save(); }
 
@@ -582,7 +603,7 @@ function planSection(x, i){
     ${L ? `<h4>From the ${esc(TOOLS[s.link].label)}: ${esc(L.title)}</h4>${figs(L, true)}` : ""}
     ${x.done.length ? `<h4>In place</h4><ul>${x.done.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
     ${x.notes ? `<h4>Notes</h4><div class="notes">${esc(x.notes)}</div>` : ""}
-    ${x.todo.length ? `<div class="todo"><h4>To do</h4><ul>${x.todo.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>` : ""}
+    ${x.todo.length ? `<div class="todo"><h4>To do</h4>${todoList(x)}</div>` : ""}
     ${x.na.length ? `<p class="small muted">Doesn’t apply: ${x.na.map(esc).join("; ")}.</p>` : ""}
   </section>`;
 }
@@ -597,9 +618,9 @@ function renderPlan(){
     <h1 id="h-plan" style="margin-bottom:4px">${esc(state.name)}</h1>
     <p class="small muted">${esc(meta)}<br>Prepared ${today}${state.organiser ? " by " + esc(state.organiser) : ""}</p>
     <div class="verdict v-main" role="status"><h3>Plan progress</h3><div class="big">${p.done} of ${p.total} sections ready</div>
-      <p class="muted" style="margin:0">${p.gaps ? `${p.gaps} thing${p.gaps === 1 ? "" : "s"} still to do. Each one is flagged in its section.` : "Every section is covered. Share it with your venue, council or Safety Advisory Group for review."}</p></div>
+      <p class="muted" style="margin:0">${p.gaps ? `${p.gaps} thing${p.gaps === 1 ? "" : "s"} still to do. Each one is flagged in its section. <button type="button" class="link-btn no-print" ${fixAttrs(p.list.find(x => x.todo.length).fix[0])}>Go to the first one</button>` : "Every section is covered. Share it with your venue, council or Safety Advisory Group for review."}</p></div>
     <h2>Contents</h2>
-    <ol class="contents">${p.list.map((x, i) => `<li><span>${i + 1}. ${esc(x.sec.h)}</span>${chip(x)}</li>`).join("")}</ol>
+    <ol class="contents">${p.list.map((x, i) => `<li><span>${i + 1}. ${esc(x.sec.h)}</span>${x.todo.length ? `<button type="button" class="chip todo go" ${fixAttrs(x.fix[0])} aria-label="${x.todo.length} to do in ${esc(x.sec.h)}: go to the first one">${x.todo.length} to do</button>` : chip(x)}</li>`).join("")}</ol>
     ${state.unlocked ? p.list.map(planSection).join("") + `<div class="btn-row no-print" style="margin-top:20px"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>`
       : `<div class="locked"><h3>Your full event management plan</h3><p class="muted">Every section written out with your answers, notes and figures from your other results, a to-do list for each gap, and a PDF to share with your venue or council.</p><button class="btn btn-primary btn-block" id="unlock">Get my event plan</button></div>`}
     <div class="cta no-print">
@@ -614,7 +635,7 @@ function renderPlan(){
     <p class="disclaimer">This plan was put together from answers given in an online tool and from results saved in other Fort Green tools. Fort Green Limited has not checked or reviewed it. It follows headings commonly expected by UK Safety Advisory Groups, drawing on the Purple Guide and HSE event safety guidance, but it isn’t a safety assessment, legal advice or a guarantee that an event is safe or will be approved. The event organiser remains responsible for the safety of everyone at the event. Your local authority, Safety Advisory Group, licensing authority and emergency services may require more detail or a different format, and their requirements apply. Fort Green Limited accepts no responsibility or liability for any loss, damage, injury, enforcement action or cost arising from use of this tool or reliance on this plan. Fort Green isn’t affiliated with or endorsed by the Events Industry Forum, the HSE or any local authority.</p>`;
   const pr = $("#print"); if(pr) pr.onclick = () => window.print();
   const u = $("#unlock"); if(u) u.onclick = openSheet;
-  bindGo(el);
+  bindGo(el); bindFix(el);
 }
 
 /* ---------- Lead sheet ---------- */
