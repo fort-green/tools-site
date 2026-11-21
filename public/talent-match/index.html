@@ -336,7 +336,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     var score = Math.max(0, Math.min(100, x.score | 0));
     return '<div class="cand ' + (rank === 1 ? "top" : "") + '" id="card-' + x.id + '">' +
       '<div class="cand-head"><div><div class="rank">#' + rank + " for " + esc(label.toLowerCase()) + '</div><h3>' + esc(x.name || "Unnamed act") + '</h3></div><div class="score">' + score + "<small>/100</small></div></div>" +
-      '<div class="badges">' + (x.found_on || []).map(function (p) { return '<span class="badge ' + (p === "Web" ? "web" : "") + '">' + esc(p) + "</span>"; }).join("") + (x.origin === "manual" ? '<span class="badge manual">Added by ' + esc((x.created_by || "").split("@")[0]) + "</span>" : "") + "</div>" +
+      '<div class="badges">' + (x.found_on || []).map(function (p) { return '<span class="badge ' + (p === "Web" ? "web" : "") + '">' + esc(p) + "</span>"; }).join("") + (x.origin === "roster" || x.roster_id ? '<span class="badge">Our roster</span>' : "") + (x.origin === "manual" ? '<span class="badge manual">Added by ' + esc((x.created_by || "").split("@")[0]) + "</span>" : "") + "</div>" +
       '<div class="fit ' + (score < 70 ? "low" : "") + '" aria-hidden="true"><i style="width:' + score + '%"></i></div><div class="fit-key"><span>Fit with the brief</span><span>Strong fit from 70</span></div>' +
       (x.why ? "<p>" + esc(x.why) + "</p>" : "") +
       (x.concern ? '<div class="flag ' + (x.over_budget ? "warn" : "") + '">' + esc(x.concern) + "</div>" : "") +
@@ -344,6 +344,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       (x.notes ? "<dt>Notes</dt><dd>" + esc(x.notes) + "</dd>" : "") + "</dl>" +
       '<div class="cand-actions"><label class="small">Status <select data-status="' + x.id + '">' + STATUSES.map(function (s) { return "<option" + (x.status === s ? " selected" : "") + ">" + s + "</option>"; }).join("") + "</select></label>" +
       '<button type="button" class="btn ghost sm" data-edit="' + x.id + '">Edit</button>' +
+      (x.roster_id ? "" : '<button type="button" class="btn ghost sm" data-to-roster="' + x.id + '">Add to roster</button>') +
       (me.admin ? '<button type="button" class="btn sm" data-book="' + x.id + '">Book this act</button>' : "") +
       '<span class="small">Updated by ' + esc(x.updated_by === "system" ? "search" : (x.updated_by || "").split("@")[0]) + " " + esc(ago(x.updated_at)) + "</span></div></div>";
   }
@@ -390,7 +391,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       (all.length ? "" : '<div class="empty">' + (b.status === "searching" ? "Results will appear here when the search finishes." : "No acts on this list yet. Run a search, or add one yourself.") + "</div>") +
       visible.map(function (x) { return state.editing && state.editing.id === x.id ? editCard(state.editing) : viewCard(x, all.indexOf(x) + 1, label); }).join("") +
       (hidden ? '<p class="hint">' + hidden + " act" + (hidden > 1 ? "s" : "") + " hidden as likely over budget.</p>" : "") +
-      (state.editing ? "" : '<button type="button" class="btn ghost block" id="add-cand" style="margin-top:8px">Add an act to this list</button>');
+      (state.editing ? "" : '<div id="roster-pick"></div><div class="two" style="margin-top:8px"><button type="button" class="btn ghost" id="add-roster">Add from our roster</button><button type="button" class="btn ghost" id="add-cand">Add a new act</button></div>');
 
     el.querySelectorAll("[data-tab]").forEach(function (t) { t.onclick = function () { state.tab = t.dataset.tab; state.editing = null; renderShortlist(); }; });
     document.getElementById("hide").onchange = function (ev) { state.hideOver = ev.target.checked; keep(renderShortlist); };
@@ -407,6 +408,11 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     });
     el.querySelectorAll("[data-book]").forEach(function (btn) {
       btn.onclick = function () { var x = state.cands.find(function (y) { return y.id === btn.dataset.book; }); TB.bookFromCandidate(state.brief, x, btn); };
+    });
+    var ar = document.getElementById("add-roster");
+    if (ar) ar.onclick = function () { ar.disabled = true; RS.picker(state.brief, state.tab, function () { keep(renderShortlist); }); };
+    el.querySelectorAll("[data-to-roster]").forEach(function (btn) {
+      btn.onclick = function () { RS.fromCandidate(state.cands.find(function (y) { return y.id === btn.dataset.toRoster; })); };
     });
     var add = document.getElementById("add-cand");
     if (add) add.onclick = function () {
@@ -470,10 +476,10 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     var LOGTEXT = { invite: "Booking request emailed", updated: "Updated details emailed", chase: "Automatic chaser emailed", manual_reminder: "Reminder emailed",
       whatsapp: "Sent on WhatsApp", viewed: "Artist opened the booking", accepted: "Artist confirmed", declined: "Artist declined", cancelled: "Booking cancelled",
       reopened: "Reopened as a draft", reminder_7d: "7-day reminder emailed", reminder_1d: "1-day reminder emailed", no_response: "No answer after 3 chasers: admins told" };
-    var filter = "open", cur = null, logRows = [];
+    var filter = "open", cur = null, logRows = [], prefs = null;
 
     function nav(active) {
-      return '<nav class="nav" aria-label="Talent Match"><a href="#"' + (active === "briefs" ? ' aria-current="page"' : "") + '>Briefs</a><a href="#bookings"' + (active === "bookings" ? ' aria-current="page"' : "") + ">Bookings</a></nav>";
+      return '<nav class="nav" aria-label="Talent Match"><a href="#"' + (active === "briefs" ? ' aria-current="page"' : "") + '>Briefs</a><a href="#bookings"' + (active === "bookings" ? ' aria-current="page"' : "") + '>Bookings</a><a href="#roster"' + (active === "roster" ? ' aria-current="page"' : "") + ">Roster</a></nav>";
     }
     function phone(p) {
       var s = String(p || "").replace(/[^\d+]/g, "");
@@ -537,7 +543,9 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       location.hash = "#k=" + r.data.id;
     }
 
-    function bookFromCandidate(brief, x, btn) {
+    async function bookFromCandidate(brief, x, btn) {
+      var ro = null;
+      if (x.roster_id) { var rr = await sb.from("tm_roster").select("*").eq("id", x.roster_id).maybeSingle(); ro = rr.data; }
       var act = (brief.acts || []).find(function (a) { return a.id === x.act_id; }) || {};
       var e = brief.event || {};
       var em = String(x.booking || "").match(/[^\s@,;()]+@[^\s@,;()]+\.[a-z]{2,}/i);
@@ -545,7 +553,8 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       var fee = parseFloat(act.budget);
       create({ brief_id: brief.id, candidate_id: x.id, artist_name: x.name, act_label: act.label || act.type || "", event_name: brief.name || "",
         event_date: e.date || null, venue_name: e.venue || "", venue_address: e.town || "", set_times: act.set || "",
-        fee: isNaN(fee) ? null : fee, artist_email: em ? em[0] : "", artist_phone: ph }, btn);
+        fee: isNaN(fee) ? null : fee, artist_email: ro ? ro.email : em ? em[0] : "", artist_phone: ro ? ro.phone : ph,
+        artist_contact: ro ? ro.contact_name : "", roster_id: ro ? ro.id : null }, btn);
     }
 
     /* ----- One booking ----- */
@@ -555,6 +564,8 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       var r = await sb.from("tm_bookings").select("*").eq("id", id).maybeSingle();
       if (r.error || !r.data) { app.innerHTML = nav("bookings") + '<a class="back" href="#bookings">← All bookings</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This booking doesn’t exist or was deleted.") + "</p>"; return; }
       cur = r.data;
+      prefs = null;
+      if (cur.roster_id) { var ro = await sb.from("tm_roster").select("name,notify_email,notify_whatsapp,email,phone").eq("id", cur.roster_id).maybeSingle(); prefs = ro.data; }
       await loadLog();
       render();
       state.channel = sb.channel("tb-" + id)
@@ -666,6 +677,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
         "</div>" +
         (first ? "" : '<div class="two"><button type="button" class="btn ghost" id="a-remind"' + (okEmail ? "" : " disabled") + ">Email a reminder</button><button type=\"button\" class=\"btn ghost\" id=\"a-wa-remind\"" + (p ? "" : " disabled") + ">WhatsApp a reminder</button></div>") +
         '<button type="button" class="linkbtn" id="a-copy" style="justify-self:start">Copy the artist’s confirm link</button>' +
+        (prefs ? '<p class="hint">From the roster: ' + esc(prefs.name) + " prefers " + esc(RS.channels(prefs).join(" and ") || "no channel set") + ' · <a href="#r=' + b.roster_id + '">Edit roster details</a></p>' : "") +
         '<div id="a-msg">' + (missing ? '<p class="hint">' + missing + "</p>" : "") + "</div>";
       document.getElementById("a-email").onclick = function () { act("tm_booking_send", { p_id: b.id, p_kind: "invite" }, "Emailed to " + b.artist_email + "."); };
       document.getElementById("a-wa").onclick = function () { whatsapp("invite"); };
@@ -712,9 +724,193 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       var c2 = document.getElementById("d-cancel-quiet"); if (c2) arm(c2, "Tap again to cancel", function () { act("tm_booking_cancel", { p_id: b.id, p_tell_artist: false }, "Cancelled. The artist hasn’t been told."); });
     }
 
-    return { nav: nav, viewBookings: viewBookings, viewBooking: viewBooking, bookFromCandidate: bookFromCandidate };
+    return { nav: nav, viewBookings: viewBookings, viewBooking: viewBooking, bookFromCandidate: bookFromCandidate, create: create, phone: phone };
   })();
 
+
+  /* ---------- Roster: acts we already work with ---------- */
+  var RS = (function () {
+    var list = [], q = "", typeF = "";
+    function phone(p) { return TB.phone(p); }
+    function contactLine(a) { return [a.contact_name, a.email, a.phone].filter(Boolean).join(" · "); }
+    function channels(a) {
+      var c = [];
+      if (a.notify_email && a.email) c.push("Email"); if (a.notify_whatsapp && a.phone) c.push("WhatsApp");
+      return c;
+    }
+    async function load() {
+      var r = await sb.from("tm_roster").select("*").order("name");
+      if (r.error) throw r.error;
+      list = r.data || []; return list;
+    }
+
+    async function viewRoster() {
+      stopLive();
+      app.innerHTML = TB.nav("roster") + '<p class="hint">Loading roster…</p>';
+      try { await load(); } catch (e) { app.innerHTML = TB.nav("roster") + '<p class="err">' + esc(errMsg(e)) + "</p>"; return; }
+      var types = list.map(function (a) { return a.act_type; }).filter(function (t, i, s) { return t && s.indexOf(t) === i; }).sort();
+      app.innerHTML = TB.nav("roster") +
+        '<div class="sechead"><h2 class="display">Roster</h2><a class="btn" href="#r=new">Add talent</a></div>' +
+        '<p class="hint">Acts we already work with. Their email and WhatsApp are used when you book them, and you can add them to any brief’s shortlist alongside the search results.</p>' +
+        '<div class="f two" style="margin:14px 0"><div><label for="rs-q">Search</label><input type="text" id="rs-q" value="' + esc(q) + '" placeholder="Name, style, area"></div>' +
+        '<div><label for="rs-t">Type of act</label><select id="rs-t"><option value="">All types</option>' + types.map(function (t) { return "<option" + (t === typeF ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div></div>" +
+        '<div id="rs-list"></div>';
+      var draw = function () {
+        var s = q.toLowerCase();
+        var rows = list.filter(function (a) {
+          return (!typeF || a.act_type === typeF) && (!s || [a.name, a.style, a.based, a.contact_name, a.act_type].join(" ").toLowerCase().indexOf(s) > -1);
+        });
+        document.getElementById("rs-list").innerHTML = rows.length ? '<div class="list">' + rows.map(function (a) {
+          var ch = channels(a);
+          var bits = [a.act_type, a.style, a.based, a.fee_guide].filter(Boolean).join(" · ");
+          return '<a class="row" href="#r=' + a.id + '"><div><div class="t">' + esc(a.name) + (a.active ? "" : ' <span class="small">(not active)</span>') + '</div><div class="s">' + esc(bits || "No details yet") + "</div></div>" +
+            '<span class="pill ' + (ch.length ? "ready" : "draft") + '">' + esc(ch.length ? ch.join(" + ") : "No contact") + "</span></a>";
+        }).join("") + "</div>" : '<div class="empty">' + (list.length ? "No acts match." : "No acts on the roster yet. Use “Add talent” to add the acts you already book.") + "</div>";
+      };
+      draw();
+      document.getElementById("rs-q").oninput = function (e) { q = e.target.value; draw(); };
+      document.getElementById("rs-t").onchange = function (e) { typeF = e.target.value; draw(); };
+    }
+
+    async function viewAct(id, prefill) {
+      stopLive();
+      var a;
+      if (id === "new") a = Object.assign({ id: null, name: "", act_type: "DJ", style: "", contact_name: "", email: "", phone: "", notify_email: true, notify_whatsapp: false,
+        based: "", fee_guide: "", website: "", instagram: "", tiktok: "", facebook: "", mixcloud: "", notes: "", active: true }, prefill || {});
+      else {
+        var r = await sb.from("tm_roster").select("*").eq("id", id).maybeSingle();
+        if (r.error || !r.data) { app.innerHTML = TB.nav("roster") + '<a class="back" href="#roster">← Roster</a><p class="err">' + esc(r.error ? errMsg(r.error) : "This act isn’t on the roster any more.") + "</p>"; return; }
+        a = r.data;
+      }
+      function inp(k, label, type, ph, extra) { return '<div><label for="r-' + k + '">' + label + '</label><input type="' + (type || "text") + '" id="r-' + k + '" data-r="' + k + '" value="' + esc(a[k]) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : "") + (extra || "") + "></div>"; }
+      var bookings = [];
+      if (a.id) { var b = await sb.from("tm_bookings").select("id,ref,event_name,event_date,status").eq("roster_id", a.id).order("event_date", { ascending: false }); bookings = b.data || []; }
+      app.innerHTML = TB.nav("roster") + '<a class="back" href="#roster">← Roster</a>' +
+        '<div class="sechead" style="margin-top:8px"><h2 class="display">' + esc(a.name || "Add talent") + "</h2></div>" +
+        '<form class="f" id="r-form" novalidate>' +
+        '<div class="panel f">' + inp("name", "Act or artist name") +
+          '<div class="two"><div><label for="r-act_type">Type of act</label><select id="r-act_type" data-r="act_type">' + TYPES.map(function (t) { return "<option" + (a.act_type === t ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div>" +
+          inp("style", "Style or genre", "text", "e.g. House, disco, Motown") + "</div>" +
+          '<div class="two">' + inp("based", "Based", "text", "e.g. North London") + inp("fee_guide", "Usual fee", "text", "e.g. £400 for 3 hours") + "</div></div>" +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">Contact and notifications</h2></div><div class="panel f">' +
+          inp("contact_name", "Contact name", "text", "The artist or their agent") +
+          '<div class="two">' + inp("email", "Email", "email", "name@example.com") + inp("phone", "WhatsApp number", "tel", "+44 7…", ' inputmode="tel"') + "</div>" +
+          '<div><span class="lab">Send booking requests and reminders by</span>' +
+          '<label class="check" style="margin:6px 0"><input type="checkbox" data-r="notify_email"' + (a.notify_email ? " checked" : "") + "><span>Email (sent automatically, including chasers and reminders before the event)</span></label>" +
+          '<label class="check" style="margin:6px 0"><input type="checkbox" data-r="notify_whatsapp"' + (a.notify_whatsapp ? " checked" : "") + "><span>WhatsApp (opens WhatsApp with the message written; you press send)</span></label></div></div>" +
+        '<div class="sechead"><h2 class="display" style="font-size:26px">Links and notes</h2></div><div class="panel f">' +
+          inp("website", "Website", "url", "https://") +
+          '<div class="two">' + inp("instagram", "Instagram", "url", "https://") + inp("tiktok", "TikTok", "url", "https://") + "</div>" +
+          '<div class="two">' + inp("facebook", "Facebook", "url", "https://") + inp("mixcloud", "Mixcloud", "url", "https://") + "</div>" +
+          '<div><label for="r-notes">Notes for the team</label><textarea id="r-notes" data-r="notes" placeholder="Rider, how they like to be booked, past gigs">' + esc(a.notes) + "</textarea></div>" +
+          '<label class="check" style="margin:0"><input type="checkbox" data-r="active"' + (a.active ? " checked" : "") + "><span>Active (show when adding acts to a shortlist)</span></label></div>" +
+        '<div id="r-msg"></div>' +
+        '<div style="display:grid;gap:10px"><button type="submit" class="btn block">' + (a.id ? "Save" : "Add to roster") + "</button>" +
+          (a.id && me.admin ? '<button type="button" class="btn ghost block" id="r-book">Book this act</button>' : "") + "</div></form>" +
+        (bookings.length ? '<div class="sechead"><h2 class="display" style="font-size:26px">Bookings</h2></div><div class="list">' + bookings.map(function (k) {
+          return '<a class="row" href="#k=' + k.id + '"><div><div class="t">' + esc(k.event_name || "Booking") + '</div><div class="s">' + esc([fmtDate(k.event_date), k.ref].filter(Boolean).join(" · ")) + '</div></div><span class="pill ' + k.status + '">' + esc(k.status) + "</span></a>";
+        }).join("") + "</div>" : "") +
+        (a.id ? '<div style="margin-top:28px"><button type="button" class="linkbtn danger" id="r-del">Remove from roster</button></div>' : "") +
+        '<p class="disclaimer">Contact details are for booking this act only, never for marketing. Removing an act keeps its past bookings.</p>';
+
+      var form = document.getElementById("r-form");
+      form.querySelectorAll("[data-r]").forEach(function (i) {
+        i[i.type === "checkbox" || i.tagName === "SELECT" ? "onchange" : "oninput"] = function () { a[i.dataset.r] = i.type === "checkbox" ? i.checked : i.value; };
+      });
+      var ph = document.getElementById("r-phone");
+      ph.onblur = function () { var p = phone(ph.value); if (p) { ph.value = p; a.phone = p; } };
+      form.onsubmit = async function (ev) {
+        ev.preventDefault();
+        var msg = document.getElementById("r-msg");
+        var p = a.phone ? phone(a.phone) : "";
+        var probs = [];
+        if (!String(a.name).trim()) probs.push("Enter the act’s name.");
+        if (a.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a.email.trim())) probs.push("Check the email address.");
+        if (a.phone && !p) probs.push("Check the WhatsApp number. Use a UK mobile (07…) or include the country code (+…).");
+        if (a.notify_email && !a.email) probs.push("Add an email, or untick Email.");
+        if (a.notify_whatsapp && !a.phone) probs.push("Add a WhatsApp number, or untick WhatsApp.");
+        var bad = ["website", "instagram", "tiktok", "facebook", "mixcloud"].filter(function (k) { return a[k] && !safeUrl(a[k]); });
+        if (bad.length) probs.push("Links must start with https:// (check " + bad.join(", ") + ").");
+        if (probs.length) { msg.innerHTML = '<p class="err">' + probs.map(esc).join("<br>") + "</p>"; return; }
+        var row = { name: a.name.trim(), act_type: a.act_type, style: a.style, contact_name: a.contact_name, email: (a.email || "").trim().toLowerCase(), phone: p,
+          notify_email: !!a.notify_email, notify_whatsapp: !!a.notify_whatsapp, based: a.based, fee_guide: a.fee_guide, website: a.website, instagram: a.instagram,
+          tiktok: a.tiktok, facebook: a.facebook, mixcloud: a.mixcloud, notes: a.notes, active: !!a.active };
+        var r = a.id ? await sb.from("tm_roster").update(row).eq("id", a.id).select().single() : await sb.from("tm_roster").insert(row).select().single();
+        if (r.error) {
+          msg.innerHTML = '<p class="err">' + esc(/duplicate|unique/i.test(r.error.message) ? "There’s already an act called “" + row.name + "” on the roster." : errMsg(r.error)) + "</p>"; return;
+        }
+        if (a.fromCandidate) await sb.from("tm_candidates").update({ roster_id: r.data.id }).eq("id", a.fromCandidate);
+        if (a.back) { location.hash = a.back; return; }
+        if (!a.id) { location.hash = "#r=" + r.data.id; return; }
+        msg.innerHTML = '<p class="okmsg">Saved.</p>';
+      };
+      var bk = document.getElementById("r-book");
+      if (bk) bk.onclick = function () {
+        TB.create({ roster_id: a.id, artist_name: a.name, artist_contact: a.contact_name, artist_email: a.email, artist_phone: a.phone, act_label: a.act_type }, bk);
+      };
+      var del = document.getElementById("r-del");
+      if (del) del.onclick = async function () {
+        if (del.dataset.armed !== "1") { del.dataset.armed = "1"; del.textContent = "Tap again to remove " + a.name; return; }
+        var r = await sb.from("tm_roster").delete().eq("id", a.id);
+        if (r.error) { del.textContent = "Couldn’t remove: " + errMsg(r.error); return; }
+        location.hash = "#roster";
+      };
+    }
+
+    // Shortlist: pick acts from the roster and add them to the current act's list
+    async function picker(brief, actId, done) {
+      var el = document.getElementById("roster-pick");
+      el.innerHTML = '<p class="hint">Loading roster…</p>';
+      try { await load(); } catch (e) { el.innerHTML = '<p class="err">' + esc(errMsg(e)) + "</p>"; return; }
+      var act = (brief.acts || []).find(function (x) { return x.id === actId; }) || {};
+      var already = state.cands.filter(function (x) { return x.act_id === actId && x.roster_id; }).map(function (x) { return x.roster_id; });
+      var pool = list.filter(function (a) { return a.active && already.indexOf(a.id) === -1; });
+      pool.sort(function (p, q2) { return (q2.act_type === act.type) - (p.act_type === act.type) || p.name.localeCompare(q2.name); });
+      if (!pool.length) { el.innerHTML = '<div class="panel"><p class="hint" style="margin:0 0 10px">' + (list.length ? "Every active roster act is already on this list." : "The roster is empty.") + '</p><a class="btn ghost sm" href="#r=new">Add talent to the roster</a> <button type="button" class="btn ghost sm" id="rp-close">Close</button></div>'; document.getElementById("rp-close").onclick = done; return; }
+      el.innerHTML = '<div class="panel"><div class="sechead" style="margin:0 0 8px"><h2 class="display" style="font-size:24px">From our roster</h2><button type="button" class="linkbtn" id="rp-close">Close</button></div>' +
+        '<input type="text" id="rp-q" placeholder="Search the roster" style="width:100%;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);background:var(--surface);margin-bottom:8px">' +
+        '<div id="rp-list" class="list"></div><div style="margin-top:12px"><button type="button" class="btn block" id="rp-add" disabled>Add to the shortlist</button></div></div>';
+      var chosen = {};
+      var draw = function (s) {
+        s = (s || "").toLowerCase();
+        document.getElementById("rp-list").innerHTML = pool.filter(function (a) { return !s || [a.name, a.style, a.act_type, a.based].join(" ").toLowerCase().indexOf(s) > -1; }).map(function (a) {
+          return '<label class="check" style="margin:0;padding:10px 4px;border-bottom:1px solid var(--line)"><input type="checkbox" value="' + a.id + '"' + (chosen[a.id] ? " checked" : "") + '><span><strong>' + esc(a.name) + "</strong><br><span class=\"small\">" +
+            esc([a.act_type, a.style, a.based, a.fee_guide].filter(Boolean).join(" · ")) + "</span></span></label>";
+        }).join("") || '<p class="hint" style="padding:10px 0">No roster acts match.</p>';
+        document.querySelectorAll("#rp-list input").forEach(function (i) { i.onchange = function () { chosen[i.value] = i.checked; document.getElementById("rp-add").disabled = !Object.keys(chosen).some(function (k) { return chosen[k]; }); }; });
+      };
+      draw("");
+      document.getElementById("rp-q").oninput = function (e) { draw(e.target.value); };
+      document.getElementById("rp-close").onclick = done;
+      document.getElementById("rp-add").onclick = async function () {
+        var btn = this; btn.disabled = true; btn.textContent = "Adding…";
+        var rows = pool.filter(function (a) { return chosen[a.id]; }).map(function (a) {
+          return { brief_id: brief.id, act_id: actId, roster_id: a.id, origin: "roster", name: a.name, score: 75, status: "To contact",
+            why: "On the Fort Green roster" + (a.style ? ": " + a.style : "") + ".", based: a.based, booking: contactLine(a),
+            website: a.website, instagram: a.instagram, tiktok: a.tiktok, facebook: a.facebook, mixcloud: a.mixcloud, notes: [a.fee_guide ? "Usual fee: " + a.fee_guide : "", a.notes].filter(Boolean).join("\n"), found_on: [] };
+        });
+        var r = await sb.from("tm_candidates").insert(rows).select();
+        if (r.error) { btn.disabled = false; btn.textContent = "Add to the shortlist"; el.insertAdjacentHTML("beforeend", '<p class="err">' + esc(errMsg(r.error)) + "</p>"); return; }
+        state.cands = state.cands.concat(r.data || []);
+        done();
+      };
+    }
+
+    function fromCandidate(x) {
+      var em = String(x.booking || "").match(/[^\s@,;()]+@[^\s@,;()]+\.[a-z]{2,}/i);
+      var ph = phone((String(x.booking || "").match(/(\+?\d[\d\s]{9,14}\d)/) || [])[1]);
+      var act = ((state.brief || {}).acts || []).find(function (a) { return a.id === x.act_id; }) || {};
+      sessionStorage.setItem("tm-roster-prefill", JSON.stringify({ name: x.name, act_type: act.type || "DJ", style: act.style || "", email: em ? em[0].toLowerCase() : "", phone: ph,
+        notify_email: !!em, notify_whatsapp: !!ph, based: x.based, website: x.website, instagram: x.instagram, tiktok: x.tiktok, facebook: x.facebook, mixcloud: x.mixcloud,
+        notes: x.notes || "", fromCandidate: x.id, back: "#b=" + x.brief_id }));
+      location.hash = "#r=new";
+    }
+    function takePrefill() {
+      try { var p = sessionStorage.getItem("tm-roster-prefill"); sessionStorage.removeItem("tm-roster-prefill"); return p ? JSON.parse(p) : null; } catch (e) { return null; }
+    }
+
+    return { viewRoster: viewRoster, viewAct: viewAct, picker: picker, fromCandidate: fromCandidate, takePrefill: takePrefill, channels: channels };
+  })();
 
   /* ---------- Routing and sign-in ---------- */
   function route() {
@@ -723,6 +919,9 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     if (m) viewBrief(m[1]);
     else if (k) TB.viewBooking(k[1]);
     else if (/^#bookings/.test(location.hash)) TB.viewBookings();
+    else if (/^#roster/.test(location.hash)) RS.viewRoster();
+    else if (/^#r=new$/.test(location.hash)) RS.viewAct("new", RS.takePrefill());
+    else if (/^#r=[0-9a-f-]{36}$/.test(location.hash)) RS.viewAct(location.hash.slice(3));
     else viewList();
   }
 
