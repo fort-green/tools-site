@@ -129,7 +129,8 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
       <h2 class="display" id="give-h">Link a client to a venue</h2>
       <p>Clients see that venue’s client portal and its live door count on the hub. They can be linked before they’ve signed in for the first time.</p>
       <form id="give">
-        <label>Client email <input type="email" id="give-email" required autocomplete="off" placeholder="name@venue.co.uk"></label>
+        <label>Client email <input type="email" id="give-email" required autocomplete="off" list="known-emails" placeholder="name@venue.co.uk"></label>
+        <datalist id="known-emails"></datalist>
         <label>Venue <select id="give-venue" required><option value="">Loading venues…</option></select></label>
         <button class="btn" type="submit" id="give-go">Link venue</button>
       </form>
@@ -259,6 +260,7 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     var a = await sb.from("cp_venue_access").select("venue_id,email,added_at").order("added_at");
     access = (a.data || []).map(function (x) { x.email = (x.email || "").toLowerCase(); return x; });
     var known = {}; users.forEach(function (u) { known[u.email] = 1; });
+    $("known-emails").innerHTML = users.filter(function (u) { return !u.is_staff; }).map(function (u) { return '<option value="' + esc(u.email) + '">'; }).join("");
     var waiting = {}; access.forEach(function (x) { if (!known[x.email]) (waiting[x.email] = waiting[x.email] || []).push(venueName(x.venue_id)); });
     var w = Object.keys(waiting);
     $("waiting").hidden = !w.length;
@@ -292,7 +294,9 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     catch (er) { b.disabled = false; msg("fail", "Couldn’t link the venue: " + er.message); return; }
     b.disabled = false; $("give-email").value = ""; $("give-venue").value = "";
     var signedUp = users.some(function (u) { return u.email === email; });
-    msg("ok", email + " is now a client of " + venueName(v) + (signedUp ? "." : ". They’ll see it when they sign in at tools.fortgreen.co.uk with this email."));
+    var near = !signedUp && users.find(function (u) { return u.email.split("@")[0] === email.split("@")[0]; });
+    msg("ok", email + " is now a client of " + venueName(v) + (signedUp ? "." : ". They’ll see it when they sign in at tools.fortgreen.co.uk with this email." +
+      (near ? " Check the spelling: " + near.email + " has signed in, but this address hasn’t." : "")));
     await loadVenues(); renderList();
   });
 
