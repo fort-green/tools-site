@@ -24,6 +24,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `supabase/functions/client-portal/` | Source of the client-portal edge function (deployed to Supabase, not served by Netlify) |
 | `public/weather/` | Weather and wind: Met Office forecast and gusts for up to 3 saved UK places, 48-hour wind chart, optional caution/stop gust limits. The same places show as a swipeable gallery on the hub's first card |
 | `public/wx.js` | Shared weather helpers and the hub weather card (`FGWeather.mountCard`) |
+| `public/live.js` | Hub Live capacity tile (`FGLive.mountCard`), Fort Green staff only: every job counting now from the Staff Check-In clicker, as a gallery when there's more than one |
+| `public/journey.js` | "Planning an event?" strip (hub and Event Management Plan start): the free tools in planning order, ticked from the person's saved results in `hub_results`, next one highlighted. The order is its `STEPS` list; keep the hub cards in the same order |
 | `supabase/functions/weather/` | Source of the `weather` edge function (deployed to Supabase, not served by Netlify) |
 | `public/run-sheet/` | Run sheet & call sheet builder: event details, contacts, timed cues, crew calls, crew link and PDFs. Saves to My Results (`hub_results`, tool `run-sheet`) |
 | `public/run-sheet/view/` | Public crew view of a published run sheet (`?t=<token>`, no sign-in). `sheet.js`/`sheet.css` render it for both pages |
