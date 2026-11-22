@@ -6,6 +6,7 @@
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
 <script src="/results.js"></script>
+<script src="/report.js"></script>
 <script src="/run-sheet/sheet.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -210,12 +211,7 @@ input[type=time],input[type=date],input[type=tel]{width:100%;min-height:50px;pad
 .share-box code{font-size:14px}
 .preview{border:1px solid var(--line);background:var(--surface);padding:18px;margin-top:16px}
 .ok-msg{font-weight:600;font-size:14px;margin:8px 0 0}
-#print-area{display:none}
-@media print{
-  #main>*:not(#print-area){display:none!important}
-  #print-area{display:block!important}
-  .rs-head h1{font-size:34px}
-}
+
 </style>
 </head>
 <body>
@@ -233,7 +229,6 @@ input[type=time],input[type=date],input[type=tel]{width:100%;min-height:50px;pad
   <section class="screen" id="screen-schedule" aria-labelledby="h-schedule"></section>
   <section class="screen" id="screen-crew" aria-labelledby="h-crew"></section>
   <section class="screen" id="screen-share" aria-labelledby="h-share"></section>
-  <div id="print-area"></div>
 </main>
 
 <nav class="nav" aria-label="Sections">
@@ -461,11 +456,30 @@ async function linkState(){
     keep(renderShare);
   };
 }
-function printSheet(mode){
-  $("#print-area").innerHTML = FGSheet.render(state, {mode:mode, live:false}) + `<p class="small muted" style="margin-top:18px">Printed ${new Date().toLocaleString("en-GB", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"})}.</p>`;
-  const t = document.title; document.title = (state.name || "Run sheet") + (mode === "call" ? " call sheet" : " run sheet");
-  window.print(); document.title = t;
+/* ---------- Printable sheet (shared layout in /report.js) ----------
+   The run or call sheet itself comes from FGSheet.render (also used by the crew link), inside the
+   standard report header. Ctrl+P prints the run sheet. */
+let printMode = "run";
+function reportDoc(){
+  if(!state.name && !(state.items || []).length) return "";
+  const R = FGReport, call = printMode === "call";
+  const addr = [state.venue, state.address, state.postcode].filter(Boolean).join(", ");
+  return '<style>#print-doc .rs-head{display:none}</style>' + R.doc({
+    doc: call ? "Call sheet" : "Run sheet", kind: call ? "Crew calls" : "Running order",
+    title: state.name || (call ? "Call sheet" : "Run sheet"),
+    meta: [["Event date", state.date ? new Date(state.date + "T12:00").toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long", year:"numeric"}) : ""], ["Venue", addr], ["Nearest A&E", state.hospital],
+      ["Printed", new Date().toLocaleString("en-GB", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"})]],
+    body: FGSheet.render(state, {mode: printMode, live: false}),
+    footer: "Times and details are as entered by the organiser and may change on the day. Check with your contact if anything looks wrong."
+  });
 }
+FGReport.attach(reportDoc);
+function printSheet(mode){
+  printMode = mode === "call" ? "call" : "run";
+  const t = document.title; document.title = (state.name || "Run sheet") + (printMode === "call" ? " call sheet" : " run sheet");
+  FGReport.print(); document.title = t;
+}
+window.addEventListener("afterprint", () => { printMode = "run"; });
 
 /* ---------- Navigation ---------- */
 const TABS = ["start","event","schedule","crew","share"];

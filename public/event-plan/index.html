@@ -7,6 +7,7 @@
 <script src="/auth-guard.js"></script>
 <script src="/results.js"></script>
 <script src="/lead.js"></script>
+<script src="/report.js"></script>
 <script src="/journey.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -610,6 +611,37 @@ function planSection(x, i){
   </section>`;
 }
 
+/* ---------- Printable report (shared layout in /report.js) ---------- */
+function reportDoc(){
+  if(!state.unlocked || !state.name || !state.type) return "";
+  const R = FGReport, p = progress();
+  const sec = (x, i) => {
+    const s = x.sec, L = x.link, f = L && L.facts ? L.facts : null;
+    const contacts = s.id === "team" && state.links["run-sheet"] && state.links["run-sheet"].facts ? (state.links["run-sheet"].facts.contacts || []) : [];
+    return R.h2((i + 1) + ". " + s.h) + R.why(s.why) +
+      (s.id === "overview" && state.description ? R.p(state.description) : "") +
+      R.kv(x.figures) +
+      (contacts.length ? R.p("<b>Other contacts</b>", true) + R.table(["Name", "Role", "Phone"], contacts.map(c => [c[0], c[1], c[2]])) : "") +
+      (L ? R.p("<b>From the " + R.esc(TOOLS[s.link].label) + ":</b> " + R.esc(L.title), true) + (f && (f.rows || []).length ? R.kv(f.rows) : R.why(L.summary)) + R.list((f && f.lines) || []) : "") +
+      (x.done.length ? R.p("<b>In place</b>", true) + R.list(x.done) : "") +
+      (x.notes ? R.note('<div style="white-space:pre-wrap">' + R.esc(x.notes) + "</div>") : "") +
+      R.todo("To do", x.todo) +
+      (x.na.length ? R.why("Doesn’t apply: " + x.na.join("; ") + ".") : "");
+  };
+  return R.doc({
+    doc: "Event management plan", kind: "Plan",
+    title: state.name,
+    meta: [["Type", label(TYPES, state.type)], ["Event date", fmtDate(state.date)], ["Venue", state.venue], ["Expected crowd", state.capacity ? (+state.capacity).toLocaleString("en-GB") : ""], ["Organised by", state.organiser]],
+    warn: p.gaps ? ["Not complete", p.gaps + " thing" + (p.gaps === 1 ? "" : "s") + " still to do. Each is flagged in its section."] : null,
+    body:
+      R.cards([{label: "Sections ready", big: p.done + " of " + p.total, dark: true}, {label: "Still to do", big: String(p.gaps)}]) +
+      R.h2("Contents") + R.table(["Section", "Status>"], p.list.map((x, i) => [(i + 1) + ". " + x.sec.h, x.todo.length ? {html: '<b style="color:#b42318">' + x.todo.length + " to do</b>"} : {html: "<b>Ready</b>"}])) +
+      p.list.map(sec).join(""),
+    footer: "This plan was put together from answers given in an online tool and results saved in other Fort Green tools. It follows headings commonly expected by UK Safety Advisory Groups but isn’t a safety assessment or legal advice. The organiser remains responsible for the safety of everyone at the event; your local authority, Safety Advisory Group and emergency services may require more."
+  });
+}
+FGReport.attach(reportDoc);
+
 function renderPlan(){
   const el = $("#screen-plan"), p = progress();
   if(!state.name || !state.type){ el.innerHTML = `<div class="empty"><h1 id="h-plan">Your plan</h1><p class="muted">Add your event name and type to start your plan.</p><button class="btn btn-primary btn-block" data-go="event">Add your event</button></div>`; bindGo(el); return; }
@@ -635,7 +667,7 @@ function renderPlan(){
     </div>
     <div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="check">Back to the checklist</button></div>
     <p class="disclaimer">This plan was put together from answers given in an online tool and from results saved in other Fort Green tools. Fort Green Limited has not checked or reviewed it. It follows headings commonly expected by UK Safety Advisory Groups, drawing on the Purple Guide and HSE event safety guidance, but it isn’t a safety assessment, legal advice or a guarantee that an event is safe or will be approved. The event organiser remains responsible for the safety of everyone at the event. Your local authority, Safety Advisory Group, licensing authority and emergency services may require more detail or a different format, and their requirements apply. Fort Green Limited accepts no responsibility or liability for any loss, damage, injury, enforcement action or cost arising from use of this tool or reliance on this plan. Fort Green isn’t affiliated with or endorsed by the Events Industry Forum, the HSE or any local authority.</p>`;
-  const pr = $("#print"); if(pr) pr.onclick = () => window.print();
+  const pr = $("#print"); if(pr) pr.onclick = () => FGReport.print();
   const u = $("#unlock"); if(u) u.onclick = openSheet;
   bindGo(el); bindFix(el);
 }

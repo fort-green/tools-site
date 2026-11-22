@@ -6,6 +6,7 @@
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
 <script src="/lead.js"></script>
+<script src="/report.js"></script>
 <script src="/results.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -559,6 +560,77 @@ function ctaHTML(c){
 
 const DISCLAIMER = `<p class="disclaimer">This tool gives general information about event power to help you plan. It isn’t electrical advice or an electrical design, and doesn’t replace advice from a qualified electrician or power engineer. Equipment wattages are typical figures, and real loads, start-up surges and fuel use vary between models, sites and conditions. Every temporary electrical installation must be designed, installed, inspected and tested by a competent person in line with BS 7671 and BS 7909. Fort Green Limited accepts no responsibility or liability for any injury, damage, equipment failure, loss of power, fuel shortfall, enforcement action, cost or loss arising from the use of this tool or reliance on its results. You remain responsible for checking what applies to your event and for the safety of your electrical installation. Fort Green isn’t affiliated with or endorsed by BSI, the IET or any generator or equipment manufacturer.</p>`;
 
+function siteChecks(){
+  return [
+      ["Competent design and sign-off", "A qualified electrician designs and installs the system to BS 7909 and BS 7671, and hands over a completion certificate before the public arrive."],
+      ["RCD protection", "30 mA RCDs on socket outlets and any circuit the public or traders can reach."],
+      ["Earthing", "Agree the earthing arrangement with your electrician. A generator on its own doesn’t give you a safe earth."],
+      ["Generator siting", "Fenced off from public routes, exhaust clear of tents and air intakes, on a spill tray or bunded, with a suitable fire extinguisher beside it."],
+      ["Cables", "Outdoor-rated flexible cable, protected with ramps where it crosses walkways, and extension reels fully unwound."],
+      ["Traders’ equipment", "Ask traders for in-date inspection records and check plugs and leads before connecting them."],
+      ["Critical loads", "Put first aid, the control room, emergency lighting and the PA for announcements on a protected circuit or a standby generator."],
+      ["Purple Guide", "Check your plan against the electrical chapter of the Purple Guide and anything your Safety Advisory Group asks for."]
+    ];
+}
+function fuelChecks(){
+  return [
+        ["No red diesel", "Generators at events must run on white diesel or a biofuel such as HVO. Red diesel is only allowed for travelling fairs’ and circuses’ own machinery."],
+        ["Refuelling", "Refuel with the generator off where its maker requires it, using a pump or bowser rather than cans where possible, by someone trained to do it."],
+        ["Storage", "Keep spare fuel in a bunded tank or bowser, away from public routes, ignition sources and drains."],
+        ["Spills and fire", "A spill kit and a suitable fire extinguisher next to the generator and the fuel store."],
+        ["Fuel log", "Record each delivery and refuel, with the time and litres. It helps spot leaks and theft."],
+        ["HVO", "If you switch to HVO, check the generator is approved for it. Most modern sets are."]
+      ];
+}
+
+/* ---------- Printable report (shared layout in /report.js) ---------- */
+function reportDoc(){
+  if(!state.unlocked) return "";
+  const R = FGReport;
+  // The fuel tab prints the fuel plan; every other tab prints the power plan.
+  const fuelTab = document.getElementById("screen-fuel").classList.contains("on");
+  if(fuelTab){
+    const f = fuelCalc(); if(!f.lph || !f.hours) return "";
+    return R.doc({
+      doc: "Fuel plan", kind: "Generator fuel", title: state.name || "Your event",
+      meta: [["Generator", f.kva + " kVA"], ["Average load", f.loadPct + "%"], ["Running", n0(f.perDay) + " hours a day, " + f.days + " day" + (f.days > 1 ? "s" : "")], ["Fuel", (FUEL_TYPES.find(x => x[0] === state.fuelType) || ["", "White diesel"])[1]]],
+      body:
+        R.cards([{label: "Order about", big: n0(f.order) + " litres", small: n0(f.burn) + " litres burned over " + n0(f.hours) + " hours, plus about 10% spare", dark: true},
+                 {label: "Litres an hour", big: f.lph.toFixed(1)},
+                 f.tank ? {label: "Refuels needed", big: String(f.refuels.length), small: (f.perTank >= 100 ? n0(f.perTank) : f.perTank.toFixed(1)) + " hours per tank"} : null]) +
+        R.h2("Refuelling plan") +
+        (f.tank ? (f.refuels.length ? R.table(["Refuel", "When", "About>"], [["Start", "Day 1, " + (state.start || "10:00"), n0(f.tank) + " L (fill)"]].concat(f.refuels.map((r, i) => [String(i + 1), "Day " + r.day + ", " + r.time, n0(r.litres) + " L"]))) +
+          R.why("Times assume the load you set and refuelling when the tank is a quarter full. Check the gauge, not the clock: real use varies.")
+          : R.p("One full tank (" + n0(f.tank) + " litres) covers the whole event at this load, with a quarter left as reserve.")) : R.p("Tank size not entered, so no refuelling times.")) +
+        R.kv([["Fuel cost", f.cost ? "£" + n0(f.cost) + " for " + n0(f.order) + " L at £" + f.price.toFixed(2) : ""], ["CO2e", state.fuelType === "hvo" ? "Lower with HVO: ask your supplier for its certified figure" : (f.co2 / 1000).toFixed(f.co2 >= 10000 ? 0 : 1) + " tonnes from " + n0(f.burn) + " L of diesel"]]) +
+        R.h2("Fuel safety checklist") + R.list(fuelChecks().map(([h, d]) => ({html: "<b>" + R.esc(h) + "</b><br>" + R.esc(d)}))),
+      footer: "Fuel figures are estimates (0.06 L/h per rated kW plus 0.21 L per kWh delivered). Real use depends on the generator, load and weather. CO2 uses the UK government conversion factor for diesel."
+    });
+  }
+  const c = calc(); if(!c.units) return "";
+  const phaseWord = c.threePhase ? "Three-phase" : "Single-phase";
+  const plain = h => { const d = document.createElement("div"); d.innerHTML = h; return d.textContent; };
+  const phases = c.phases ? (() => { const max = Math.max(...c.phases), min = Math.min(...c.phases), imb = max ? Math.round((max - min) / max * 100) : 0;
+    return R.table(["Phase", "Load>"], c.phases.map((v, k) => ["L" + (k + 1), n0(v / 230) + " A"])) + R.why(imb <= 20 ? "Within " + imb + "% of each other, which is well balanced." : imb + "% apart. Big single items make this hard to even out, so ask for extra headroom on the heaviest phase."); })()
+    : R.p("Single-phase supply, so there’s nothing to balance.");
+  return R.doc({
+    doc: "Power plan", kind: "Event power", title: state.name || "Your event",
+    meta: [["Running load", kw(c.runW) + " kW"], ["Start-up peak", kw(c.peakVA) + " kVA"], ["Supply", phaseWord]],
+    body:
+      R.cards([{label: "Generator size", big: c.gen ? c.gen + " kVA" : "1,000+ kVA", small: c.gen ? phaseWord + ", about " + Math.round(c.loadPct * 100) + "% of its rating" : "Several sets, designed by a power engineer", dark: state.site !== "venue"},
+               {label: state.site === "venue" ? "Ask the venue for" : "Or venue supply", big: c.supply.amps ? c.supply.amps + "A " + (c.threePhase ? "3-phase" : "1-phase") : "Not enough", small: c.supply.amps ? "Load about " + n0(c.supply.perPhase) + "A" + (c.threePhase ? " per phase" : "") : "Plan on generators", dark: state.site === "venue"},
+               {label: "Fuel", big: c.gen ? c.lph.toFixed(1) + " L/h" : "–", small: c.gen && c.hours ? n0(c.lph * c.hours * 1.1) + " L for " + n0(c.hours) + " hours, plus 10%" : ""}]) +
+      (c.surgeExtra > 0 ? R.note("<b>Start-up surge from " + R.esc(c.surgeName.toLowerCase()) + ".</b> Motors draw several times their running power for a second or two. We’ve sized for the largest one starting while everything else runs.") : "") +
+      R.h2("Equipment schedule") + R.table(["Item", "Qty>", "kW>", "Outlet"], c.items.map(i => [i.name, String(i.qty), kw(i.w * i.qty), plain(connector(i))]).concat([[{html: "<b>Total</b>"}, {html: "<b>" + c.units + "</b>"}, {html: "<b>" + kw(c.runW) + "</b>"}, ""]])) +
+      R.h2("Connections to plan for") + R.table(["Outlet", "Needed>"], Object.entries(c.conns).sort((a, b) => b[1] - a[1]).map(([k, v]) => [plain(k), String(v)])) +
+      (c.circuits16 ? R.why("The 13A items need at least " + c.circuits16 + " separate 16A circuit" + (c.circuits16 > 1 ? "s" : "") + ", loaded to no more than 80%. Don’t daisy-chain extension leads.") : "") +
+      R.h2("Phase balance") + phases +
+      R.h2("Site safety checklist") + R.list(siteChecks().map(([h, d]) => ({html: "<b>" + R.esc(h) + "</b><br>" + R.esc(d)}))),
+    footer: "These are planning estimates from the equipment you entered. A competent electrician must design, install and certify the system to BS 7909 and BS 7671 before use."
+  });
+}
+FGReport.attach(reportDoc);
+
 function renderPower(){
   const c = calc(), el = $("#screen-power");
   const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
@@ -641,16 +713,7 @@ function renderPower(){
         </tbody></table></div>
       </div>`;
 
-    const checks = [
-      ["Competent design and sign-off", "A qualified electrician designs and installs the system to BS 7909 and BS 7671, and hands over a completion certificate before the public arrive."],
-      ["RCD protection", "30 mA RCDs on socket outlets and any circuit the public or traders can reach."],
-      ["Earthing", "Agree the earthing arrangement with your electrician. A generator on its own doesn’t give you a safe earth."],
-      ["Generator siting", "Fenced off from public routes, exhaust clear of tents and air intakes, on a spill tray or bunded, with a suitable fire extinguisher beside it."],
-      ["Cables", "Outdoor-rated flexible cable, protected with ramps where it crosses walkways, and extension reels fully unwound."],
-      ["Traders’ equipment", "Ask traders for in-date inspection records and check plugs and leads before connecting them."],
-      ["Critical loads", "Put first aid, the control room, emergency lighting and the PA for announcements on a protected circuit or a standby generator."],
-      ["Purple Guide", "Check your plan against the electrical chapter of the Purple Guide and anything your Safety Advisory Group asks for."]
-    ];
+    const checks = siteChecks();
     const checkBlock = `<div class="panel"><h2>Site safety checklist</h2><ul class="ticks">${checks.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>`;
 
     plan = phaseBlock + fuelBlock + sched + checkBlock + `<div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>`;
@@ -661,7 +724,7 @@ function renderPower(){
     + notes.join("") + connBlock + plan + ctaHTML(c)
     + `<div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="kit">Change my equipment</button></div>` + DISCLAIMER;
   const u = $("#unlock"); if(u) u.onclick = openSheet;
-  const p = $("#print"); if(p) p.onclick = () => window.print();
+  const p = $("#print"); if(p) p.onclick = () => FGReport.print();
   bindGo(el);
 }
 
@@ -762,14 +825,7 @@ function renderFuel(){
       const co2 = state.fuelType === "hvo"
         ? `<div><b>Lower</b><span>HVO: ask your supplier for its certified carbon figure</span></div>`
         : `<div><b>${(f.co2 / 1000).toFixed(f.co2 >= 10000 ? 0 : 1)} t</b><span>CO2e from ${n0(f.burn)} L of diesel</span></div>`;
-      const checks = [
-        ["No red diesel", "Generators at events must run on white diesel or a biofuel such as HVO. Red diesel is only allowed for travelling fairs’ and circuses’ own machinery."],
-        ["Refuelling", "Refuel with the generator off where its maker requires it, using a pump or bowser rather than cans where possible, by someone trained to do it."],
-        ["Storage", "Keep spare fuel in a bunded tank or bowser, away from public routes, ignition sources and drains."],
-        ["Spills and fire", "A spill kit and a suitable fire extinguisher next to the generator and the fuel store."],
-        ["Fuel log", "Record each delivery and refuel, with the time and litres. It helps spot leaks and theft."],
-        ["HVO", "If you switch to HVO, check the generator is approved for it. Most modern sets are."]
-      ];
+      const checks = fuelChecks();
       results += `<div class="panel"><h2>Refuelling plan</h2>${sched}</div>
         <div class="stats" style="grid-template-columns:repeat(2,1fr)">${cost}${co2}</div>
         <div class="panel"><h2>Fuel safety checklist</h2><ul class="ticks">${checks.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>
@@ -791,7 +847,7 @@ function renderFuel(){
   bind("#f-load", "mLoad"); bind("#f-hours", "hours"); bind("#f-days", "days"); bind("#f-start", "start"); bind("#f-tank", "tank"); bind("#f-price", "price");
   el.querySelectorAll("[data-fuel]").forEach(b => b.onclick = () => { state.fuelType = b.dataset.fuel; save(); keepFuel(); });
   const u = $("#fuel-unlock"); if(u) u.onclick = () => { openSheet(); fuelAfterUnlock = true; };
-  const pr = $("#fuel-print"); if(pr) pr.onclick = () => { document.body.classList.add("print-fuel"); window.print(); document.body.classList.remove("print-fuel"); };
+  const pr = $("#fuel-print"); if(pr) pr.onclick = () => FGReport.print();
   bindGo(el);
 }
 let fuelAfterUnlock = false;

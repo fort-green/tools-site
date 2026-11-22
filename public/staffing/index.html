@@ -6,6 +6,7 @@
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
 <script src="/lead.js"></script>
+<script src="/report.js"></script>
 <script src="/results.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -454,27 +455,8 @@ function ctaHTML(c){
 
 const DISCLAIMER = `<p class="disclaimer">This tool gives a general starting point for security staffing to help you plan. It isn’t a security risk assessment, a crowd management plan or professional advice. Door supervisor ratios follow those commonly used in licence conditions, and steward ratios follow the Guide to Safety at Sports Grounds and Sports Grounds Safety Authority guidance; other figures are Fort Green planning assumptions and are marked as such. The right number depends on your premises, layout, audience, history of incidents and the event itself. Your premises licence, the police, the local authority and your Safety Advisory Group may require more, and their requirements apply over these results. Anyone carrying out licensable security activity must hold the correct SIA licence. Fort Green Limited accepts no responsibility or liability for any injury, damage, disorder, enforcement action, cost or loss arising from use of this tool or reliance on its results. Fort Green isn’t affiliated with or endorsed by the SIA, the Sports Grounds Safety Authority or any licensing authority.</p>`;
 
-function renderStaff(){
-  const c = calc(), el = $("#screen-staff");
-  if(!c.ready){
-    el.innerHTML = `<div class="empty"><h1 id="h-staff">Staffing</h1><p class="muted">Add how many people you expect, and your suggested team appears here.</p><button class="btn btn-primary btn-block" data-go="event">Add your event</button></div>`;
-    bindGo(el); return;
-  }
-  const roles = [
-    [c.ds, "SIA door supervisors", c.dsWhy],
-    [c.st, "Stewards", c.stWhy],
-    [c.resp, "Response team", "Roaming, to deal with incidents"],
-    [c.sup, "Supervisors", "About 1 per 10 staff"],
-    [c.head, "Head of security", "Runs the team on the day"],
-    [c.relief, "Relief for breaks", "About 10% extra for shifts over 6 hours"]
-  ].filter(r => r[0]);
-  const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
-  let plan;
-  if(!state.unlocked){
-    plan = `<div class="locked"><h3>Your full staffing plan</h3><p class="muted">See where each person goes, what to brief them on, and a PDF to keep with your risk assessment.</p><button class="btn btn-primary btn-block" id="unlock">Get my staffing plan</button></div>`;
-  } else {
-    const dep = deployment(c);
-    const checks = [
+function doorChecks(){
+  return [
       ["Licences checked", "Every door supervisor’s SIA licence checked against the SIA register before the shift, and their numbers recorded."],
       ["Briefing", "A briefing before doors on the event, capacity, entry policy, search policy, refusals, emergency procedures and radio channels."],
       ["Incident and refusals log", "A log kept on the night of incidents, refusals and ejections. Many licences require it."],
@@ -482,6 +464,54 @@ function renderStaff(){
       ["Welfare and vulnerability", "Staff know how to help someone vulnerable, including safe spaces and Ask for Angela if you use it."],
       ["Martyn’s Law", "If you hold 200 or more people, staff know your evacuation, invacuation and lockdown procedures."]
     ];
+}
+function staffRoles(c){
+  return [
+    [c.ds, "SIA door supervisors", c.dsWhy],
+    [c.st, "Stewards", c.stWhy],
+    [c.resp, "Response team", "Roaming, to deal with incidents"],
+    [c.sup, "Supervisors", "About 1 per 10 staff"],
+    [c.head, "Head of security", "Runs the team on the day"],
+    [c.relief, "Relief for breaks", "About 10% extra for shifts over 6 hours"]
+  ].filter(r => r[0]);
+}
+
+/* ---------- Printable report (shared layout in /report.js) ---------- */
+function reportDoc(){
+  const c = calc(); if(!state.unlocked || !c.ready) return "";
+  const R = FGReport;
+  return R.doc({
+    doc: "Security staffing plan", kind: c.venue ? "Venue" : "Event",
+    title: state.name || "Your event",
+    meta: [["Type", c.type[1]], ["Capacity", n0(c.cap) + " people"], ["Risk level", c.level]],
+    body:
+      R.cards([{label: "Suggested team", big: c.total + " staff", small: "On duty at the busiest time", dark: true},
+               {label: "Door supervisors", big: String(c.ds), small: "SIA licensed"},
+               c.st ? {label: "Stewards", big: String(c.st)} : null]) +
+      R.h2("The team") + R.table(["Role", "Why", "Number>"], staffRoles(c).map(([n, t, w]) => [{html: "<b>" + R.esc(t) + "</b>"}, w, String(n)]).concat([[{html: "<b>Total</b>"}, "", {html: "<b>" + c.total + "</b>"}]])) +
+      (c.female ? R.note("<b>Include female door supervisors.</b> With searching on entry, have at least " + c.female + " female door supervisor" + (c.female > 1 ? "s" : "") + " so women can be searched by a woman. Many licences require this.") : "") +
+      R.h2("How we worked it out") + R.list(c.why.map(w => ({html: R.esc(w.t) + ' <span class="pd-why">(' + R.esc(w.s) + ")</span>"}))) +
+      R.h2("Where everyone goes") + R.list(deployment(c).map(([h, d]) => ({html: "<b>" + R.esc(h) + "</b><br>" + R.esc(d)}))) +
+      R.h2("Before the doors open") + R.list(doorChecks().map(([h, d]) => ({html: "<b>" + R.esc(h) + "</b><br>" + R.esc(d)}))),
+    footer: "These numbers are a planning estimate. Door supervisor and steward ratios follow published licensing and Green Guide guidance; the rest are Fort Green planning assumptions. Your licence conditions, risk assessment, the police and your Safety Advisory Group may require more."
+  });
+}
+FGReport.attach(reportDoc);
+
+function renderStaff(){
+  const c = calc(), el = $("#screen-staff");
+  if(!c.ready){
+    el.innerHTML = `<div class="empty"><h1 id="h-staff">Staffing</h1><p class="muted">Add how many people you expect, and your suggested team appears here.</p><button class="btn btn-primary btn-block" data-go="event">Add your event</button></div>`;
+    bindGo(el); return;
+  }
+  const roles = staffRoles(c);
+  const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+  let plan;
+  if(!state.unlocked){
+    plan = `<div class="locked"><h3>Your full staffing plan</h3><p class="muted">See where each person goes, what to brief them on, and a PDF to keep with your risk assessment.</p><button class="btn btn-primary btn-block" id="unlock">Get my staffing plan</button></div>`;
+  } else {
+    const dep = deployment(c);
+    const checks = doorChecks();
     plan = `<div class="panel"><h2>Where everyone goes</h2><ul class="ticks">${dep.map(([h,d]) => `<li><div><strong>${esc(h)}</strong><span>${esc(d)}</span></div></li>`).join("")}</ul></div>
       <div class="panel"><h2>Before the doors open</h2><ul class="ticks">${checks.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>
       <div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>`;
@@ -497,7 +527,7 @@ function renderStaff(){
     <div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="event">Change my event</button> &nbsp; <button class="link-btn" data-go="entry">Change entry</button></div>
     ${DISCLAIMER}`;
   const u = $("#unlock"); if(u) u.onclick = openSheet;
-  const p = $("#print"); if(p) p.onclick = () => window.print();
+  const p = $("#print"); if(p) p.onclick = () => FGReport.print();
   bindGo(el);
 }
 

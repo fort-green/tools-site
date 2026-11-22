@@ -88,6 +88,10 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **End of shift overview:** n8n workflow "FG Client portal – end of shift overview" runs every 15 minutes and calls the `client-portal` function with the `x-fg-cp-secret` header (checked against vault secret `cp_n8n_secret` by `cp_n8n_ok`). The function returns shifts that ended 30 minutes to 12 hours ago with door counts, at venues with client emails, that are not yet in `cp_shift_reports`. n8n emails each linked client separately (people in, peak inside, busiest 15 minutes, % of capacity, hour by hour, groups), then calls `report_sent` so each shift is only sent once.
 - **Emails:** n8n workflow "FG Client portal – email notifications" (sierra-six), sent through Gmail. Fort Green alerts go to info@fortgreen.co.uk (set as OPS in its Build email node); clients get emails when requests are decided and invoices are added.
 
+## Printable reports (`public/report.js`)
+
+Every tool's Save as PDF builds a separate A4 portrait document with `FGReport` (capacity, staffing, welfare, power and fuel, event plan, run and call sheets). The document is rebuilt on `beforeprint`, so Ctrl+P gives the same result as the button. Nothing else on the page prints. FORT GREEN branding in the header bar only appears when the signed-in person has a @fortgreen.co.uk email. Martyn's Law and the risk assessment use their own builders in the same layout.
+
 ## My Results
 
 - **Key figures (`facts`):** each tool in `results.js` also saves a small `facts` object (rows of label and value, plus a few lines) to `hub_results.facts`, worked out with that tool's own calculations. The event plan builder reads these so it never has to re-run another tool. Results saved before November 2026 have no facts until they are opened again.: what lives outside this repo

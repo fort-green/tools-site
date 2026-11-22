@@ -6,6 +6,7 @@
 <script src="/config.js"></script>
 <script src="/auth-guard.js"></script>
 <script src="/lead.js"></script>
+<script src="/report.js"></script>
 <script src="/results.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -589,6 +590,54 @@ function ctaHTML(c){
 
 const DISCLAIMER = `<p class="disclaimer">This tool gives general information about occupant capacity to help you plan. It isn’t a fire risk assessment, a crowd management plan or professional advice, and doesn’t replace advice from a competent fire safety or crowd safety professional. Indoor figures use the floor space factors and exit widths in Approved Document B (Fire Safety) Volume 2. Outdoor figures use common planning densities and the rates of passage in the Guide to Safety at Sports Grounds. Real safe capacity also depends on travel distances, stairs, layout, lighting, alarms, the audience and how the event is managed. Under the Regulatory Reform (Fire Safety) Order 2005, the responsible person must carry out a fire risk assessment, and any capacity set by your premises licence, fire risk assessment, local authority or Safety Advisory Group applies over these results. Martyn’s Law tiers shown are indicative only. Fort Green Limited accepts no responsibility or liability for any injury, damage, enforcement action, cost or loss arising from the use of this tool or reliance on its results. Fort Green isn’t affiliated with or endorsed by the government, the Sports Grounds Safety Authority or the Events Industry Forum.</p>`;
 
+function nightChecks(){
+  return outdoor() ? [
+      ["Count people in and out", "Use clickers or scanners at every entrance, with one person keeping a running total and reporting it to the control point regularly."],
+      ["Set a holding point before capacity", "Agree a figure, such as 90%, where entry slows or stops, and who makes that call."],
+      ["Steward every exit", "Emergency gates staffed, unlocked from inside, signed and lit after dark, with nothing parked or stacked in front of them."],
+      ["Watch crowd density", "Stewards or CCTV watching front of stage and pinch points, with a way to stop the show if density climbs."],
+      ["Plan egress at the end", "Stagger the finish if you can, light the routes and manage queues for transport."],
+      ["Agree it with the Safety Advisory Group", "Put the capacity, the workings and your crowd management plan in your event management plan."]
+    ] : [
+      ["Count people in and out", "Use clickers or a door counter, with a running total the door supervisor and duty manager can both see."],
+      ["Set a holding point before capacity", "Agree a figure, such as 90%, where entry becomes one in, one out."],
+      ["Keep exits clear and usable", "Unlocked and openable from inside without a key, signed, lit and checked before doors open."],
+      ["Record the capacity", "Write the figure and how it was worked out into your fire risk assessment and tell all door staff."],
+      ["Recheck when the layout changes", "Extra tables, a stage or a temporary bar change the space, so work it out again."],
+      ["Check your licence conditions", "Some licences set a capacity or a number of door supervisors per number of guests."]
+    ];
+}
+
+/* ---------- Printable report (shared layout in /report.js) ---------- */
+function reportDoc(){
+  const c = calc(); if(!state.unlocked || !c.ready) return "";
+  const R = FGReport, t = tier(c.cap), od = outdoor();
+  const zrows = c.zs.filter(z => z.people || z.area).map((z, i) => [z.name || "Area " + (i + 1), z.seats ? n0(z.people) + " seats" : n1(z.area) + " m² " + (od ? "× " + z.d + "/m²" : "÷ " + z.f), n0(z.people)]);
+  const erows = c.es.filter(e => num(e.width)).map((e, i) => { const x = exitCalc(e), blocked = c.discounted && c.discounted.id === e.id;
+    return [{html: R.esc(e.name || "Exit " + (i + 1)) + (blocked ? '<div class="pd-why">Treated as blocked</div>' : "")}, od ? n1(x.w) + " m" + (e.stepped ? ", stepped" : "") : n0(x.w) + " mm", blocked ? {html: "<s>" + n0(x.cap) + "</s>"} : n0(x.cap)]; });
+  const plain = h => { const d = document.createElement("div"); d.innerHTML = h; return d.textContent; };
+  const imp = improveHTML(c);
+  return R.doc({
+    doc: "Capacity report", kind: od ? "Outdoor site" : "Indoor venue",
+    title: state.name || (od ? "Your event site" : "Your venue"),
+    meta: [["Type", od ? "Outdoor site" : "Indoor venue"]],
+    body:
+      R.cards([{label: "Safe capacity", big: n0(c.cap) + " people", small: "Including staff and performers. Set by " + c.min.label.toLowerCase() + ".", dark: true},
+               {label: "Guests", big: n0(c.guests), small: c.staff ? n0(c.staff) + " staff" : "Staff not entered"},
+               {label: "Martyn’s Law", big: {html: '<span style="font-size:16pt">' + R.esc(t.name) + "</span>"}}]) +
+      (c.cap < c.floorCap && c.min.key !== "licence" ? R.note("<b>Your space holds more people than your exits can clear.</b> " + n0(c.floorCap - c.cap) + " more people would fit, but they couldn’t get out safely. Don’t admit more than " + n0(c.cap) + " without changing the exits.") : "") +
+      R.h2("What limits it") + R.why("Your capacity is the lowest of these.") + R.table(["Limit", "People>"], c.limits.map(l => [l.label + (l === c.min ? " (sets your capacity)" : ""), n0(l.v)])) +
+      R.h2(od ? "Crowd space" : "Floor space") + R.table(["Area", "Working", "People>"], zrows.concat([[{html: "<b>Total</b>"}, "", {html: "<b>" + n0(c.floorCap) + "</b>"}]])) +
+      R.h2("Exits") + R.table(["Exit", "Width", "People>"], erows.concat([[{html: "<b>Total counted</b>"}, "", {html: "<b>" + n0(c.exitCap) + "</b>"}]])) +
+      R.why(od ? "Based on clearing the site in " + state.egress + " minutes at " + (state.alcohol ? "72 (level) and 56 (stepped)" : "82 (level) and 66 (stepped)") + " people per metre of width per minute." : "Based on Approved Document B: 60 people for a 750 mm exit, 110 for 850 mm, 220 for 1,050 mm, and 5 mm per person above that.") +
+      R.h2("Martyn’s Law") + R.p(t.text + " The Act goes by how many people you reasonably expect at the same time, so check this against your real busiest night as well as your maximum.") +
+      (imp.length ? R.h2("How to raise it") + R.list(imp.map(([h, d]) => ({html: "<b>" + R.esc(plain(h)) + "</b><br>" + R.esc(plain(d))}))) : "") +
+      R.h2("Running it on the night") + R.list(nightChecks().map(([h, d]) => ({html: "<b>" + R.esc(h) + "</b><br>" + R.esc(d)}))),
+    footer: "This capacity is a planning estimate from the figures you entered, using Approved Document B and Green Guide/Purple Guide flow rates. It is not a fire risk assessment. Your fire risk assessment, licence and the fire and rescue service set the capacity that applies."
+  });
+}
+FGReport.attach(reportDoc);
+
 function renderCapacity(){
   const c = calc(), el = $("#screen-capacity");
   const today = new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
@@ -638,21 +687,7 @@ function renderCapacity(){
       <p class="small muted" style="margin:8px 0 0">${outdoor() ? `Based on clearing the site in ${state.egress} minutes at ${state.alcohol ? "72 (level) and 56 (stepped)" : "82 (level) and 66 (stepped)"} people per metre of width per minute.` : "Based on Approved Document B: 60 people for a 750 mm exit, 110 for 850 mm, 220 for 1,050 mm, and 5 mm per person above that."}</p></div>`;
     const imp = improveHTML(c);
     const impBlock = imp.length ? `<div class="panel"><h2>How to raise it</h2><ul class="ticks">${imp.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>` : "";
-    const checks = outdoor() ? [
-      ["Count people in and out", "Use clickers or scanners at every entrance, with one person keeping a running total and reporting it to the control point regularly."],
-      ["Set a holding point before capacity", "Agree a figure, such as 90%, where entry slows or stops, and who makes that call."],
-      ["Steward every exit", "Emergency gates staffed, unlocked from inside, signed and lit after dark, with nothing parked or stacked in front of them."],
-      ["Watch crowd density", "Stewards or CCTV watching front of stage and pinch points, with a way to stop the show if density climbs."],
-      ["Plan egress at the end", "Stagger the finish if you can, light the routes and manage queues for transport."],
-      ["Agree it with the Safety Advisory Group", "Put the capacity, the workings and your crowd management plan in your event management plan."]
-    ] : [
-      ["Count people in and out", "Use clickers or a door counter, with a running total the door supervisor and duty manager can both see."],
-      ["Set a holding point before capacity", "Agree a figure, such as 90%, where entry becomes one in, one out."],
-      ["Keep exits clear and usable", "Unlocked and openable from inside without a key, signed, lit and checked before doors open."],
-      ["Record the capacity", "Write the figure and how it was worked out into your fire risk assessment and tell all door staff."],
-      ["Recheck when the layout changes", "Extra tables, a stage or a temporary bar change the space, so work it out again."],
-      ["Check your licence conditions", "Some licences set a capacity or a number of door supervisors per number of guests."]
-    ];
+    const checks = nightChecks();
     const checkBlock = `<div class="panel"><h2>Running it on the night</h2><ul class="ticks">${checks.map(([h,d]) => `<li><div><strong>${h}</strong><span>${d}</span></div></li>`).join("")}</ul></div>`;
     plan = zoneBlock + exitBlock + impBlock + checkBlock + `<div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>`;
   }
@@ -662,7 +697,7 @@ function renderCapacity(){
   el.innerHTML = head + verdict + stats + staffLink + welfareLink + notes.join("") + limits + martyn + plan + ctaHTML(c)
     + `<div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="space">Change my space</button> &nbsp; <button class="link-btn" data-go="exits">Change my exits</button></div>` + DISCLAIMER;
   const u = $("#unlock"); if(u) u.onclick = openSheet;
-  const p = $("#print"); if(p) p.onclick = () => window.print();
+  const p = $("#print"); if(p) p.onclick = () => FGReport.print();
   bindGo(el);
 }
 

@@ -7,6 +7,7 @@
 <script src="/auth-guard.js"></script>
 <script src="/results.js"></script>
 <script src="/lead.js"></script>
+<script src="/report.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Welfare and provisions calculator | Fort Green</title>
@@ -384,6 +385,39 @@ function details(c){
     <div class="btn-row no-print"><button class="btn btn-ghost btn-block" id="print">Save as PDF</button></div>`;
 }
 
+/* ---------- Printable report (shared layout in /report.js) ---------- */
+function reportDoc(){
+  const c = calc(); if(!state.unlocked || !c.ready) return "";
+  const R = FGReport, t = c.t;
+  const also = [["Servicing", "Toilets emptied, cleaned and restocked during the event, not just before it opens. Long or busy events need servicing several times a day."],
+    ["Lighting and signs", "Toilets, water points and first aid clearly signed and lit after dark."],
+    ["Welfare and vulnerability", "A welfare point or safe space for people who are lost, drunk, unwell or vulnerable, with trained staff."],
+    ["Staff and crew", "Separate toilets, water and rest areas for staff where you can."]];
+  if(c.hours >= 6 || state.weather === "hot") also.push(["Shade and shelter", "Shade and water in hot weather, and shelter if it rains."]);
+  return R.doc({
+    doc: "Welfare plan", kind: "Provisions",
+    title: state.name || "Your event",
+    meta: [["People", n0(c.people)], ["Hours a day", String(c.hours)], ["Days", String(c.days)], ["Based on", t.label]],
+    body:
+      R.cards([{label: "Toilets", big: c.wcNeeded + " + " + c.urinals + " urinals", small: c.existing ? n0(c.existing) + " already on site, so hire about " + c.wcTemp + " toilets plus the urinals" : "", dark: true},
+               {label: "Drinking water", big: n0(c.water) + " L", small: c.outlets + " water point" + (c.outlets > 1 ? "s" : "")},
+               {label: "First aiders", big: String(c.firstAid), small: "On duty at all times"}]) +
+      R.h2("Toilets and hand washing") + R.table(["Provision", "Ratio", "Number>"], [
+        ["Female toilets", "1 per " + t.f + " women", String(c.fWC)], ["Male toilets", "1 per " + t.m + " men", String(c.mWC)], ["Urinals", "1 per " + t.u + " men", String(c.urinals)],
+        ["Accessible toilets", "At least 1, about 1 per 25 toilets and urinals", String(c.accessible)], ["Hand-washing points", "1 per 5 toilets and urinals, at least 1", String(c.basins)]]) +
+      R.why("Toilet ratios from the Event Safety Guide and Purple Guide, as published by UK councils. Accessible toilet figure is a Fort Green planning assumption. Spread toilets around the site rather than in one block.") +
+      R.h2("Drinking water") + R.p("About " + n0(c.water) + " litres of free drinking water over the event, from " + c.outlets + " water point" + (c.outlets > 1 ? "s" : "") + " (about 1 per 500 people).") +
+      R.why(c.perPerson.toFixed(1) + " litres a person a day: 2 litres or half a litre an hour, whichever is more" + (state.weather === "hot" ? ", plus 50% for hot weather" : "") + ". UK guidance doesn’t set a figure, so this follows Australian state event guidance." + (state.alcohol !== "none" ? " Where alcohol is sold, free tap water must be available on request." : "")) +
+      R.h2("First aid") + R.p(c.firstAid + " qualified first aiders on duty at all times." + (c.people > 500 ? " Consider a nurse or paramedic." : "") + (c.people > 2000 ? " Over 2,000 people you need a medical risk assessment and plan, following the Purple Guide, agreed with your Safety Advisory Group." : "")) +
+      R.why("From St John Ambulance guidance: at least 2 for under 500 people, 4 for up to 2,000, and roughly 2 per 1,000 above that.") +
+      R.h2("Bins") + R.p(c.bins + " litter bins, with recycling alongside, emptied during the event.") +
+      R.why("About 1 per 100 people" + (int(state.traders) ? ", plus 1 at each of the " + int(state.traders) + " food and bar units" : "") + ". A Fort Green planning assumption: no UK guidance sets a figure.") +
+      R.h2("Also plan for") + R.list(also.map(([h, d]) => ({html: "<b>" + R.esc(h) + "</b><br>" + R.esc(d)}))),
+    footer: "These are general planning figures, not a welfare, medical, sanitation or risk assessment. Your local authority, Safety Advisory Group, licence and medical provider may require more, and their requirements apply over these figures."
+  });
+}
+FGReport.attach(reportDoc);
+
 function renderPlan(){
   const c = calc(), el = $("#screen-plan");
   if(!c.ready){ el.innerHTML = `<div class="empty"><h1 id="h-plan">Provisions</h1><p class="muted">Add your crowd size and hours to see what to provide.</p><button class="btn btn-primary btn-block" data-go="event">Add your event</button></div>`; bindGo(el); return; }
@@ -415,7 +449,7 @@ function renderPlan(){
     </div>
     <div class="no-print" style="margin-top:8px"><button class="link-btn" data-go="event">Change my event</button></div>
     <p class="disclaimer">These are general planning figures to help you prepare. They aren’t a welfare, medical, sanitation or risk assessment, or professional advice. Toilet ratios follow those published by UK local authorities from the Event Safety Guide and Purple Guide; first aid figures follow St John Ambulance guidance; drinking water follows Australian state event guidance because UK guidance doesn’t set a figure; accessible toilet and bin figures are Fort Green planning assumptions. Real needs depend on your audience, layout, weather, alcohol, duration and site. Your local authority, Safety Advisory Group, licence and medical provider may require more, and their requirements apply over these figures. Fort Green Limited accepts no responsibility or liability for any injury, illness, enforcement action, cost or loss arising from use of this tool or reliance on its results. Fort Green isn’t affiliated with or endorsed by St John Ambulance, the Events Industry Forum or any local authority.</p>`;
-  const pr = $("#print"); if(pr) pr.onclick = () => window.print();
+  const pr = $("#print"); if(pr) pr.onclick = () => FGReport.print();
   const u = $("#unlock"); if(u) u.onclick = openSheet;
   bindGo(el);
 }
