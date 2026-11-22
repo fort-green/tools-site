@@ -63,7 +63,12 @@
   function place() {
     if (!els) return;
     var s = steps[i], el = s.s && document.querySelector(s.s), spot = els.spot, box = els.box;
-    if (!el) { spot.className = "fgt-spot none"; box.style.left = "50%"; box.style.top = "50%"; box.style.transform = "translate(-50%,-50%)"; return; }
+    if (!el) {
+      spot.className = "fgt-spot none";
+      // Phones: the box is pinned to the bottom of the screen by CSS, so no centring transform.
+      if (innerWidth <= 600) { box.style.left = ""; box.style.top = ""; box.style.transform = ""; return; }
+      box.style.left = "50%"; box.style.top = "50%"; box.style.transform = "translate(-50%,-50%)"; return;
+    }
     var r = el.getBoundingClientRect(), pad = 8;
     spot.className = "fgt-spot";
     spot.style.left = (r.left + scrollX - pad) + "px"; spot.style.top = (r.top + scrollY - pad) + "px";
