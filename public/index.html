@@ -13,6 +13,7 @@
 <script src="/wx.js"></script>
 <script src="/live.js"></script>
 <script src="/journey.js"></script>
+<script src="/tour.js"></script>
 <style>
 :root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;--ghost:#ececec;
   --staff-bg:#100f10;--staff-ink:#fff;--staff-muted:#c9c9c9;--staff-line:#3d3c3d;--staff-ghost:#1f1e1f;--err:#b42318;color-scheme:light}
@@ -127,6 +128,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     <div class="who" id="who" hidden>
       <span>Signed in as <strong id="who-email"></strong></span>
       <a class="btn ghost" href="/results/">My Results</a>
+      <button class="btn ghost" type="button" id="tour-btn" hidden>Show me around</button>
       <button class="btn ghost" type="button" id="signout">Sign out</button>
     </div>
   </div>
@@ -427,6 +429,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     var a = await sb.rpc("hub_is_admin");
     $("card-users").hidden = !(a && a.data === true);
     $("card-rates").hidden = !(a && a.data === true);
+    if (window.FGTour) FGTour.offer(isStaff(lastEmail));  // staff walkthrough of the hub
     if (isStaff(lastEmail)) { $("card-portal").hidden = false; $("portal-sub").textContent = "Staff view: all venues"; }
     else {
       var v = await sb.from("cp_venue_access").select("venue_id", { count: "exact", head: true });
@@ -516,6 +519,7 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     if (!r.error) { $("code").value = ""; $("code").focus(); }
   });
   $("change").addEventListener("click", function () { showLogin("email"); });
+  $("tour-btn").addEventListener("click", function () { if (window.FGTour) FGTour.start(); });
   $("signout").addEventListener("click", async function () { await sb.auth.signOut(); pendingConsent = false; signedIn = false; showLogin("email"); });
 
   var signedIn = false;
