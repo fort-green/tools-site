@@ -47,6 +47,10 @@ input:focus,textarea:focus{border-color:var(--ink);outline:none}
 .sub{margin-top:4px;font-size:14px;color:var(--muted)}
 .note{margin-top:6px;font-size:14px;color:var(--err)}
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag.new{border-color:var(--err);color:var(--err)}
+.who-line{font-weight:700;font-size:16px}.who-line span{font-weight:500;color:var(--body)}
+.plans{margin-top:6px;font-size:14px;color:var(--body);white-space:pre-line}
+.rev{margin-top:6px;font-size:13px;color:var(--muted)}
 .tag{display:inline-block;padding:3px 8px;border:1px solid var(--line);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--body)}
 .pill{display:inline-block;padding:4px 10px;border:1px solid currentColor;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .pill.active{color:var(--ok);background:var(--ok-soft)}
@@ -139,11 +143,12 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     <div class="bar">
       <div class="filters" role="group" aria-label="Show">
         <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="new" aria-pressed="false">To review</button>
         <button type="button" data-f="staff" aria-pressed="false">Staff</button>
         <button type="button" data-f="client" aria-pressed="false">Clients</button>
         <button type="button" data-f="removed" aria-pressed="false">Removed</button>
       </div>
-      <div class="search"><input type="search" id="q" placeholder="Search by email" aria-label="Search by email"></div>
+      <div class="search"><input type="search" id="q" placeholder="Search by name, company or email" aria-label="Search users"></div>
     </div>
     <div class="list" id="list"></div>
 
@@ -161,6 +166,19 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     </label>
     <div class="btnrow">
       <button class="btn danger solid" type="submit" id="dlg-go" value="go">Remove access</button>
+      <button class="btn ghost" type="submit" value="cancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="rdlg" aria-labelledby="rdlg-h">
+  <form method="dialog" id="rdlg-form">
+    <h3 class="display" id="rdlg-h">Review</h3>
+    <p id="rdlg-p"></p>
+    <label class="f" style="display:flex;flex-direction:column;gap:6px;font-weight:600;margin-bottom:16px">Note for the team (optional)
+      <textarea id="rdlg-note" maxlength="500" rows="3" placeholder="e.g. Existing client, venue manager at The Good Oak" style="padding:10px 12px;border:1.5px solid var(--line);font:500 16px Manrope,Arial,sans-serif;background:var(--surface);color:var(--ink)"></textarea></label>
+    <div class="btnrow">
+      <button class="btn" type="submit" value="go" id="rdlg-go">Mark reviewed</button>
       <button class="btn ghost" type="submit" value="cancel">Cancel</button>
     </div>
   </form>
@@ -186,7 +204,10 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
   var $ = function (id) { return document.getElementById(id); };
   if (!c.SUPABASE_URL || !window.supabase) { $("state").textContent = "Sign-in isn’t set up."; return; }
   var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
-  var users = [], me = "", filter = "all", pending = null, venues = [], access = [], vFor = null;
+  var profiles = {}, rFor = null;
+  function prof(u) { return profiles[u.user_id] || null; }
+  function toReview(u) { var p = prof(u); return !u.is_staff && !u.removed && !(p && p.reviewed_at); }
+  var users = [], me = "", filter = location.hash === "#new" ? "new" : "all", pending = null, venues = [], access = [], vFor = null;
   function venueName(id) { var v = venues.find(function (x) { return x.venue_id === id; }); return v ? v.name : "Unknown venue"; }
   function venuesOf(email) { return access.filter(function (a) { return a.email === email; }).map(function (a) { return a.venue_id; }); }
 
@@ -199,7 +220,8 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     var staff = users.filter(function (u) { return u.is_staff; }).length;
     var removed = users.filter(function (u) { return u.removed; }).length;
     var mk = users.filter(function (u) { return u.marketing_consent && !u.removed; }).length;
-    var items = [[users.length, "Accounts"], [staff, "Staff"], [users.length - staff, "Clients"], [mk, "Marketing opt-in"], [removed, "Access removed"]];
+    var todo = users.filter(toReview).length;
+    var items = [[todo, "To review"], [users.length, "Accounts"], [staff, "Staff"], [users.length - staff, "Clients"], [mk, "Marketing opt-in"], [removed, "Access removed"]];
     $("stats").innerHTML = items.map(function (i) { return '<div class="stat"><b>' + i[0] + "</b><span>" + i[1] + "</span></div>"; }).join("");
   }
 
@@ -209,11 +231,19 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
       if (filter === "staff" && !u.is_staff) return false;
       if (filter === "client" && u.is_staff) return false;
       if (filter === "removed" && !u.removed) return false;
-      return !q || u.email.indexOf(q) !== -1;
+      if (filter === "new" && !toReview(u)) return false;
+      var p = prof(u);
+      return !q || [u.email, p && p.full_name, p && p.company].join(" ").toLowerCase().indexOf(q) !== -1;
     });
-    if (!rows.length) { $("list").innerHTML = '<div class="empty">No users match.</div>'; return; }
+    if (!rows.length) { $("list").innerHTML = '<div class="empty">' + (filter === "new" ? "Nobody to review. New sign-ups appear here." : "No users match.") + "</div>"; return; }
     $("list").innerHTML = rows.map(function (u) {
-      var tags = [u.is_staff ? "Staff" : "Client"];
+      var p = prof(u), tags = [u.is_staff ? "Staff" : "Client"];
+      if (toReview(u)) tags.unshift(p ? "New" : "No profile yet");
+      var who = p ? '<div class="who-line">' + esc(p.full_name) + " <span>· " + esc(p.company) + " · " + esc(p.role) + (p.phone ? " · " + esc(p.phone) : "") + "</span></div>" : "";
+      var extra = (p && p.plans ? '<div class="plans">Planning: ' + esc(p.plans) + "</div>" : "") +
+        (p && p.reviewed_at ? '<div class="rev">Reviewed ' + esc(day(p.reviewed_at)) + " by " + esc((p.reviewed_by || "").split("@")[0]) + (p.review_note ? ": " + esc(p.review_note) : "") +
+          ' <button class="linkbtn" type="button" data-act="review" data-id="' + esc(u.user_id) + '">Edit</button></div>'
+          : p && !u.is_staff && !u.removed ? '<div class="rev"><button class="btn sm" type="button" data-act="review" data-id="' + esc(u.user_id) + '">Mark reviewed</button></div>' : "");
       if (u.is_admin) tags.push("Admin");
       if (u.lead_finder) tags.push("Lead Finder");
       var seen = u.last_seen || u.last_sign_in;
@@ -226,8 +256,8 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
       var vrow = u.is_staff ? "" : '<div class="vrow"><span class="lbl">Client of:</span>' +
         (vs.length ? vs.map(function (id) { return '<span class="vtag">' + esc(venueName(id)) + "</span>"; }).join("") : '<span class="vtag none">No venue yet</span>') +
         '<button class="linkbtn" type="button" data-act="venues" data-id="' + esc(u.user_id) + '">' + (vs.length ? "Change" : "Link venue") + "</button></div>";
-      return '<div class="row' + (u.removed ? " removed" : "") + '"><div><div class="email">' + esc(u.email) + '</div><div class="sub">' + esc(sub) + "</div>" + note +
-        '<div class="tags">' + tags.map(function (t) { return '<span class="tag">' + t + "</span>"; }).join("") + "</div>" + vrow + "</div>" +
+      return '<div class="row' + (u.removed ? " removed" : "") + '"><div>' + who + '<div class="email">' + esc(u.email) + '</div><div class="sub">' + esc(sub) + "</div>" + note + extra +
+        '<div class="tags">' + tags.map(function (t) { return '<span class="tag' + (t === "New" || t === "No profile yet" ? " new" : "") + '">' + t + "</span>"; }).join("") + "</div>" + vrow + "</div>" +
         '<span class="pill ' + (u.removed ? "removed" : "active") + '">' + (u.removed ? "Removed" : "Active") + '</span><div class="act">' + act + "</div></div>";
     }).join("");
   }
@@ -244,6 +274,8 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     var r = await sb.rpc("hub_list_users");
     if (r.error) { $("state").hidden = true; $("app").hidden = false; msg("fail", "Couldn’t load users: " + r.error.message); return; }
     users = r.data || [];
+    var pr = await sb.from("hub_profiles").select("*");
+    profiles = {}; (pr.data || []).forEach(function (x) { profiles[x.user_id] = x; });
     await loadVenues();
     $("state").hidden = true; $("app").hidden = false;
     renderStats(); renderList(); loadLog();
@@ -310,6 +342,18 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     await loadVenues(); renderList();
   });
 
+  $("rdlg").addEventListener("close", async function () {
+    var u = rFor; rFor = null;
+    if ($("rdlg").returnValue !== "go" || !u) return;
+    var r = await sb.rpc("hub_review_user", { p_user: u.user_id, p_reviewed: true, p_note: $("rdlg-note").value });
+    if (r.error) { msg("fail", "Couldn’t save the review: " + r.error.message); return; }
+    var pr = await sb.from("hub_profiles").select("*").eq("user_id", u.user_id).maybeSingle();
+    if (pr.data) profiles[u.user_id] = pr.data;
+    msg("ok", u.email + " marked as reviewed.");
+    renderStats(); renderList();
+  });
+  if (filter === "new") document.querySelectorAll(".filters button").forEach(function (x) { x.setAttribute("aria-pressed", x.dataset.f === "new" ? "true" : "false"); });
+
   document.querySelector(".filters").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (!b) return;
     filter = b.dataset.f;
@@ -322,6 +366,14 @@ footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-
     var b = e.target.closest("button[data-act]"); if (!b) return;
     var u = users.find(function (x) { return x.user_id === b.dataset.id; }); if (!u) return;
     msg();
+    if (b.dataset.act === "review") {
+      var pp = prof(u); rFor = u;
+      $("rdlg-p").textContent = pp.full_name + ", " + pp.company + " (" + u.email + ")";
+      $("rdlg-note").value = pp.review_note || "";
+      $("rdlg-go").textContent = pp.reviewed_at ? "Save note" : "Mark reviewed";
+      $("rdlg").showModal();
+      return;
+    }
     if (b.dataset.act === "venues") {
       vFor = u.email;
       var mine = venuesOf(u.email);

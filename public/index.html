@@ -102,6 +102,9 @@ footer nav{display:flex;flex-direction:column;gap:12px;font-weight:600}
 form{max-width:460px;border:1px solid var(--ink);background:var(--surface);padding:30px;display:flex;flex-direction:column;gap:18px}
 form h2{margin:0;font-size:32px}
 label.f{display:flex;flex-direction:column;gap:8px;font-weight:600;font-size:15px}
+select.pf,textarea.pf,input[type=tel]{width:100%;min-height:52px;padding:10px 14px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 18px Manrope,Arial,sans-serif}
+textarea.pf{min-height:96px;resize:vertical}
+#form-profile{display:flex;flex-direction:column;gap:16px}
 input[type=email],input[type=text]{width:100%;min-height:52px;padding:10px 14px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 18px Manrope,Arial,sans-serif}
 input:focus{border-color:var(--ink);outline:none}
 input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
@@ -158,6 +161,33 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
       <button class="btn" type="submit" id="verify">Sign in</button>
       <button class="linkbtn" type="button" id="resend">Send a new code</button>
       <button class="linkbtn" type="button" id="change">Use a different email</button>
+    </form>
+  </div>
+</main>
+
+<!-- FIRST SIGN-IN: short profile so Fort Green knows who uses the tools -->
+<main class="login" id="view-profile" hidden>
+  <div class="wrap">
+    <div>
+      <h1 class="display" style="font-size:clamp(64px,13vw,180px)">Welcome.</h1>
+      <p class="intro">Before you start, tell us a little about you. It takes 30 seconds, and it helps us build the right tools and get in touch if you need us.</p>
+    </div>
+    <form id="form-profile" novalidate>
+      <h2 class="display">About you</h2>
+      <p class="hint">Signed in as <strong id="pf-email"></strong></p>
+      <label class="f">Your name <input type="text" id="pf-name" autocomplete="name" maxlength="120" required></label>
+      <label class="f">Company or venue <input type="text" id="pf-company" autocomplete="organization" maxlength="160" required></label>
+      <label class="f">Your role
+        <select class="pf" id="pf-role" required>
+          <option value="">Choose…</option>
+          <option>Venue manager or owner</option><option>Promoter</option><option>Event organiser</option><option>Production or crew</option>
+          <option>Council or Safety Advisory Group</option><option>Security company</option><option>Other</option>
+        </select></label>
+      <label class="f">Phone (optional) <input type="tel" id="pf-phone" autocomplete="tel" maxlength="40"></label>
+      <label class="f">What are you planning? (optional) <textarea class="pf" id="pf-plans" maxlength="1000" placeholder="e.g. A 2,000-capacity summer festival in June"></textarea></label>
+      <p class="err" id="pf-err" role="alert" hidden></p>
+      <button class="btn" type="submit" id="pf-go">Continue to the tools</button>
+      <button class="linkbtn" type="button" id="pf-out">Not you? Sign out</button>
     </form>
   </div>
 </main>
@@ -367,10 +397,19 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     var n = new URLSearchParams(location.search).get("next");
     return n && n.charAt(0) === "/" && n.charAt(1) !== "/" ? n : null;
   }
-  function showHub(email) {
+  // Everyone outside Fort Green fills in a short profile once, before the tools. The team is emailed and reviews it on the Users page.
+  async function needsProfile(email) {
+    if (!sb || !email || isStaff(email)) return false;
+    var s = await sb.auth.getSession(), id = s.data && s.data.session && s.data.session.user.id;
+    if (!id) return false;
+    var r = await sb.from("hub_profiles").select("user_id").eq("user_id", id).maybeSingle();
+    return !r.error && !r.data;
+  }
+  async function showHub(email) {
+    if (await needsProfile(email)) { showProfile(email); return; }
     var n = nextPath();
     if (n) { location.replace(n); return; }
-    $("view-login").hidden = true; $("view-hub").hidden = false;
+    $("view-login").hidden = true; $("view-profile").hidden = true; $("view-hub").hidden = false;
     $("who").hidden = !email; $("who-email").textContent = email || "";
     $("staff").hidden = !isStaff(email);
     $("card-users").hidden = true; $("card-rates").hidden = true; $("card-portal").hidden = true; $("card-live").hidden = true;
@@ -394,9 +433,13 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
       if (v && v.count) { $("card-portal").hidden = false; $("portal-sub").textContent = v.count > 1 ? v.count + " venues" : "Your venue"; }
     }
   }
+  function showProfile(email) {
+    $("view-login").hidden = true; $("view-hub").hidden = true; $("view-profile").hidden = false;
+    $("who").hidden = true; $("pf-email").textContent = email; $("pf-name").focus();
+  }
   function isBanned(e) { return e && /banned/i.test(e.message || ""); }
   function showLogin(step) {
-    $("view-hub").hidden = true; $("view-login").hidden = false; $("who").hidden = true;
+    $("view-hub").hidden = true; $("view-profile").hidden = true; $("view-login").hidden = false; $("who").hidden = true;
     $("form-email").hidden = step === "code"; $("form-code").hidden = step !== "code";
     (step === "code" ? $("code") : $("email")).focus();
   }
@@ -448,6 +491,23 @@ input.code{font-size:28px;letter-spacing:.3em;font-variant-numeric:tabular-nums}
     signedIn = true;
     showHub(r.data.user.email);
   });
+
+  $("form-profile").addEventListener("submit", async function (e) {
+    e.preventDefault(); err("pf-err");
+    var name = $("pf-name").value.trim(), company = $("pf-company").value.trim(), role = $("pf-role").value;
+    if (name.length < 2) { err("pf-err", "Enter your name."); $("pf-name").focus(); return; }
+    if (company.length < 2) { err("pf-err", "Enter your company or venue."); $("pf-company").focus(); return; }
+    if (!role) { err("pf-err", "Choose your role."); $("pf-role").focus(); return; }
+    var s = await sb.auth.getSession(), user = s.data && s.data.session && s.data.session.user;
+    if (!user) { showLogin("email"); return; }
+    busy($("pf-go"), true, "Saving…");
+    var r = await sb.from("hub_profiles").insert({ user_id: user.id, email: (user.email || "").toLowerCase(), full_name: name, company: company, role: role,
+      phone: $("pf-phone").value.trim(), plans: $("pf-plans").value.trim() });
+    busy($("pf-go"), false, "Continue to the tools");
+    if (r.error && !/duplicate/i.test(r.error.message)) { err("pf-err", "We couldn’t save that: " + r.error.message); return; }
+    showHub(user.email);
+  });
+  $("pf-out").addEventListener("click", async function () { await sb.auth.signOut(); signedIn = false; showLogin("email"); });
 
   $("resend").addEventListener("click", async function () {
     err("code-err");

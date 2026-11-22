@@ -19,8 +19,14 @@
     if (r.data && r.data.session) {
       return sb.rpc("hub_is_blocked").then(function (b) {
         if (b && b.data === true) { return sb.auth.signOut().finally(function () { location.replace("/?removed=1"); }); }
-        reveal();
-        if (document.body) addBar(); else document.addEventListener("DOMContentLoaded", addBar);
+        // People outside Fort Green fill in a short profile once (on the hub) before using the tools.
+        var email = ((r.data.session.user || {}).email || "").toLowerCase(), staff = (c.STAFF_DOMAIN || "").toLowerCase();
+        var check = staff && email.endsWith("@" + staff) ? Promise.resolve({ data: true }) : sb.from("hub_profiles").select("user_id").eq("user_id", r.data.session.user.id).maybeSingle();
+        return check.then(function (p) {
+          if (!p.error && !p.data) { location.replace("/?next=" + encodeURIComponent(location.pathname + location.search + location.hash)); return; }
+          reveal();
+          if (document.body) addBar(); else document.addEventListener("DOMContentLoaded", addBar);
+        });
       });
     } else {
       location.replace("/?next=" + encodeURIComponent(location.pathname + location.hash));

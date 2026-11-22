@@ -147,3 +147,9 @@ Every tool's Save as PDF builds a separate A4 portrait document with `FGReport` 
 - **Emails:** n8n workflow "FG Talent – booking emails" (webhook `fg-talent-booking`, header from vault secret `tm_booking_n8n_secret`), sent from Gmail as "Fort Green Bookings": booking request, updated details, reminders, cancellations to the artist; accepted, declined and no-answer alerts to admins.
 - **Automatic reminders:** daily job `tm-booking-daily` (09:05 UTC, `tm_private.daily()`): chases unanswered requests by email every 2 days, 3 times, then emails admins; reminds confirmed artists 7 days and 1 day before the event.
 - **Automatic WhatsApp (later):** once Meta approves the WhatsApp Business Platform account and a message template, add a WhatsApp Business Cloud node to "FG Talent – booking emails". Its "Build booking email" step already outputs `artist_phone` and `whatsapp_text`.
+
+## Sign-up profiles and review
+
+- **First sign-in:** everyone outside @fortgreen.co.uk fills in a short profile (name, company or venue, role, optional phone and plans) on the hub before using any tool. Table `hub_profiles` (own row only; admins read all). `auth-guard.js` sends anyone without a profile back to the hub, then on to the tool they wanted.
+- **Alert:** a trigger on `hub_profiles` posts to the n8n workflow "FG Hub – new sign-up alert" (webhook `fg-hub-signup`, header from vault secret `cp_n8n_secret`), which emails info@fortgreen.co.uk with their details and a link to `/users/#new`.
+- **Review:** the Users page has a "To review" filter and count. `hub_review_user(user, reviewed, note)` (admins only) marks someone reviewed with a note. Removing access works as before.
