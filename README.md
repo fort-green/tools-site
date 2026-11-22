@@ -86,7 +86,7 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 - **Invoicing details:** `cp_billing`, with every change kept in `cp_billing_log`.
 - **Live now:** the Live now tab shows shifts running at the venue (or starting within the hour) with people inside, came in, left, last count and groups, refreshed every 20 seconds. The `client-portal` function's `venue_live` action calls `portal_live` in Staff Check-In. Capacity comes from the venue capacity staff set in Client access (`cp_venues.capacity` and `warn_pct`, via the `set_capacity` action), or failing that the capacity the door team set on the shift. The bar turns amber at the warning level and red at capacity.
 - **End of shift overview:** n8n workflow "FG Client portal – end of shift overview" runs every 15 minutes and calls the `client-portal` function with the `x-fg-cp-secret` header (checked against vault secret `cp_n8n_secret` by `cp_n8n_ok`). The function returns shifts that ended 30 minutes to 12 hours ago with door counts, at venues with client emails, that are not yet in `cp_shift_reports`. n8n emails each linked client separately (people in, peak inside, busiest 15 minutes, % of capacity, hour by hour, groups), then calls `report_sent` so each shift is only sent once.
-- **Emails:** n8n workflow "FG Client portal – email notifications" (sierra-six), sent through Gmail. Fort Green alerts go to info@fortgreen.co.uk (set as OPS in its Build email node); clients get emails when requests are decided and invoices are added.
+- **Emails:** n8n workflow "FG Client portal – email notifications" (sierra-six), sent through Gmail. Fort Green alerts go to tools@fortgreen.co.uk (the Send email step swaps the OPS address in Build email for tools@); clients get emails when requests are decided and invoices are added.
 
 ## Printable reports (`public/report.js`)
 
@@ -132,7 +132,7 @@ Every tool's Save as PDF builds a separate A4 portrait document with `FGReport` 
 
 - **Rate card:** table `qe_rates` (excluding VAT). Only admins (`hub_is_admin()`) can read or change it, on `/quote/rates/`; a trigger records who changed what. Blank rates are left out of estimates and listed as "not priced".
 - **Estimates:** `qe_estimate(jsonb)` (security definer, signed-in users only) works out the total and per-service subtotals on the server, so clients never see unit rates. Staff and crew pay at least the minimum shift (`sec_min_hours`, `crew_min_hours`) per person per day; generators are per day plus delivery once each; the booking fee is added once.
-- **Firm quote requests** post (with sign-in proof) to the n8n workflow "Quote estimator: firm quote request" (webhook `quote-request`): emails info@fortgreen.co.uk (reply goes to the client), sends the client a confirmation with the "estimate, not a quote" box at the top, logs to the "Quote requests" tab, adds opted-in people to the Email list.
+- **Firm quote requests** post (with sign-in proof) to the n8n workflow "Quote estimator: firm quote request" (webhook `quote-request`): emails tools@fortgreen.co.uk (reply goes to the client), sends the client a confirmation with the "estimate, not a quote" box at the top, logs to the "Quote requests" tab, adds opted-in people to the Email list.
 
 ## Talent Match: what lives outside this repo
 
@@ -151,5 +151,9 @@ Every tool's Save as PDF builds a separate A4 portrait document with `FGReport` 
 ## Sign-up profiles and review
 
 - **First sign-in:** everyone outside @fortgreen.co.uk fills in a short profile (name, company or venue, role, optional phone and plans) on the hub before using any tool. Table `hub_profiles` (own row only; admins read all). `auth-guard.js` sends anyone without a profile back to the hub, then on to the tool they wanted.
-- **Alert:** a trigger on `hub_profiles` posts to the n8n workflow "FG Hub – new sign-up alert" (webhook `fg-hub-signup`, header from vault secret `cp_n8n_secret`), which emails info@fortgreen.co.uk with their details and a link to `/users/#new`.
+- **Alert:** a trigger on `hub_profiles` posts to the n8n workflow "FG Hub – new sign-up alert" (webhook `fg-hub-signup`, header from vault secret `cp_n8n_secret`), which emails tools@fortgreen.co.uk with their details and a link to `/users/#new`.
 - **Review:** the Users page has a "To review" filter and count. `hub_review_user(user, reviewed, note)` (admins only) marks someone reviewed with a note. Removing access works as before.
+
+## Email inbox
+
+All Fort Green alerts from the tools (sign-ups, client portal, quote requests, Martyn's Law review requests, Talent Match accepted/declined/no answer, Xero drafts) go to **tools@fortgreen.co.uk**, and every email sent to clients, visitors and artists has tools@ as its reply-to. Emails are still sent through the n8n Gmail credential "Gmail account" until a credential for tools@ is connected. Sign-in codes come from access@fortgreen.co.uk through Resend and are separate.
