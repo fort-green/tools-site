@@ -19,7 +19,7 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 | `public/licensing/` | Licensing and TEN guidance. The dated action plan unlocks after name/email and is emailed by n8n workflow `licensing-lead`, which logs to the **Licensing leads** tab |
 | `public/power-planner/` | Event power planner, with a Fuel tab: litres per hour, amount to order (+10%, rounded to 50 L), hours per tank, refuelling schedule (refill at a quarter tank), cost and CO2 (2.66 kg CO2e/L diesel). Works from the equipment list or a generator size and load typed in |
 | `public/capacity/` | Capacity calculator: safe capacity from floor space and exits (indoor, Approved Document B) or crowd density and egress time (outdoor, Green Guide rates), with Martyn's Law tier |
-| `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in (staff) |
+| `public/equipment/` | Equipment check-out: kit lists, issue, receipt and check-in. Open to every signed-in user; each account's kit is private, Fort Green staff share one team |
 | `public/portal/` | Client portal: bookings calendar, documents, extra staff requests, invoicing details, toolkit; staff manage client access |
 | `supabase/functions/client-portal/` | Source of the client-portal edge function (deployed to Supabase, not served by Netlify) |
 | `public/weather/` | Weather and wind: Met Office forecast and gusts for up to 3 saved UK places, 48-hour wind chart, optional caution/stop gust limits. The same places show as a swipeable gallery on the hub's first card |
@@ -57,7 +57,8 @@ Source for **https://tools.fortgreen.co.uk**. Netlify (project `tools-fortgreen`
 ## Equipment tool: what lives outside this repo
 
 - **Database:** Supabase project FORT GREEN PROJECT1, tables `eq_*`, functions `eq_issue`, `eq_acknowledge`, `eq_check_in` and `eq_cancel`.
-- **Emails:** the n8n workflow "FG Equipment – email notifications" (sierra-six), sent through Gmail. The database posts to it when kit is issued, receipt is confirmed or kit is checked in. A daily 09:00 job (`eq-overdue-reminders`) sends overdue reminders.
+- **Who sees what:** every kit list and check-out has a `team`: `fortgreen.co.uk` for all @fortgreen.co.uk accounts (shared), otherwise the issuer's own email (private to them). `eq_team()` works this out; row-level security lets you see your team's kit plus anything issued to your email. Only the issuing team can cancel or check kit in. Accounts outside Fort Green can issue up to 25 kits per 24 hours (set in `eq_issue`).
+- **Emails:** the n8n workflow "FG Equipment – email notifications" (sierra-six), sent through Gmail. Kit issued by an outside account is sent as "<their company> via Fort Green", names them as the issuer and replies go to them; their company comes from `hub_profiles`. The database posts to it when kit is issued, receipt is confirmed or kit is checked in. A daily 09:00 job (`eq-overdue-reminders`) sends overdue reminders.
 
 ## Martyn's Law checker: what lives outside this repo
 

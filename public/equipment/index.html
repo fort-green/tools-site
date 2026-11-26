@@ -141,7 +141,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   <nav class="tabs" id="tabs" aria-label="Equipment sections"></nav>
   <div id="app" class="loading">Loading…</div>
 </main>
-<footer><div class="wrap">Kit issued through this tool is logged with the time and the person who issued, received and returned it. Questions: <a href="mailto:info@fortgreen.co.uk">info@fortgreen.co.uk</a></div></footer>
+<footer><div class="wrap">Kit issued through this tool is logged with the time and the person who issued, received and returned it. Questions about the tool: <a href="mailto:tools@fortgreen.co.uk">tools@fortgreen.co.uk</a></div></footer>
 
 <script>
 (function () {
@@ -152,7 +152,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     app.innerHTML = '<p class="err">This tool needs sign-in. Add the Supabase details to config.js.</p>'; return;
   }
   var sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY);
-  var me = { email: "", staff: false };
+  var me = { email: "", staff: false, fg: false, team: "" };  // staff = can issue and manage (every signed-in user); fg = Fort Green account
   var STATUS = { issued: "Awaiting receipt", acknowledged: "Out", partial: "Part returned", returned: "Returned", cancelled: "Cancelled" };
   var OPEN = ["issued", "acknowledged", "partial"];
 
@@ -197,7 +197,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
 
   /* ---------- router ---------- */
   async function render() {
-    var h = location.hash || (me.staff ? "#out" : "#mine");
+    var h = location.hash || (!me.fg && counts.mine ? "#mine" : "#out");
     var m;
     app.className = "loading"; app.innerHTML = "Loading…";
     try {
@@ -233,7 +233,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       (me.staff && kind !== "mine" ? '<a class="btn" href="#issue">Issue kit</a>' : "") + "</div></div>" +
       '<p class="hint" style="margin-bottom:20px">' + hint + "</p>";
     if (!rows.length) {
-      html += '<div class="empty">' + (kind === "mine" ? "Nothing has been issued to you." : kind === "out" ? "No kit is out right now." : "Nothing here yet.") + "</div>";
+      html += '<div class="empty">' + (kind === "mine" ? "Nothing has been issued to you." : kind === "out" ? "No kit is out right now. Build a kit list, then issue it to anyone by email: they confirm receipt, and you check it back in." : "Nothing here yet.") + "</div>";
     } else {
       html += '<div class="list">' + rows.map(function (co) {
         var who = kind === "mine" ? (co.event || "—") : (co.assignee_name || co.assignee_email);
@@ -412,24 +412,26 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     if (ri.error) throw ri.error; if (rl.error) throw rl.error;
     var items = ri.data, log = rl.data;
     var mine = co.assignee_email === me.email, open = OPEN.indexOf(co.status) > -1;
+    var manage = co.team === me.team;  // issued by me (or, for Fort Green staff, by the Fort Green team)
+    var issuer = co.issuer_org || (co.team === "fortgreen.co.uk" ? "Fort Green" : co.issuer_name || co.issued_by);
     var justIssued = sessionStorage.getItem("eq_just_issued") === id; sessionStorage.removeItem("eq_just_issued");
 
-    var html = (me.staff ? '<a class="back" href="#out">← Out now</a>' : '<a class="back" href="#mine">← My kit</a>') +
+    var html = (manage ? '<a class="back" href="#out">← Out now</a>' : '<a class="back" href="#mine">← My kit</a>') +
       '<div class="sechead"><h2 class="display">' + esc(co.kit_name) + '</h2><div class="actions">' + pill(co) + "</div></div>" +
       '<div class="panel"><dl class="meta">' +
       "<div><dt>Reference</dt><dd>" + esc(co.ref) + "</dd></div>" +
       "<div><dt>Issued to</dt><dd>" + esc(co.assignee_name || "—") + '<br><span class="hint">' + esc(co.assignee_email) + "</span></dd></div>" +
       "<div><dt>Event or site</dt><dd>" + esc(co.event || "—") + "</dd></div>" +
       "<div><dt>Due back</dt><dd" + (overdue(co) ? ' class="bad"' : "") + ">" + fmtDate(co.due_back) + "</dd></div>" +
-      "<div><dt>Issued</dt><dd>" + fmtTime(co.issued_at) + '<br><span class="hint">by ' + esc(co.issued_by) + "</span></dd></div>" +
+      "<div><dt>Issued</dt><dd>" + fmtTime(co.issued_at) + '<br><span class="hint">by ' + esc(co.issued_by) + (co.issuer_org && co.team !== "fortgreen.co.uk" ? " (" + esc(co.issuer_org) + ")" : "") + "</span></dd></div>" +
       "<div><dt>Receipt confirmed</dt><dd>" + (co.ack_at ? fmtTime(co.ack_at) + '<br><span class="hint">signed ' + esc(co.ack_name) + "</span>" : "Not yet") + "</dd></div>" +
       "</dl>" + (co.notes ? '<p style="margin:20px 0 0"><strong>Notes:</strong> ' + esc(co.notes) + "</p>" : "") +
       (co.ack_note ? '<p style="margin:12px 0 0"><strong>Note from ' + esc(co.ack_name) + ":</strong> " + esc(co.ack_note) + "</p>" : "") + "</div>";
 
     // share panel for staff while awaiting receipt
-    if (me.staff && co.status === "issued") {
+    if (manage && co.status === "issued") {
       var link = linkFor(id);
-      var text = "Hi" + (co.assignee_name ? " " + co.assignee_name.split(" ")[0] : "") + ", Fort Green has issued you kit (" + co.kit_name + ", ref " + co.ref + ")" +
+      var text = "Hi" + (co.assignee_name ? " " + co.assignee_name.split(" ")[0] : "") + ", " + issuer + " has issued you kit (" + co.kit_name + ", ref " + co.ref + ")" +
         (co.due_back ? ", due back " + fmtDate(co.due_back) : "") + ". Please confirm you've received it: " + link + " (sign in with " + co.assignee_email + ")";
       html += '<div class="panel share noprint"><h3 class="display">' + (justIssued ? "Kit issued. Now send the link" : "Waiting for them to confirm") + "</h3>" +
         '<p class="hint" style="margin-bottom:16px">' + esc(co.assignee_name || co.assignee_email) + " signs in with " + esc(co.assignee_email) + " and confirms what they’ve received.</p>" +
@@ -445,11 +447,11 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
         items.map(function (it) { return '<tr><td><input type="checkbox" class="rcv" data-id="' + it.id + '" checked aria-label="Received ' + esc(it.name) + '" style="width:26px;height:26px;accent-color:var(--ink)"></td><td><strong>' + esc(it.name) + "</strong>" + (it.serial ? '<div class="hint">' + esc(it.serial) + "</div>" : "") + '</td><td class="num">' + it.qty + "</td></tr>"; }).join("") +
         '</tbody></table></div><div class="fields"><label class="f">Your full name<input type="text" id="a-name" autocomplete="name" value="' + esc(co.assignee_name || "") + '"></label>' +
         '<label class="f">Anything to report?<input type="text" id="a-note" placeholder="Optional, e.g. one earpiece is cracked"></label></div>' +
-        '<label class="check"><input type="checkbox" id="a-decl"><span>I confirm I have received the items ticked above and will return them to Fort Green' + (co.due_back ? " by " + fmtDate(co.due_back) : "") + ".</span></label>" +
+        '<label class="check"><input type="checkbox" id="a-decl"><span>I confirm I have received the items ticked above and will return them to ' + esc(issuer) + (co.due_back ? " by " + fmtDate(co.due_back) : "") + ".</span></label>" +
         '<div id="a-msg"></div><div class="btnrow"><button class="btn" type="submit" id="a-go">Confirm receipt</button></div></form>';
     } else {
       // items table (read-only, or check-in for staff)
-      var canCheckIn = me.staff && open;
+      var canCheckIn = manage && open;
       html += '<form class="panel stack" id="inform" novalidate><h3 class="display">' + (canCheckIn ? "Check kit in" : "Items") + "</h3>" +
         (canCheckIn ? '<p class="hint">Enter what has come back. Mark anything that won’t come back as Missing so the kit can be closed.</p>' : "") +
         '<div class="tablewrap"><table class="ci"><thead><tr><th>Item</th><th class="num">Issued</th><th>Serial / asset no.</th><th>Received</th><th class="num">Returned</th><th>Condition</th>' + (canCheckIn ? "<th>Note</th>" : "") + "</tr></thead><tbody>" +
@@ -533,8 +535,10 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     var s = r.data && r.data.session; if (!s) return; // auth-guard redirects
     me.email = (s.user.email || "").toLowerCase();
     var d = (c.STAFF_DOMAIN || "").toLowerCase();
-    me.staff = !!d && me.email.endsWith("@" + d);
-    document.getElementById("who").innerHTML = "Signed in as <strong>" + esc(me.email) + "</strong>" + (me.staff ? " · staff" : "");
+    me.fg = !!d && me.email.endsWith("@" + d);
+    me.staff = true;  // everyone signed in can keep kit lists and issue kit; the database keeps each account's kit private
+    me.team = me.fg ? d : me.email;
+    document.getElementById("who").innerHTML = "Signed in as <strong>" + esc(me.email) + "</strong>" + (me.fg ? " · Fort Green team" : " · your kit lists and check-outs are private to you");
     window.addEventListener("hashchange", render);
     render();
   });
