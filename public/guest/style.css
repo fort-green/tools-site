@@ -1,0 +1,38 @@
+/* Shared styles for the public guest pages (/guest/, /guest/join/) and the door screen (/door/). */
+:root{--bg:#fbfbfb;--surface:#fff;--ink:#100f10;--body:#2b2a2b;--muted:#5f5f5f;--line:#cecece;--soft:#f1f1f1;
+  --err:#b42318;--err-soft:#fbe4e1;--ok:#1d6b3a;--ok-soft:#e3f3e8;--warn:#7a5a00;--warn-soft:#fff4cc;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#100f10;--surface:#1a191a;--ink:#fff;--body:#e2e2e2;--muted:#a9a9a9;--line:#3b3a3b;--soft:#232223;
+  --err:#ff7b6e;--err-soft:#2d1513;--ok:#7fd69b;--ok-soft:#12271a;--warn:#ffd666;--warn-soft:#2e2507;color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 Manrope,Arial,sans-serif}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+[hidden]{display:none!important}
+.display{font-family:Antonio,'Arial Narrow',sans-serif;font-weight:700;text-transform:uppercase;line-height:.95;letter-spacing:.005em}
+.bar{background:#100f10;color:#fff;padding:12px 16px;font:700 18px Antonio,'Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.bar small{font:600 13px Manrope,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#d9d9d9}
+.bar button{background:none;border:0;color:#fff;font:600 13px Manrope,Arial,sans-serif;text-decoration:underline;cursor:pointer;padding:6px 0}
+.wrap{max-width:620px;margin:0 auto;padding:0 16px}
+h1{margin:28px 0 8px;font-size:clamp(40px,12vw,64px)}
+.kicker{margin:24px 0 0;font-size:14px;font-weight:600;color:var(--muted)}
+.hint{margin:0;font-size:15px;color:var(--muted)}
+.panel{border:1px solid var(--ink);background:var(--surface);padding:20px;margin:20px 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 20px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:0;font:700 14px Manrope,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.sm{min-height:40px;padding:0 14px;font-size:12px}
+.btn.big{min-height:60px;font-size:16px;width:100%}
+.btn[disabled]{opacity:.55;cursor:wait}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px}
+input,select{width:100%;min-height:50px;padding:10px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 16px Manrope,Arial,sans-serif}
+input:focus,select:focus{border-color:var(--ink);outline:none}
+.stack{display:flex;flex-direction:column;gap:16px}
+.err{margin:0;padding:12px 14px;background:var(--err-soft);color:var(--err);font-weight:600;font-size:15px}
+.okmsg{margin:0;padding:12px 14px;background:var(--ok-soft);color:var(--ok);font-weight:600;font-size:15px}
+.pill{display:inline-block;padding:3px 9px;border:1px solid currentColor;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.pill.ok{color:var(--ok);background:var(--ok-soft)} .pill.warn{color:var(--warn);background:var(--warn-soft)} .pill.bad{color:var(--err);background:var(--err-soft)} .pill.mute{color:var(--muted)}
+dl.meta{margin:0;display:grid;gap:10px}
+dl.meta dt{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+dl.meta dd{margin:2px 0 0;font-size:17px}
+footer{border-top:1px solid var(--line);margin-top:48px;padding:20px 0 36px;font-size:13px;color:var(--muted)}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guest pass | Fort Green</title>
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/guest/style.css">
+<style>
+.pass{border:2px solid var(--ink);background:var(--surface);margin:20px 0;text-align:center}
+.pass .qr{background:#fff;padding:20px}
+.pass .qr img{display:block;width:100%;max-width:300px;height:auto;margin:0 auto;image-rendering:pixelated}
+.pass .code{border-top:1px solid var(--line);padding:16px}
+.pass .code b{display:block;font-size:52px;letter-spacing:.14em;line-height:1}
+.pass .code span{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="bar"><span>Guest list</span><small>Fort Green</small></div>
+<main class="wrap">
+  <p class="hint" id="loading" style="margin-top:32px">Loading your pass…</p>
+  <div id="bad" hidden>
+    <h1 class="display">Pass not found.</h1>
+    <p>This link isn’t valid. Open the link in your guest list email again, or ask the person who added you.</p>
+  </div>
+  <div id="pass" hidden>
+    <p class="kicker" id="p-venue"></p>
+    <h1 class="display" id="p-title"></h1>
+    <p class="hint" id="p-when" style="font-size:17px;color:var(--ink)"></p>
+    <div class="pass">
+      <div class="qr"><img id="p-qr" alt="Your guest list QR code" width="300" height="300"></div>
+      <div class="code"><span>Your code</span><b class="display" id="p-code"></b></div>
+    </div>
+    <p id="p-in" class="okmsg" hidden></p>
+    <dl class="meta panel">
+      <div><dt>Name</dt><dd id="p-name"></dd></div>
+      <div><dt>Party</dt><dd id="p-party"></dd></div>
+      <div id="p-addr-wrap"><dt>Where</dt><dd id="p-addr"></dd></div>
+    </dl>
+    <p class="hint">Show this QR code at the door. No signal? Take a screenshot now, or give your name or code. Entry is at the venue’s discretion and subject to its conditions of entry; bring photo ID if you’re asked for it.</p>
+  </div>
+  <footer>Guest list run by Fort Green. Questions: <a href="mailto:tools@fortgreen.co.uk">tools@fortgreen.co.uk</a></footer>
+</main>
+<script src="/guest/checkin-api.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var t = location.hash.replace(/^#/, "").trim();
+  function fail() { $("loading").hidden = true; $("bad").hidden = false; }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t)) return fail();
+  FGCheckin.rpc("guest_pass", { p_token: t }).then(function (g) {
+    if (!g) return fail();
+    var tz = { timeZone: "Europe/London" }, st = new Date(g.starts_at), en = new Date(g.ends_at);
+    var hm = function (d) { return d.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, tz)); };
+    $("p-venue").textContent = g.venue || "";
+    $("p-title").textContent = g.title || "Guest list";
+    $("p-when").textContent = st.toLocaleDateString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long" }, tz)) + ", " + hm(st) + " to " + hm(en);
+    $("p-qr").src = FGCheckin.qr(t);
+    $("p-code").textContent = g.code;
+    $("p-name").textContent = g.name;
+    $("p-party").textContent = g.plus_ones ? "You and " + g.plus_ones + " guest" + (g.plus_ones === 1 ? "" : "s") : "Just you";
+    if (g.address) $("p-addr").textContent = g.address; else $("p-addr-wrap").hidden = true;
+    if (g.admitted > 0) { $("p-in").hidden = false; $("p-in").textContent = "Checked in: " + g.admitted + " of " + (g.plus_ones + 1) + " in your party."; }
+    document.title = (g.title || "Guest pass") + " | Guest pass";
+    $("loading").hidden = true; $("pass").hidden = false;
+  }).catch(fail);
+})();
+</script>
+</body>
+</html>

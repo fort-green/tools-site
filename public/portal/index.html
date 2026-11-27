@@ -51,7 +51,7 @@ h3.sub{margin:36px 0 12px;font-size:28px}
 .loading{padding:48px 0;color:var(--muted)}
 .panel{border:1px solid var(--ink);background:var(--surface);padding:24px;margin-bottom:24px}
 label.f{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:15px}
-input[type=email],input[type=text],input[type=date],input[type=number],input[type=file],select,textarea{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 16px Manrope,Arial,sans-serif}
+input[type=email],input[type=text],input[type=search],input[type=date],input[type=number],input[type=file],select,textarea{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:0;background:var(--surface);color:var(--ink);font:500 16px Manrope,Arial,sans-serif}
 input[type=file]{padding:10px}
 textarea{min-height:90px;resize:vertical}
 input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none}
@@ -210,6 +210,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       <a href="#bookings" data-tab="bookings">Bookings</a>
       <a href="#live" data-tab="live">Live now</a>
       <a href="#booking" data-tab="booking">New booking <span class="count" id="bk-count" hidden></span></a>
+      <a href="#guests" data-tab="guests">Guest list</a>
       <a href="#documents" data-tab="documents">Documents</a>
       <a href="#counts" data-tab="counts">Door counts</a>
       <a href="#extra" data-tab="extra">Extra staff <span class="count" id="pending-count" hidden></span></a>
@@ -273,6 +274,63 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       </details>
       <h3 class="display sub" style="margin-top:8px">Booking requests</h3>
       <div id="bk-list"></div>
+    </section>
+
+    <!-- GUEST LIST -->
+    <section id="t-guests" data-panel="guests" hidden>
+      <div class="sechead"><h2 class="display">Guest list</h2></div>
+      <div class="panel">
+        <p style="margin:0 0 16px">Add names to a booked shift. Anyone with an email gets a QR code to show at the door, and our door team checks them in on the night.</p>
+        <label class="f">Shift <select id="gl-job"></select></label>
+      </div>
+      <div id="gl-body" hidden>
+        <div class="dc-tiles" id="gl-tiles"></div>
+        <details class="bk-form" id="gl-add-d" open>
+          <summary>Add a guest</summary>
+          <div class="inner">
+            <form id="gl-add" class="stack" novalidate>
+              <div class="fields">
+                <label class="f">Full name <input type="text" id="gl-name" maxlength="120" autocomplete="off"></label>
+                <label class="f">Plus-ones <input type="number" id="gl-plus" min="0" max="20" value="0" inputmode="numeric"></label>
+                <label class="f">Email (optional, for their QR pass) <input type="email" id="gl-email" maxlength="200" autocomplete="off"></label>
+                <label class="f">Note for the door (optional) <input type="text" id="gl-note" maxlength="300" placeholder="e.g. VIP, friend of the DJ"></label>
+              </div>
+              <div class="btnrow"><button class="btn" type="submit" id="gl-add-go">Add to the list</button></div>
+            </form>
+          </div>
+        </details>
+        <details class="bk-form" id="gl-csv-d">
+          <summary>Upload a list</summary>
+          <div class="inner stack">
+            <p style="margin:0">Upload a CSV, or paste names from a spreadsheet: one guest per row, with columns for <strong>name</strong>, and optionally <strong>email</strong>, <strong>plus ones</strong> and <strong>note</strong>. A header row is detected automatically.</p>
+            <label class="f">CSV file <input type="file" id="gl-file" accept=".csv,text/csv,text/plain"></label>
+            <label class="f">Or paste <textarea id="gl-paste" placeholder="Name, Email, Plus ones, Note&#10;Sam Jones, sam@example.com, 1, VIP"></textarea></label>
+            <p class="hint" id="gl-preview"></p>
+            <div class="btnrow"><button class="btn" type="button" id="gl-csv-go" disabled>Add these guests</button></div>
+          </div>
+        </details>
+        <details class="bk-form" id="gl-link-d">
+          <summary>Sign-up link</summary>
+          <div class="inner stack">
+            <p style="margin:0">Share a link so guests can add themselves. They get their QR code by email. Set a limit so the list can’t overfill.</p>
+            <div class="fields">
+              <label class="f">Limit (people, including plus-ones) <input type="number" id="gl-cap" min="1" max="5000" inputmode="numeric" placeholder="No limit"></label>
+              <label class="f">Plus-ones each guest can bring <input type="number" id="gl-maxplus" min="0" max="10" value="1" inputmode="numeric"></label>
+            </div>
+            <div id="gl-link" hidden>
+              <label class="f">Link to share <input type="text" id="gl-url" readonly></label>
+              <p class="hint" id="gl-link-state" style="margin-top:8px"></p>
+            </div>
+            <div class="btnrow">
+              <button class="btn" type="button" id="gl-link-save">Turn on sign-up link</button>
+              <button class="btn ghost" type="button" id="gl-link-copy" hidden>Copy link</button>
+              <button class="btn danger sm" type="button" id="gl-link-close" hidden>Close sign-ups</button>
+            </div>
+          </div>
+        </details>
+        <div class="sechead" style="margin-top:8px"><h3 class="display sub" style="margin:0">Names</h3><input type="search" id="gl-q" placeholder="Search names" style="max-width:260px" aria-label="Search guests"></div>
+        <div class="list" id="gl-list"></div>
+      </div>
     </section>
 
     <!-- DOCUMENTS -->
@@ -477,6 +535,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     else if (S.tab === "invoicing") loadBilling();
     else if (S.tab === "access") loadAccess();
     else if (S.tab === "live") loadLive();
+    else if (S.tab === "guests") loadGuestShifts();
   }
   document.querySelector(".tabs").addEventListener("click", function (e) {
     var a = e.target.closest("a[data-tab]"); if (!a) return;
@@ -824,6 +883,157 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
         '</div></div><div class="acts">' + acts + "</div></div>";
     }).join("") : '<div class="empty">No requests yet.</div>';
   }
+
+  /* ---------- guest list (stored per shift in Staff Check-In) ---------- */
+  var GL = { job: null, data: null, rows: [], timer: null };
+  async function loadGuestShifts() {
+    clearInterval(GL.timer);
+    $("gl-job").innerHTML = '<option value="">Loading shifts…</option>';
+    var now = new Date(), from = new Date(now.getTime() - 864e5), to = new Date(now.getTime() + 61 * 864e5);
+    try {
+      var r = await api({ action: "schedule", venue_id: S.venue, from: from.toISOString(), to: to.toISOString() });
+      var up = (r.shifts || []).filter(function (s) { return new Date(s.ends_at) > now; });
+      $("gl-job").innerHTML = up.length ? up.map(function (s) {
+        return '<option value="' + esc(s.id) + '">' + esc(dayLong(s.starts_at)) + ", " + esc(hm(s.starts_at)) + "–" + esc(hm(s.ends_at)) + " · " + esc(s.title || "Shift") + "</option>";
+      }).join("") : '<option value="">No booked shifts in the next two months</option>';
+      var keep = up.some(function (s) { return s.id === GL.job; }) ? GL.job : (up[0] && up[0].id) || null;
+      $("gl-job").value = keep || ""; GL.job = keep;
+      $("gl-body").hidden = !keep;
+      if (keep) loadGuests();
+    } catch (e) { $("gl-job").innerHTML = '<option value="">Couldn’t load shifts</option>'; msg("fail", e.message); }
+  }
+  $("gl-job").addEventListener("change", function () { GL.job = $("gl-job").value || null; $("gl-body").hidden = !GL.job; if (GL.job) loadGuests(); });
+  async function loadGuests(quiet) {
+    var job = GL.job; if (!job) return;
+    if (!quiet) $("gl-list").innerHTML = '<div class="loading">Loading…</div>';
+    try {
+      var d = await api({ action: "guests", venue_id: S.venue, job_id: job });
+      if (job !== GL.job || S.tab !== "guests") return;
+      GL.data = d; drawGuests();
+      clearInterval(GL.timer);
+      var live = new Date(d.job.starts_at) - Date.now() < 36e5 && new Date(d.job.ends_at) > Date.now();
+      if (live) GL.timer = setInterval(function () { if (S.tab !== "guests") { clearInterval(GL.timer); return; } if (document.visibilityState === "visible") loadGuests(true); }, 30000);
+    } catch (e) { $("gl-list").innerHTML = ""; msg("fail", "Couldn’t load the guest list: " + e.message); }
+  }
+  function drawGuests() {
+    var d = GL.data, t = d.totals, su = d.signup;
+    var tile = function (big, small) { return '<div class="dc-tile"><b class="display">' + big + "</b><span>" + small + "</span></div>"; };
+    $("gl-tiles").innerHTML = tile(t.names, "Names") + tile(t.expected, "People expected") + tile(t.admitted, "Checked in") + (su && su.cap ? tile(Math.max(0, su.cap - t.expected), "Sign-up places left") : "");
+    $("gl-link").hidden = !su; $("gl-link-copy").hidden = !su || !su.open; $("gl-link-close").hidden = !su || !su.open;
+    if (su) {
+      $("gl-url").value = location.origin + "/guest/join/#" + su.slug;
+      $("gl-cap").value = su.cap || ""; $("gl-maxplus").value = su.max_plus;
+      $("gl-link-state").textContent = su.open ? "Sign-ups are open." : "Sign-ups are closed. Open them again to use this link.";
+      $("gl-link-save").textContent = su.open ? "Save changes" : "Open sign-ups";
+    } else $("gl-link-save").textContent = "Turn on sign-up link";
+    var q = $("gl-q").value.trim().toLowerCase();
+    var src = { client: "Added", csv: "Uploaded", signup: "Signed up" };
+    var rows = d.guests.filter(function (g) { return !q || g.name.toLowerCase().indexOf(q) > -1 || (g.email || "").indexOf(q) > -1; });
+    $("gl-list").innerHTML = rows.length ? rows.map(function (g) {
+      var party = g.plus_ones + 1;
+      var st = g.admitted >= party ? '<span class="pill ok">In</span>' : g.admitted ? '<span class="pill warn">' + g.admitted + " of " + party + " in</span>" : "";
+      return '<div class="row"><div><div class="t">' + esc(g.name) + (g.plus_ones ? " +" + g.plus_ones : "") + " " + st + '</div><div class="s">' +
+        [g.email ? esc(g.email) : "No email, so no QR pass", g.note ? "“" + esc(g.note) + "”" : "", src[g.source] + " " + esc(dayShort(g.created_at)), "Code " + esc(g.code)].filter(Boolean).join(" · ") +
+        '</div></div><div class="acts">' + (g.email ? '<button class="btn ghost sm" type="button" data-gl-resend="' + esc(g.id) + '">Resend pass</button>' : "") +
+        (g.admitted ? "" : '<button class="btn danger sm" type="button" data-gl-del="' + esc(g.id) + '">Remove</button>') + "</div></div>";
+    }).join("") : '<div class="empty">' + (q ? "No names match." : "No names yet. Add guests above, upload a list or turn on the sign-up link.") + "</div>";
+  }
+  $("gl-q").addEventListener("input", function () { if (GL.data) drawGuests(); });
+  $("gl-add").addEventListener("submit", async function (e) {
+    e.preventDefault(); msg(); if (blocked()) return;
+    var name = $("gl-name").value.trim(), email = $("gl-email").value.trim();
+    if (!name) { msg("fail", "Enter the guest’s name."); return; }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg("fail", "Check the email address, or leave it blank."); return; }
+    busy($("gl-add-go"), true, "Adding…");
+    try {
+      var r = await api({ action: "guest_add", venue_id: S.venue, job_id: GL.job, rows: [{ name: name, email: email, plus_ones: $("gl-plus").value, note: $("gl-note").value }] });
+      if (r.added) { msg("ok", name + " added." + (email ? " We’ve emailed their QR pass." : "")); $("gl-add").reset(); $("gl-plus").value = 0; $("gl-name").focus(); }
+      else msg("fail", r.duplicates && r.duplicates.length ? email + " is already on this list." : "That guest couldn’t be added.");
+      loadGuests(true);
+    } catch (x) { msg("fail", x.message); }
+    busy($("gl-add-go"), false, "Add to the list");
+  });
+  // CSV: handles quoted fields, commas, tabs (pasted from a spreadsheet) or semicolons, and finds the columns from a header row.
+  function parseCSV(text) {
+    text = text.replace(/^﻿/, "");
+    var first = text.split(/\r?\n/)[0] || "", sep = first.indexOf("\t") > -1 ? "\t" : (first.split(";").length > first.split(",").length ? ";" : ",");
+    var rows = [], row = [], f = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === sep) { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+      else f += c;
+    }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    rows = rows.map(function (r) { return r.map(function (x) { return x.trim(); }); }).filter(function (r) { return r.some(Boolean); });
+    if (!rows.length) return [];
+    var h = rows[0].map(function (x) { return x.toLowerCase(); }), col = { name: -1, first: -1, last: -1, email: -1, plus: -1, note: -1 };
+    h.forEach(function (x, i) {
+      if (/^(full ?name|name|guest( name)?)$/.test(x)) col.name = i; else if (/^first( ?name)?$/.test(x)) col.first = i; else if (/^(last|sur)( ?name)?$/.test(x)) col.last = i;
+      else if (/e-?mail/.test(x)) col.email = i; else if (/plus|guests?$|\+1|extra/.test(x)) col.plus = i; else if (/note|comment|info/.test(x)) col.note = i;
+    });
+    var hasHeader = col.name > -1 || col.first > -1 || col.email > -1;
+    if (!hasHeader) col = { name: 0, first: -1, last: -1, email: 1, plus: 2, note: 3 };
+    return rows.slice(hasHeader ? 1 : 0).map(function (r) {
+      var name = col.name > -1 ? r[col.name] : [r[col.first], col.last > -1 ? r[col.last] : ""].filter(Boolean).join(" ");
+      var email = col.email > -1 ? r[col.email] || "" : "";
+      if (!hasHeader && email && email.indexOf("@") < 0) email = "";
+      return { name: name || "", email: email, plus_ones: col.plus > -1 ? r[col.plus] || "0" : "0", note: col.note > -1 ? r[col.note] || "" : "" };
+    }).filter(function (g) { return g.name; });
+  }
+  function previewCSV(text) {
+    GL.rows = parseCSV(text || "");
+    var withEmail = GL.rows.filter(function (g) { return /@/.test(g.email); }).length;
+    $("gl-preview").textContent = GL.rows.length ? GL.rows.length + " guest" + (GL.rows.length === 1 ? "" : "s") + " found, " + withEmail + " with an email (they’ll get a QR pass). First: " + GL.rows.slice(0, 3).map(function (g) { return g.name; }).join(", ") + (GL.rows.length > 3 ? "…" : "") : (text ? "No names found. Check there’s a name in each row." : "");
+    $("gl-csv-go").disabled = !GL.rows.length;
+  }
+  $("gl-file").addEventListener("change", function () {
+    var f = $("gl-file").files[0]; if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { msg("fail", "That file is over 2 MB. Save it as a CSV with just the guest columns."); return; }
+    var rd = new FileReader(); rd.onload = function () { $("gl-paste").value = ""; previewCSV(String(rd.result)); }; rd.readAsText(f);
+  });
+  $("gl-paste").addEventListener("input", function () { $("gl-file").value = ""; previewCSV($("gl-paste").value); });
+  $("gl-csv-go").addEventListener("click", async function () {
+    msg(); if (blocked() || !GL.rows.length) return;
+    if (GL.rows.length > 1000) { msg("fail", "Upload up to 1,000 guests at a time."); return; }
+    busy($("gl-csv-go"), true, "Adding…");
+    try {
+      var r = await api({ action: "guest_add", venue_id: S.venue, job_id: GL.job, rows: GL.rows, source: "csv" });
+      msg("ok", r.added + " guest" + (r.added === 1 ? "" : "s") + " added" + (r.skipped ? ", " + r.skipped + " skipped (blank or already on the list)" : "") + ". Anyone with an email has been sent their QR pass.");
+      $("gl-file").value = ""; $("gl-paste").value = ""; previewCSV(""); loadGuests(true);
+    } catch (x) { msg("fail", x.message); }
+    busy($("gl-csv-go"), false, "Add these guests"); $("gl-csv-go").disabled = !GL.rows.length;
+  });
+  async function saveLink(open) {
+    msg(); if (blocked()) return;
+    try {
+      var r = await api({ action: "guest_signup", venue_id: S.venue, job_id: GL.job, open: open, cap: $("gl-cap").value === "" ? null : +$("gl-cap").value, max_plus: +$("gl-maxplus").value });
+      GL.data.signup = r.signup; drawGuests();
+      msg("ok", open ? "Sign-up link is on. Copy it and share it with your guests." : "Sign-ups closed. The link now tells people the list is closed.");
+    } catch (x) { msg("fail", x.message); }
+  }
+  $("gl-link-save").addEventListener("click", function () { saveLink(true); });
+  $("gl-link-close").addEventListener("click", function () { saveLink(false); });
+  $("gl-link-copy").addEventListener("click", async function () {
+    try { await navigator.clipboard.writeText($("gl-url").value); msg("ok", "Link copied."); } catch (x) { $("gl-url").select(); msg("ok", "Select the link and copy it."); }
+  });
+  $("gl-list").addEventListener("click", async function (e) {
+    var del = e.target.closest("[data-gl-del]"), rs = e.target.closest("[data-gl-resend]");
+    if (!del && !rs) return; msg(); if (blocked()) return;
+    if (del) {
+      if (del.dataset.confirm !== "1") { del.dataset.confirm = "1"; del.textContent = "Tap again to remove"; setTimeout(function () { del.dataset.confirm = ""; del.textContent = "Remove"; }, 4000); return; }
+      busy(del, true, "Removing…");
+      try { await api({ action: "guest_remove", venue_id: S.venue, job_id: GL.job, guest_id: del.dataset.glDel }); msg("ok", "Removed from the list."); loadGuests(true); }
+      catch (x) { msg("fail", x.message); busy(del, false, "Remove"); }
+    } else {
+      busy(rs, true, "Sending…");
+      try { await api({ action: "guest_resend", venue_id: S.venue, job_id: GL.job, guest_id: rs.dataset.glResend }); msg("ok", "Pass sent again."); }
+      catch (x) { msg("fail", x.message); }
+      busy(rs, false, "Resend pass");
+    }
+  });
 
   /* ---------- live now (from the Staff Check-In clicker) ---------- */
   var liveTimer = null;

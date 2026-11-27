@@ -1,5 +1,5 @@
 // Fort Green client portal: reads shifts from the Staff Check-In project and handles
-// extra-staff requests. Signed-in users only; venue access is checked on every call.
+// extra-staff requests and guest lists. Signed-in users only; venue access is checked on every call.
 // The one exception is the scheduled shift overview (n8n, shared secret header), handled in shiftReports().
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -215,6 +215,39 @@ Deno.serve(async (req) => {
       }).eq("id", r.id).eq("status", "pending").select().single();
       if (error) throw error;
       return json({ request: data });
+    }
+
+    // ---- Guest lists (stored per shift in Staff Check-In; the door team checks guests in there) ----
+    if (typeof p.action === "string" && p.action.startsWith("guest")) {
+      if (!(await canVenue(p.venue_id))) return json({ error: "Not allowed" }, 403);
+      if (!isUuid(p.job_id)) return json({ error: "Pick a shift." }, 400);
+      const base = { p_key: key, p_venue: p.venue_id, p_job: p.job_id };
+      if (p.action === "guests") return json(await checkin("portal_guests", base));
+      if (p.action === "guest_add") {
+        if (!Array.isArray(p.rows) || !p.rows.length) return json({ error: "Add at least one guest." }, 400);
+        if (p.rows.length > 1000) return json({ error: "Add up to 1,000 guests at a time." }, 400);
+        const rows = p.rows.map((r: any) => ({
+          name: String(r?.name ?? "").slice(0, 120), email: String(r?.email ?? "").slice(0, 200),
+          plus_ones: String(r?.plus_ones ?? "0").slice(0, 3), note: String(r?.note ?? "").slice(0, 300),
+        }));
+        return json(await checkin("portal_guest_add", { ...base, p_rows: rows, p_by: email, p_source: p.source === "csv" ? "csv" : "client" }));
+      }
+      if (p.action === "guest_remove") {
+        if (!isUuid(p.guest_id)) return json({ error: "Bad guest" }, 400);
+        return json({ totals: await checkin("portal_guest_remove", { ...base, p_guest: p.guest_id }) });
+      }
+      if (p.action === "guest_resend") {
+        if (!isUuid(p.guest_id)) return json({ error: "Bad guest" }, 400);
+        await checkin("portal_guest_resend", { ...base, p_guest: p.guest_id });
+        return json({ ok: true });
+      }
+      if (p.action === "guest_signup") {
+        const cap = p.cap === null || p.cap === "" || p.cap === undefined ? null : Number(p.cap);
+        const plus = Number(p.max_plus ?? 1);
+        if (cap !== null && (!Number.isInteger(cap) || cap < 1 || cap > 5000)) return json({ error: "Limit must be a whole number between 1 and 5,000, or blank." }, 400);
+        if (!Number.isInteger(plus) || plus < 0 || plus > 10) return json({ error: "Plus-ones must be between 0 and 10." }, 400);
+        return json({ signup: await checkin("portal_guest_signup", { ...base, p_open: p.open !== false, p_cap: cap, p_max_plus: plus, p_by: email }) });
+      }
     }
 
     return json({ error: "Unknown action" }, 400);

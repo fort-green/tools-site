@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Join the guest list | Fort Green</title>
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/guest/style.css">
+<style>.trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}</style>
+</head>
+<body>
+<div class="bar"><span>Guest list</span><small>Fort Green</small></div>
+<main class="wrap">
+  <p class="hint" id="loading" style="margin-top:32px">Loading…</p>
+  <div id="bad" hidden>
+    <h1 class="display" id="bad-h">Link not found.</h1>
+    <p id="bad-p">This guest list link isn’t valid. Check you have the whole link, or ask whoever sent it.</p>
+  </div>
+  <div id="main" hidden>
+    <p class="kicker" id="e-venue"></p>
+    <h1 class="display" id="e-title"></h1>
+    <p class="hint" id="e-when" style="font-size:17px;color:var(--ink)"></p>
+    <p class="hint" id="e-left" style="margin-top:6px"></p>
+    <form id="f" class="panel stack" novalidate>
+      <label class="f">Full name <input type="text" id="f-name" autocomplete="name" maxlength="120" required></label>
+      <label class="f">Email <input type="email" id="f-email" autocomplete="email" maxlength="200" required inputmode="email"></label>
+      <label class="f" id="f-plus-wrap">Bringing anyone? <select id="f-plus"></select></label>
+      <div class="trap" aria-hidden="true"><label>Leave this empty <input type="text" id="f-web" tabindex="-1" autocomplete="off"></label></div>
+      <p class="hint" style="font-size:13px">We’ll email you a QR code to show at the door. Your name and email are shared with the venue and Fort Green to run this guest list, and deleted 30 days after the event.</p>
+      <div id="f-msg"></div>
+      <button class="btn big" type="submit" id="f-go">Join the guest list</button>
+    </form>
+  </div>
+  <div id="done" hidden>
+    <h1 class="display">You’re on the list.</h1>
+    <p>We’ve emailed your QR code to <strong id="d-email"></strong>. Show it at the door. If it doesn’t arrive in a few minutes, check your junk folder.</p>
+    <div class="panel" style="text-align:center"><span class="hint" style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Your code</span>
+      <b class="display" id="d-code" style="display:block;font-size:52px;letter-spacing:.14em;line-height:1;margin-top:6px"></b></div>
+  </div>
+  <footer>Guest list run by Fort Green. Questions: <a href="mailto:tools@fortgreen.co.uk">tools@fortgreen.co.uk</a></footer>
+</main>
+<script src="/guest/checkin-api.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var slug = location.hash.replace(/^#/, "").trim().toLowerCase();
+  function bad(h, p) { $("loading").hidden = true; $("main").hidden = true; $("bad").hidden = false; if (h) $("bad-h").textContent = h; if (p) $("bad-p").textContent = p; }
+  if (!/^[a-z0-9]{6,20}$/.test(slug)) return bad();
+  FGCheckin.rpc("guest_signup_info", { p_slug: slug }).then(function (e) {
+    if (!e) return bad();
+    var tz = { timeZone: "Europe/London" }, st = new Date(e.starts_at), en = new Date(e.ends_at);
+    var hm = function (d) { return d.toLocaleTimeString("en-GB", Object.assign({ hour: "2-digit", minute: "2-digit" }, tz)); };
+    $("e-venue").textContent = e.venue || "";
+    $("e-title").textContent = e.title || "Guest list";
+    $("e-when").textContent = st.toLocaleDateString("en-GB", Object.assign({ weekday: "long", day: "numeric", month: "long" }, tz)) + ", " + hm(st) + " to " + hm(en);
+    document.title = "Guest list: " + (e.title || "") + " | Fort Green";
+    if (!e.open) return bad("Guest list closed.", "Sorry, this guest list isn’t taking names any more.");
+    if (e.spaces_left === 0) return bad("Guest list full.", "Sorry, this guest list is full.");
+    if (e.spaces_left != null) $("e-left").textContent = e.spaces_left + " place" + (e.spaces_left === 1 ? "" : "s") + " left";
+    var opts = ""; for (var i = 0; i <= e.max_plus; i++) opts += '<option value="' + i + '">' + (i ? "Me + " + i : "Just me") + "</option>";
+    $("f-plus").innerHTML = opts; $("f-plus-wrap").hidden = e.max_plus === 0;
+    $("loading").hidden = true; $("main").hidden = false;
+  }).catch(function () { bad(); });
+
+  $("f").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var msg = $("f-msg"), btn = $("f-go"); msg.innerHTML = "";
+    if ($("f-web").value) return;  // bots fill hidden fields
+    var name = $("f-name").value.trim(), email = $("f-email").value.trim();
+    var say = function (t) { msg.innerHTML = '<p class="err" role="alert"></p>'; msg.firstChild.textContent = t; };
+    if (!name) return say("Enter your full name.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return say("Enter a valid email so we can send your QR code.");
+    btn.disabled = true; btn.textContent = "Adding you…";
+    try {
+      var r = await FGCheckin.rpc("guest_signup_join", { p_slug: slug, p_name: name, p_email: email, p_plus: parseInt($("f-plus").value || "0", 10) });
+      $("d-email").textContent = email; $("d-code").textContent = r.code;
+      $("main").hidden = true; $("done").hidden = false; window.scrollTo(0, 0);
+    } catch (x) { say(x.message); btn.disabled = false; btn.textContent = "Join the guest list"; }
+  });
+})();
+</script>
+</body>
+</html>
