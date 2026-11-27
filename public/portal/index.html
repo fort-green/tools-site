@@ -148,6 +148,9 @@ input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width
 .log li{padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
 footer{border-top:1px solid var(--ink);margin-top:80px;padding:28px 0 40px;font-size:14px;color:var(--muted)}
 [hidden]{display:none!important}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:60;max-width:640px;margin:0 auto;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:14px 16px;font-weight:700;font-size:15px;border:1px solid currentColor;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.toast.ok{background:var(--ok-soft);color:var(--ok)} .toast.bad{background:var(--err-soft);color:var(--err)}
+.toast button{background:none;border:0;color:inherit;font-size:22px;line-height:1;cursor:pointer;padding:0 2px}
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;line-height:26px}
 @media (max-width:760px){
   .wrap{padding:0 16px}
@@ -220,6 +223,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
     </nav>
     <p class="okmsg" id="ok" role="status" hidden></p>
     <p class="err" id="fail" role="alert" hidden></p>
+    <div class="toast" id="toast" hidden><span></span><button type="button" aria-label="Dismiss" onclick="this.parentNode.hidden=true">×</button></div>
 
     <!-- BOOKINGS -->
     <section id="t-bookings" data-panel="bookings">
@@ -492,7 +496,16 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
   ];
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]; }); }
-  function msg(kind, text) { $("ok").hidden = $("fail").hidden = true; if (text) { var el = $(kind === "ok" ? "ok" : "fail"); el.textContent = text; el.hidden = false; el.scrollIntoView({ block: "nearest" }); } }
+  // Messages appear as a bar fixed at the bottom of the screen, so the page never jumps away from what the person was doing.
+  var toastT = null;
+  function msg(kind, text) {
+    $("ok").hidden = $("fail").hidden = true;
+    var t = $("toast"); clearTimeout(toastT);
+    if (!text) { t.hidden = true; return; }
+    t.className = "toast " + (kind === "ok" ? "ok" : "bad"); t.setAttribute("role", kind === "ok" ? "status" : "alert");
+    t.querySelector("span").textContent = text; t.hidden = false;
+    toastT = setTimeout(function () { t.hidden = true; }, kind === "ok" ? 4500 : 9000);
+  }
   function hm(d) { return new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); }
   function dayLong(d) { return new Date(d).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }); }
   function dayShort(d) { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
@@ -927,13 +940,13 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width
       $("gl-link-save").textContent = su.open ? "Save changes" : "Open sign-ups";
     } else $("gl-link-save").textContent = "Turn on sign-up link";
     var q = $("gl-q").value.trim().toLowerCase();
-    var src = { client: "Added", csv: "Uploaded", signup: "Signed up" };
+    var src = { client: "Added", csv: "Uploaded", signup: "Signed up", coordinator: "Added by Fort Green", door: "Added at the door" };
     var rows = d.guests.filter(function (g) { return !q || g.name.toLowerCase().indexOf(q) > -1 || (g.email || "").indexOf(q) > -1; });
     $("gl-list").innerHTML = rows.length ? rows.map(function (g) {
       var party = g.plus_ones + 1;
       var st = g.admitted >= party ? '<span class="pill ok">In</span>' : g.admitted ? '<span class="pill warn">' + g.admitted + " of " + party + " in</span>" : "";
       return '<div class="row"><div><div class="t">' + esc(g.name) + (g.plus_ones ? " +" + g.plus_ones : "") + " " + st + '</div><div class="s">' +
-        [g.email ? esc(g.email) : "No email, so no QR pass", g.note ? "“" + esc(g.note) + "”" : "", src[g.source] + " " + esc(dayShort(g.created_at)), "Code " + esc(g.code)].filter(Boolean).join(" · ") +
+        [g.email ? esc(g.email) : "No email, so no QR pass", g.note ? "“" + esc(g.note) + "”" : "", ((g.source === "door" || g.source === "coordinator") && g.added_by ? "Added by " + esc(g.added_by) : src[g.source] || "Added") + " " + esc(dayShort(g.created_at)), "Code " + esc(g.code)].filter(Boolean).join(" · ") +
         '</div></div><div class="acts">' + (g.email ? '<button class="btn ghost sm" type="button" data-gl-resend="' + esc(g.id) + '">Resend pass</button>' : "") +
         (g.admitted ? "" : '<button class="btn danger sm" type="button" data-gl-del="' + esc(g.id) + '">Remove</button>') + "</div></div>";
     }).join("") : '<div class="empty">' + (q ? "No names match." : "No names yet. Add guests above, upload a list or turn on the sign-up link.") + "</div>";
